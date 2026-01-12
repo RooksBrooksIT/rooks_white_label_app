@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "416851266920",
+    "project_id": "white-label-app-33300",
+    "storage_bucket": "white-label-app-33300.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:416851266920:android:b6a0eb5de156185f981add",
+        "android_client_info": {
+          "package_name": "com.example.subscription_rooks_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDs7QWcGlXCl_vnX1XcWBuz2iahUrv-Hho"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
