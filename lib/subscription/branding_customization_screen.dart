@@ -2,16 +2,28 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'payment_screen.dart';
+
+import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:subscription_rooks_app/services/storage_service.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'transaction_completed_screen.dart';
 
 class BrandingCustomizationScreen extends StatefulWidget {
-  final Map<String, dynamic> selectedPlan;
+  final String planName;
   final bool isYearly;
+  final int price;
+  final int? originalPrice;
+  final String paymentMethod;
+  final String transactionId;
 
   const BrandingCustomizationScreen({
     super.key,
-    required this.selectedPlan,
+    required this.planName,
     required this.isYearly,
+    required this.price,
+    this.originalPrice,
+    required this.paymentMethod,
+    required this.transactionId,
   });
 
   @override
@@ -28,7 +40,84 @@ class _BrandingCustomizationScreenState
   bool _useDarkMode = false;
   String _selectedFont = 'Roboto';
 
+  // Preset Themes
+  final List<Map<String, Color>> _presetThemes = [
+    // Row 1
+    {
+      'primary': const Color(0xFF0D47A1),
+      'secondary': const Color(0xFF90CAF9),
+    }, // Blue
+    {
+      'primary': const Color(0xFF424242),
+      'secondary': const Color(0xFF90CAF9),
+    }, // Grey/Blue
+    {
+      'primary': const Color(0xFF1565C0),
+      'secondary': const Color(0xFF78909C),
+    }, // Navy/BlueGrey
+    {
+      'primary': const Color(0xFF37474F),
+      'secondary': const Color(0xFFB0BEC5),
+    }, // DarkBlueGrey
+    {
+      'primary': const Color(0xFF263238),
+      'secondary': const Color(0xFFB2DFDB),
+    }, // TealGrey
+    {
+      'primary': const Color(0xFF00695C),
+      'secondary': const Color(0xFF80CBC4),
+    }, // Teal
+    // Row 2
+    {
+      'primary': const Color(0xFF1B5E20),
+      'secondary': const Color(0xFFA5D6A7),
+    }, // Forest
+    {
+      'primary': const Color(0xFF33691E),
+      'secondary': const Color(0xFFC5E1A5),
+    }, // Olive
+    {
+      'primary': const Color(0xFF827717),
+      'secondary': const Color(0xFFE6EE9C),
+    }, // Gold
+    {
+      'primary': const Color(0xFFE65100),
+      'secondary': const Color(0xFFFFCC80),
+    }, // Orange
+    {
+      'primary': const Color(0xFF5D4037),
+      'secondary': const Color(0xFFD7CCC8),
+    }, // Brown
+    {
+      'primary': const Color(0xFF880E4F),
+      'secondary': const Color(0xFFF48FB1),
+    }, // Maroon
+    // Row 3
+    {
+      'primary': const Color(0xFF4E342E),
+      'secondary': const Color(0xFFD7CCC8),
+    }, // Coffee
+    {
+      'primary': const Color(0xFF880E4F),
+      'secondary': const Color(0xFFF06292),
+    }, // Magenta
+    {
+      'primary': const Color(0xFF4A148C),
+      'secondary': const Color(0xFFCE93D8),
+    }, // Purple
+  ];
+
+  int _selectedThemeIndex = 0;
+
   final ImagePicker _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize with the first theme
+    _primaryColor = _presetThemes[0]['primary']!;
+    _secondaryColor = _presetThemes[0]['secondary']!;
+  }
 
   Future<void> _pickLogo() async {
     try {
@@ -63,6 +152,8 @@ class _BrandingCustomizationScreenState
                 } else {
                   _secondaryColor = color;
                 }
+                // When manually picking, set to Custom mode
+                _selectedThemeIndex = _presetThemes.length;
               });
             },
             showLabel: true,
@@ -206,65 +297,194 @@ class _BrandingCustomizationScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Brand Colors',
+          'Pick a theme color',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildColorPreviewCube(
-                'Primary Color',
-                _primaryColor,
-                () => _showColorPicker(true),
-              ),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(255, 255, 255, 255), // Dark background
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 5, // Fits better on mobile width
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildColorPreviewCube(
-                'Secondary Color',
-                _secondaryColor,
-                () => _showColorPicker(false),
-              ),
-            ),
-          ],
+            itemCount: _presetThemes.length + 1, // +1 for Custom
+            itemBuilder: (context, index) {
+              final isCustom = index == _presetThemes.length;
+              final isSelected = _selectedThemeIndex == index;
+
+              if (isCustom) {
+                return _buildCustomThemeCircle(isSelected);
+              }
+
+              return _buildThemeCircle(
+                index,
+                _presetThemes[index]['primary']!,
+                _presetThemes[index]['secondary']!,
+                isSelected,
+              );
+            },
+          ),
         ),
+
+        if (_selectedThemeIndex == _presetThemes.length) ...[
+          const SizedBox(height: 24),
+          const Text(
+            'Custom Colors',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildManualColorButton(
+                  'Primary',
+                  _primaryColor,
+                  () => _showColorPicker(true),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildManualColorButton(
+                  'Secondary',
+                  _secondaryColor,
+                  () => _showColorPicker(false),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
 
-  Widget _buildColorPreviewCube(String label, Color color, VoidCallback onTap) {
+  Widget _buildThemeCircle(
+    int index,
+    Color primary,
+    Color secondary,
+    bool isSelected,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedThemeIndex = index;
+          _primaryColor = primary;
+          _secondaryColor = secondary;
+        });
+      },
+      child: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.transparent,
+            ),
+            child: ClipOval(
+              child: CustomPaint(
+                size: const Size(50, 50),
+                painter: ThemeCirclePainter(
+                  primary: primary,
+                  secondary: secondary,
+                  tertiary: Colors.grey.shade600,
+                ),
+              ),
+            ),
+          ),
+          if (isSelected)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: Colors.blue,
+                  size: 16,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomThemeCircle(bool isSelected) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedThemeIndex = _presetThemes.length;
+        });
+      },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFF3F51B5),
+            ),
+          ),
+          const Icon(Icons.colorize, color: Colors.white, size: 20),
+          if (isSelected)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: Colors.blue,
+                  size: 16,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManualColorButton(
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
         ),
-        child: Column(
+        child: Row(
           children: [
             Container(
-              width: 60,
-              height: 60,
+              width: 24,
+              height: 24,
               decoration: BoxDecoration(
                 color: color,
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.shade200, width: 2),
+                border: Border.all(color: Colors.grey.shade200),
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-            ),
+            const SizedBox(width: 12),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -315,7 +535,7 @@ class _BrandingCustomizationScreenState
                         _useDarkMode = val;
                       });
                     },
-                    activeColor: _primaryColor,
+                    activeThumbColor: _primaryColor,
                   ),
                 ],
               ),
@@ -515,33 +735,91 @@ class _BrandingCustomizationScreenState
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: () {
-          // Prepare branding data
-          final brandingData = {
-            'primaryColor': _primaryColor.value,
-            'secondaryColor': _secondaryColor.value,
-            'logoPath': _logoFile?.path,
-            'useDarkMode': _useDarkMode,
-            'fontFamily': _selectedFont,
-          };
-
-          // Navigate to Payment
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PaymentScreen(
-                planName: widget.selectedPlan['name'],
-                isYearly: widget.isYearly,
-                price: widget.isYearly
-                    ? widget.selectedPlan['yearlyPrice']
-                    : widget.selectedPlan['monthlyPrice'],
-                originalPrice: widget.isYearly
-                    ? widget.selectedPlan['originalYearlyPrice']
-                    : null,
-                brandingData: brandingData,
+        onPressed: () async {
+          // Show loading dialog
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Finalizing subscription...'),
+                ],
               ),
             ),
           );
+
+          try {
+            // Prepare branding data
+            final brandingData = {
+              'primaryColor': _primaryColor.value,
+              'secondaryColor': _secondaryColor.value,
+              'useDarkMode': _useDarkMode,
+              'fontFamily': _selectedFont,
+            };
+
+            const uid = 'demo-user'; // TODO: Use real auth uid
+
+            // Upload logo if exists
+            if (_logoFile != null) {
+              final logoUrl = await StorageService.instance.uploadLogo(
+                userId: uid,
+                file: _logoFile!,
+              );
+              if (logoUrl != null) {
+                brandingData['logoUrl'] = logoUrl;
+              }
+            }
+
+            // Save Full Subscription with Branding
+            await FirestoreService.instance.upsertSubscription(
+              uid: uid,
+              planName: widget.planName,
+              isYearly: widget.isYearly,
+              price: widget.price,
+              originalPrice: widget.originalPrice,
+              paymentMethod: widget.paymentMethod,
+              brandingData: brandingData,
+            );
+
+            // Update App Theme
+            ThemeService.instance.updateTheme(
+              primary: _primaryColor,
+              secondary: _secondaryColor,
+              isDarkMode: _useDarkMode,
+              fontFamily: _selectedFont,
+            );
+
+            if (!mounted) return;
+            Navigator.pop(context); // Close loading
+
+            // Navigate to Transaction Completed
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TransactionCompletedScreen(
+                  planName: widget.planName,
+                  isYearly: widget.isYearly,
+                  amountPaid: widget.price,
+                  paymentMethod: widget.paymentMethod,
+                  transactionId: widget.transactionId,
+                  timestamp: DateTime.now(),
+                ),
+              ),
+              (route) =>
+                  false, // Remove all previous routes including Plans and Payment
+            );
+          } catch (e) {
+            if (mounted) {
+              Navigator.pop(context); // Close loading
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error saving preferences: $e')),
+              );
+            }
+          }
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.black,
@@ -550,7 +828,7 @@ class _BrandingCustomizationScreenState
           ),
         ),
         child: const Text(
-          'Continue to Payment',
+          'Complete Setup',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -560,4 +838,60 @@ class _BrandingCustomizationScreenState
       ),
     );
   }
+}
+
+class ThemeCirclePainter extends CustomPainter {
+  final Color primary;
+  final Color secondary;
+  final Color tertiary;
+
+  ThemeCirclePainter({
+    required this.primary,
+    required this.secondary,
+    required this.tertiary,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    // 1. Draw Top Half (Primary)
+    paint.color = primary;
+    canvas.drawArc(rect, -3.14159, 3.14159, true, paint);
+
+    // 2. Draw Bottom Left (Secondary)
+    paint.color = secondary;
+    canvas.drawArc(
+      rect,
+      1.5708,
+      1.5708,
+      true,
+      paint,
+    ); // 90 to 180 degrees ? Wait.
+    // Arc starts from positive X axis (0).
+    // Top half is -PI to 0. (from left to right top)
+    // Actually, drawArc(rect, startAngle, sweepAngle, useCenter, paint)
+    // -PI is 180 deg (left). sweep PI (180). This draws Top Half. Correct.
+
+    // Bottom Left:
+    // Angle from PI (180 or -180) to PI/2 (90).
+    // Let's use 0 to PI (bottom half).
+    // Bottom Left is 90 deg to 180 deg?
+    // 0 is Right. PI/2 is Bottom. PI is Left.
+    // So Bottom Left is from PI/2 to PI.
+    // Bottom Right is from 0 to PI/2.
+
+    // Bottom Left Implementation:
+    paint.color = secondary;
+    canvas.drawArc(rect, 1.5708, 1.5708, true, paint); // PI/2 to PI?
+    // sweep 1.57 is 90 deg. Start at 1.57 (90 deg). YES.
+
+    // 3. Draw Bottom Right (Tertiary/Grey)
+    paint.color = tertiary;
+    canvas.drawArc(rect, 0, 1.5708, true, paint); // 0 to 90 deg.
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

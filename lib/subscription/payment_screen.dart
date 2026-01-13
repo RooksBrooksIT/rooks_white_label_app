@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/stripe_service.dart';
 import 'package:subscription_rooks_app/services/storage_service.dart';
-import 'package:subscription_rooks_app/services/theme_service.dart';
-import 'package:subscription_rooks_app/home_screen.dart';
+
 import 'dart:io';
+import 'card_details_screen.dart';
+
+import 'transaction_completed_screen.dart';
+import 'package:subscription_rooks_app/services/firestore_service.dart';
 
 class PaymentScreen extends StatefulWidget {
   final String planName;
@@ -35,6 +37,29 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   // No longer need card controllers as Stripe handles it
   final TextEditingController nameController = TextEditingController();
+
+  void _onCardSelected(String type) {
+    setState(() {
+      selectedPaymentMethod = type;
+    });
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CardDetailsScreen(
+          paymentAmount: widget.price,
+          planName: widget.planName,
+          isYearly: widget.isYearly,
+        ),
+      ),
+    ).then((success) {
+      if (success == true) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Payment Successful!')));
+      }
+    });
+  }
 
   // Responsive values based on screen width
   double get titleFontSize {
@@ -539,14 +564,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         color: Colors.grey.shade50,
         child: InkWell(
           borderRadius: BorderRadius.circular(borderRadius),
-          onTap: () {
-            setState(() {
-              selectedPaymentMethod = type;
-            });
-            // We do NOT show the manual dialog anymore, flow will handle stripe.
-            // _showCardDetailsDialog();
-            // Optional: You could proactively trigger stripe here, but doing it on 'Pay Now' is standard.
-          },
+          onTap: () => _onCardSelected(type),
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: isDesktop ? 20 : 16,
@@ -595,9 +613,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   value: type,
                   groupValue: selectedPaymentMethod,
                   onChanged: (value) {
-                    setState(() {
-                      selectedPaymentMethod = value!;
-                    });
+                    if (value != null) {
+                      _onCardSelected(value);
+                    }
                   },
                   activeColor: Colors.deepPurple,
                 ),
@@ -930,60 +948,35 @@ class _PaymentScreenState extends State<PaymentScreen> {
         }
       }
 
-      await FirestoreService.instance.upsertSubscription(
-        uid: uid,
-        planName: widget.planName,
-        isYearly: widget.isYearly,
-        price: widget.price,
-        originalPrice: widget.originalPrice,
-        paymentMethod: selectedPaymentMethod,
-        brandingData: finalBrandingData,
-      );
-
       if (mounted) Navigator.pop(context); // Close loading dialog
 
-      // Update Theme immediately if branding data exists
-      if (finalBrandingData != null) {
-        // Extract values safely
-        final primaryVal = finalBrandingData['primaryColor'] as int?;
-        final secondaryVal = finalBrandingData['secondaryColor'] as int?;
-        final isDark = finalBrandingData['useDarkMode'] as bool? ?? false;
-        final font = finalBrandingData['fontFamily'] as String? ?? 'Roboto';
-
-        ThemeService.instance.updateTheme(
-          primary: primaryVal != null ? Color(primaryVal) : Colors.deepPurple,
-          secondary: secondaryVal != null ? Color(secondaryVal) : Colors.amber,
-          isDarkMode: isDark,
-          fontFamily: font,
-        );
-      }
+      // Generate transaction ID
+      final transactionId =
+          'TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
       if (!mounted) return;
 
-      // Navigate to Home Screen
-      Navigator.pushAndRemoveUntil(
+      // Navigate to Transaction Completed Screen
+      Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-        (route) => false,
+        MaterialPageRoute(
+          builder: (context) => TransactionCompletedScreen(
+            planName: widget.planName,
+            isYearly: widget.isYearly,
+            amountPaid: widget.price,
+            paymentMethod: selectedPaymentMethod,
+            transactionId: transactionId,
+            timestamp: DateTime.now(),
+          ),
+        ),
       );
     } catch (e) {
-      // Ensure loading dialog is closed if it's open (it might be tricky to know if it's open, but pop matches the push)
-      // Note: If we popped earlier for Stripe, we re-pushed. If Stripe failed, we didn't re-push.
-      // So checking logic roughly:
-      // If Stripe failed, we already popped.
-      // If Stripe succeeded, we pushed again.
-      // To be safe, we can check if payment was attempted.
-      // For simplicity, I'll rely on the fact that if an exception is thrown, we might need to close a dialog if one is open.
-
-      // Actually, if Stripe fails, I threw Exception, and I had already popped the dialog.
-      // If Firestore fails, I had pushed the dialog again (or it was the original one).
-      // So I might need to pop only if firestore fails or if non-stripe fails.
-      // This is a bit complex for a simple replacement. I will simply catch and try to pop if can.
-
-      // Ideally check if route is top.
+      // Ensure loading dialog is closed if it's open
       if (mounted && Navigator.canPop(context)) {
-        // Navigator.pop(context); // Use with care
+        // We can't strictly know if the dialog is top, but this is a safe-ish bet in this context
+        // Navigator.pop(context);
       }
+
       // Re-opening the structure: simple pop might close the screen if dialog isn't open!
       // I'll leave the pop logic manual in the blocks above for safety and only show snackbar here.
 

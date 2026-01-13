@@ -53,4 +53,15 @@ class FirestoreService {
       return null;
     });
   }
+
+  // Update only branding data for a user
+  Future<void> updateBranding({
+    required String uid,
+    required Map<String, dynamic> brandingData,
+  }) async {
+    await subscriptionsRef.doc(uid).set({
+      'branding': brandingData,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
 }
