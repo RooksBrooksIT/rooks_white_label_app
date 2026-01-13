@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:subscription_rooks_app/firebase_options.dart';
 import 'package:subscription_rooks_app/subscription/welcome_screen.dart';
 import 'package:subscription_rooks_app/services/stripe_service.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,14 +24,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Flutter App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const SplashScreen(),
+    return ListenableBuilder(
+      listenable: ThemeService.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Flutter App',
+          theme: ThemeService.instance.themeData,
+          home: const SplashScreen(),
+        );
+      },
     );
   }
 }

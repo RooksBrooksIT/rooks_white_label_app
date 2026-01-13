@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/stripe_service.dart';
 import 'package:subscription_rooks_app/services/storage_service.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/home_screen.dart';
 import 'dart:io';
 
 class PaymentScreen extends StatefulWidget {
@@ -940,25 +942,29 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
       if (mounted) Navigator.pop(context); // Close loading dialog
 
+      // Update Theme immediately if branding data exists
+      if (finalBrandingData != null) {
+        // Extract values safely
+        final primaryVal = finalBrandingData['primaryColor'] as int?;
+        final secondaryVal = finalBrandingData['secondaryColor'] as int?;
+        final isDark = finalBrandingData['useDarkMode'] as bool? ?? false;
+        final font = finalBrandingData['fontFamily'] as String? ?? 'Roboto';
+
+        ThemeService.instance.updateTheme(
+          primary: primaryVal != null ? Color(primaryVal) : Colors.deepPurple,
+          secondary: secondaryVal != null ? Color(secondaryVal) : Colors.amber,
+          isDarkMode: isDark,
+          fontFamily: font,
+        );
+      }
+
       if (!mounted) return;
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Icon(Icons.check_circle, color: Colors.green, size: 60),
-          content: const Text(
-            'Payment Successful!\n\nYour subscription has been activated.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.popUntil(context, (route) => route.isFirst);
-              },
-              child: const Text('Go to Dashboard'),
-            ),
-          ],
-        ),
+
+      // Navigate to Home Screen
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        (route) => false,
       );
     } catch (e) {
       // Ensure loading dialog is closed if it's open (it might be tricky to know if it's open, but pop matches the push)
