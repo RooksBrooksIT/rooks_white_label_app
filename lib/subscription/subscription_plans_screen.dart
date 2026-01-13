@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'payment_screen.dart'; // Import the payment screen
+import 'branding_customization_screen.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
   const SubscriptionPlansScreen({super.key});
@@ -282,7 +282,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                                   isYearly = value;
                                 });
                               },
-                              activeColor: Colors.deepPurple,
+                              activeThumbColor: Colors.deepPurple,
                             ),
                             const SizedBox(width: 20),
                             Text(
@@ -445,19 +445,13 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     if (selectedPlanIndex == 0) {
       _startFreeDemo(context);
     } else {
-      // Navigate to payment screen
+      // Navigate to branding customization screen
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => PaymentScreen(
-            planName: selectedPlan['name'],
+          builder: (context) => BrandingCustomizationScreen(
+            selectedPlan: selectedPlan,
             isYearly: isYearly,
-            price: isYearly
-                ? selectedPlan['yearlyPrice']
-                : selectedPlan['monthlyPrice'],
-            originalPrice: isYearly
-                ? selectedPlan['originalYearlyPrice']
-                : null,
           ),
         ),
       );

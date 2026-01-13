@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:subscription_rooks_app/firebase_options.dart';
 import 'package:subscription_rooks_app/subscription/welcome_screen.dart';
+import 'package:subscription_rooks_app/services/stripe_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize Stripe
+  // TODO: Make sure to set your publishable key in StripeService
+  await StripeService.instance.initialize();
+
   runApp(const MyApp());
 }
 
