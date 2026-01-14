@@ -6,7 +6,6 @@ import 'dart:io';
 import 'card_details_screen.dart';
 
 import 'transaction_completed_screen.dart';
-import 'package:subscription_rooks_app/services/firestore_service.dart';
 
 class PaymentScreen extends StatefulWidget {
   final String planName;
