@@ -8,6 +8,8 @@ import 'package:subscription_rooks_app/services/storage_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'transaction_completed_screen.dart';
 
+import 'package:google_fonts/google_fonts.dart';
+
 class BrandingCustomizationScreen extends StatefulWidget {
   final String planName;
   final bool isYearly;
@@ -39,6 +41,9 @@ class _BrandingCustomizationScreenState
   File? _logoFile;
   bool _useDarkMode = false;
   String _selectedFont = 'Roboto';
+  final TextEditingController _appNameController = TextEditingController(
+    text: 'My Awesome App',
+  );
 
   // Preset Themes
   final List<Map<String, Color>> _presetThemes = [
@@ -119,6 +124,12 @@ class _BrandingCustomizationScreenState
     _secondaryColor = _presetThemes[0]['secondary']!;
   }
 
+  @override
+  void dispose() {
+    _appNameController.dispose();
+    super.dispose();
+  }
+
   Future<void> _pickLogo() async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
@@ -190,6 +201,8 @@ class _BrandingCustomizationScreenState
             children: [
               _buildHeader(),
               const SizedBox(height: 32),
+              _buildAppInfoSection(),
+              const SizedBox(height: 32),
               _buildLogoUploadSection(),
               const SizedBox(height: 32),
               _buildColorThemeSection(),
@@ -204,6 +217,41 @@ class _BrandingCustomizationScreenState
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildAppInfoSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'App Information',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: TextField(
+            controller: _appNameController,
+            decoration: InputDecoration(
+              hintText: 'Enter your app name',
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              border: InputBorder.none,
+              prefixIcon: Icon(Icons.edit_note, color: _primaryColor),
+            ),
+            onChanged: (value) {
+              setState(() {}); // Trigger rebuild for preview
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -563,9 +611,27 @@ class _BrandingCustomizationScreenState
                   DropdownButton<String>(
                     value: _selectedFont,
                     underline: Container(),
-                    items: ['Roboto', 'Open Sans', 'Lato', 'Montserrat']
-                        .map((f) => DropdownMenuItem(value: f, child: Text(f)))
-                        .toList(),
+                    items:
+                        [
+                              'Roboto',
+                              'Lato',
+                              'Montserrat',
+                              'Playfair Display',
+                              'Merriweather',
+                              'Oswald',
+                              'Fira Code',
+                              'Dancing Script',
+                            ]
+                            .map(
+                              (f) => DropdownMenuItem(
+                                value: f,
+                                child: Text(
+                                  f,
+                                  style: GoogleFonts.getFont(f, fontSize: 14),
+                                ),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (val) {
                       if (val != null) {
                         setState(() {
@@ -636,10 +702,14 @@ class _BrandingCustomizationScreenState
                             fit: BoxFit.contain,
                           )
                         : Text(
-                            'Your Logo',
-                            style: TextStyle(
+                            _appNameController.text.isEmpty
+                                ? 'Your Logo'
+                                : _appNameController.text,
+                            style: GoogleFonts.getFont(
+                              _selectedFont,
                               color: _useDarkMode ? Colors.white : Colors.black,
                               fontWeight: FontWeight.bold,
+                              fontSize: 14,
                             ),
                           ),
                   ),
@@ -672,20 +742,27 @@ class _BrandingCustomizationScreenState
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Container(
-                                  width: 100,
-                                  height: 10,
-                                  color: _useDarkMode
-                                      ? Colors.grey.shade700
-                                      : Colors.grey.shade300,
+                                Text(
+                                  'Lorem Ipsum',
+                                  style: GoogleFonts.getFont(
+                                    _selectedFont,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: _useDarkMode
+                                        ? Colors.white
+                                        : Colors.black87,
+                                  ),
                                 ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  width: 60,
-                                  height: 10,
-                                  color: _useDarkMode
-                                      ? Colors.grey.shade800
-                                      : Colors.grey.shade200,
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Font Preview Text',
+                                  style: GoogleFonts.getFont(
+                                    _selectedFont,
+                                    fontSize: 10,
+                                    color: _useDarkMode
+                                        ? Colors.grey.shade400
+                                        : Colors.grey.shade600,
+                                  ),
                                 ),
                               ],
                             ),
@@ -755,6 +832,7 @@ class _BrandingCustomizationScreenState
           try {
             // Prepare branding data
             final brandingData = {
+              'appName': _appNameController.text,
               'primaryColor': _primaryColor.value,
               'secondaryColor': _secondaryColor.value,
               'useDarkMode': _useDarkMode,
@@ -774,7 +852,13 @@ class _BrandingCustomizationScreenState
               }
             }
 
-            // Save Full Subscription with Branding
+            // 1. Save to App-Specific Collection (as requested)
+            await FirestoreService.instance.saveAppBranding(
+              appName: _appNameController.text,
+              brandingData: brandingData,
+            );
+
+            // 2. Save Full Subscription with Branding (linked to user)
             await FirestoreService.instance.upsertSubscription(
               uid: uid,
               planName: widget.planName,

@@ -6,7 +6,6 @@ import 'dart:io';
 import 'card_details_screen.dart';
 
 import 'transaction_completed_screen.dart';
-import 'package:subscription_rooks_app/services/firestore_service.dart';
 
 class PaymentScreen extends StatefulWidget {
   final String planName;
@@ -341,7 +340,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       spacing: 8,
                       children: [
                         Text(
-                          'Billed For ${widget.isYearly ? '12 Months' : '1 Month'}',
+                          widget.price == 0
+                              ? '7 Days Free Trial'
+                              : 'Billed For ${widget.isYearly ? '12 Months' : '1 Month'}',
                           style: TextStyle(
                             fontSize: isDesktop ? 16 : 14,
                             color: Colors.grey.shade600,
@@ -380,7 +381,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       ),
                     ),
                   Text(
-                    '₹${widget.price}',
+                    widget.price == 0 ? 'Free' : '₹${widget.price}',
                     style: TextStyle(
                       fontSize: priceFontSize,
                       fontWeight: FontWeight.bold,

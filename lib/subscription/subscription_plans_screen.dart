@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'payment_screen.dart';
+import 'branding_customization_screen.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
   const SubscriptionPlansScreen({super.key});
@@ -9,23 +10,30 @@ class SubscriptionPlansScreen extends StatefulWidget {
       _SubscriptionPlansScreenState();
 }
 
-class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
-  int selectedPlanIndex = 1; // Default: Gold (Index 1)
+enum PlanType { freeTrial, monthly, yearly }
 
-  // Plan data
+class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
+  PlanType selectedPlanType = PlanType.monthly;
+  int selectedPlanIndex = 1; // Default: Gold (Index 1) for Paid plans
+
+  // Plan data for Paid tiers
   final List<Map<String, dynamic>> plans = [
     {
       'name': 'Silver Plan',
-      'price': 199,
-      'originalPrice': 299,
+      'monthlyPrice': 199,
+      'monthlyOriginalPrice': 299,
+      'yearlyPrice': 1990,
+      'yearlyOriginalPrice': 2990,
       'subtitle': 'Best for small teams & basic usage',
       'features': ['0-30 Customers', '0-5 Engineers', 'Web support'],
-      'color': const Color(0xFFE0E0E0), // Silver-ish
+      'color': const Color(0xFFE0E0E0),
     },
     {
       'name': 'Gold Plan',
-      'price': 799,
-      'originalPrice': 999,
+      'monthlyPrice': 799,
+      'monthlyOriginalPrice': 999,
+      'yearlyPrice': 7990,
+      'yearlyOriginalPrice': 9990,
       'subtitle': 'Ideal for growing businesses',
       'features': [
         '0-100 Customers',
@@ -34,12 +42,14 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         '0-10 Engineer',
         'Web support',
       ],
-      'color': const Color(0xFFFFD700), // Gold
+      'color': const Color(0xFFFFD700),
     },
     {
       'name': 'Platinum Plan',
-      'price': 1999,
-      'originalPrice': 2999,
+      'monthlyPrice': 1999,
+      'monthlyOriginalPrice': 2999,
+      'yearlyPrice': 19990,
+      'yearlyOriginalPrice': 29990,
       'subtitle': 'Best for enterprises & unlimited usage',
       'features': [
         'Unlimited Customers',
@@ -48,9 +58,25 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         'Unlimited Engineer',
         'Web support',
       ],
-      'color': const Color(0xFFE5E4E2), // Platinum
+      'color': const Color(0xFFE5E4E2),
     },
   ];
+
+  // Data for Trial tier
+  final Map<String, dynamic> trialPlan = {
+    'name': '7-Day Free Trial',
+    'price': 0,
+    'originalPrice': 0,
+    'subtitle': 'Full access to premium features for 7 days',
+    'features': [
+      'Access to all Gold Plan features',
+      'Experience Geo Location & Barcode',
+      'No credit card required for trial',
+      'Automatic expiration after 7 days',
+      'Web support included',
+    ],
+    'color': const Color(0xFFE3F2FD),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -60,11 +86,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFF5F7FA), // Very light grey/white
-              Color(0xFFE8F0FE), // Light blue tint
-              Color(0xFFD0E1F9), // Deeper blue tint
-            ],
+            colors: [Color(0xFFF5F7FA), Color(0xFFE8F0FE), Color(0xFFD0E1F9)],
           ),
         ),
         child: SafeArea(
@@ -74,7 +96,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
-                  vertical: 20,
+                  vertical: 12,
                 ),
                 child: Row(
                   children: [
@@ -104,35 +126,58 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 48), // Balance spacing
+                    const SizedBox(width: 48),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 20),
+              // Plan Duration Selector (Tabs)
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: Row(
+                    children: [
+                      _buildTab(PlanType.freeTrial, 'Free Trial'),
+                      _buildTab(PlanType.monthly, 'Monthly'),
+                      _buildTab(PlanType.yearly, 'Yearly'),
+                    ],
+                  ),
+                ),
+              ),
 
               // Main Plan Card
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: _buildMainCard(plans[selectedPlanIndex]),
+                  child: selectedPlanType == PlanType.freeTrial
+                      ? _buildMainCard(trialPlan, isTrial: true)
+                      : _buildMainCard(
+                          plans[selectedPlanIndex],
+                          isYearly: selectedPlanType == PlanType.yearly,
+                        ),
                 ),
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
 
-              // Bottom Selectors
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(plans.length, (index) {
-                    return _buildBottomSelector(index);
-                  }),
+              // Bottom Selectors (Hidden for Trial)
+              if (selectedPlanType != PlanType.freeTrial)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(plans.length, (index) {
+                      return _buildBottomSelector(index);
+                    }),
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
 
               // Subscribe Button
               Padding(
@@ -145,18 +190,28 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                   height: 56,
                   child: ElevatedButton(
                     onPressed: () {
-                      _handlePlanSelection(context, plans[selectedPlanIndex]);
+                      if (selectedPlanType == PlanType.freeTrial) {
+                        _handlePlanSelection(context, trialPlan, isTrial: true);
+                      } else {
+                        _handlePlanSelection(
+                          context,
+                          plans[selectedPlanIndex],
+                          isYearly: selectedPlanType == PlanType.yearly,
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D47A1), // Dark Blue
+                      backgroundColor: const Color(0xFF0D47A1),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                       elevation: 4,
                     ),
-                    child: const Text(
-                      'Subscribe now',
-                      style: TextStyle(
+                    child: Text(
+                      selectedPlanType == PlanType.freeTrial
+                          ? 'Start 7-Day Free Trial'
+                          : 'Subscribe now',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -172,7 +227,52 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     );
   }
 
-  Widget _buildMainCard(Map<String, dynamic> plan) {
+  Widget _buildTab(PlanType type, String label) {
+    final isSelected = selectedPlanType == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            selectedPlanType = type;
+            if (type != PlanType.freeTrial && selectedPlanIndex == -1) {
+              selectedPlanIndex = 1;
+            }
+          });
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF0D47A1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(25),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.black54,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainCard(
+    Map<String, dynamic> plan, {
+    bool isYearly = false,
+    bool isTrial = false,
+  }) {
+    final price = isTrial
+        ? plan['price']
+        : (isYearly ? plan['yearlyPrice'] : plan['monthlyPrice']);
+    final originalPrice = isTrial
+        ? plan['originalPrice']
+        : (isYearly
+              ? plan['yearlyOriginalPrice']
+              : plan['monthlyOriginalPrice']);
+    final durationLabel = isTrial ? '/7 Days' : (isYearly ? '/Year' : '/Month');
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -206,32 +306,36 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               textBaseline: TextBaseline.alphabetic,
               children: [
                 Text(
-                  '₹${plan['price']}',
+                  '₹$price',
                   style: const TextStyle(
                     fontSize: 48,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  '₹${plan['originalPrice']}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    decoration: TextDecoration.lineThrough,
-                    color: Colors.grey,
+                if (originalPrice != null && originalPrice > 0) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '₹$originalPrice',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      decoration: TextDecoration.lineThrough,
+                      color: Colors.grey,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
-            const Text(
-              '/Month',
-              style: TextStyle(fontSize: 14, color: Colors.black54),
+            Text(
+              durationLabel,
+              style: const TextStyle(fontSize: 14, color: Colors.black54),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Applicable for 12 and 24 months only',
-              style: TextStyle(fontSize: 10, color: Colors.grey),
+            Text(
+              isTrial
+                  ? 'No credit card required'
+                  : 'Applicable for ${isYearly ? 'annual' : 'monthly'} billing',
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
             ),
             const SizedBox(height: 30),
             Text(
@@ -239,13 +343,13 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
             Expanded(
               child: ListView.builder(
                 itemCount: plan['features'].length,
                 itemBuilder: (context, index) {
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.only(bottom: 12),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -279,6 +383,8 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   Widget _buildBottomSelector(int index) {
     final plan = plans[index];
     final isSelected = selectedPlanIndex == index;
+    final isYearly = selectedPlanType == PlanType.yearly;
+    final price = isYearly ? plan['yearlyPrice'] : plan['monthlyPrice'];
 
     return GestureDetector(
       onTap: () {
@@ -288,9 +394,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width:
-            MediaQuery.of(context).size.width *
-            0.26, // Roughly 1/3 minus padding
+        width: MediaQuery.of(context).size.width * 0.26,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
@@ -323,24 +427,16 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              '₹${plan['price']}',
+              '₹$price',
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
             ),
-            const Text(
-              '/Month',
-              style: TextStyle(fontSize: 8, color: Colors.black54),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Best for small teams & basic usage', // Truncate or use subtitle in full card
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 8, color: Colors.grey),
+            Text(
+              isYearly ? '/Year' : '/Month',
+              style: const TextStyle(fontSize: 8, color: Colors.black54),
             ),
           ],
         ),
@@ -350,17 +446,48 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   void _handlePlanSelection(
     BuildContext context,
-    Map<String, dynamic> selectedPlan,
-  ) {
-    // Navigate to Payment Screen
+    Map<String, dynamic> selectedPlan, {
+    bool isYearly = false,
+    bool isTrial = false,
+  }) {
+    final price = isTrial
+        ? selectedPlan['price']
+        : (isYearly
+              ? selectedPlan['yearlyPrice']
+              : selectedPlan['monthlyPrice']);
+    final originalPrice = isTrial
+        ? selectedPlan['originalPrice']
+        : (isYearly
+              ? selectedPlan['yearlyOriginalPrice']
+              : selectedPlan['monthlyOriginalPrice']);
+
+    if (isTrial) {
+      // Bypass Payment and Go directly to Customization
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BrandingCustomizationScreen(
+            planName: selectedPlan['name'],
+            price: price,
+            originalPrice: originalPrice,
+            isYearly: isYearly,
+            paymentMethod: 'Free Trial',
+            transactionId: 'trial_${DateTime.now().millisecondsSinceEpoch}',
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Navigate to Payment Screen for Paid Plans
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => PaymentScreen(
           planName: selectedPlan['name'],
-          price: selectedPlan['price'],
-          originalPrice: selectedPlan['originalPrice'],
-          isYearly: true, // Specific constraint from UI text
+          price: price,
+          originalPrice: originalPrice,
+          isYearly: isYearly,
         ),
       ),
     );

@@ -64,4 +64,17 @@ class FirestoreService {
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
+
+  // Create an app-specific collection to store branding configuration
+  Future<void> saveAppBranding({
+    required String appName,
+    required Map<String, dynamic> brandingData,
+  }) async {
+    // Sanitize app name for collection ID (remove spaces/special chars if needed,
+    // but Firestore allows spaces. Using verbatim for now as requested.)
+    await _db.collection(appName).doc('branding').set({
+      ...brandingData,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
 }
