@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ThemeService extends ChangeNotifier {
   ThemeService._();
@@ -23,8 +24,7 @@ class ThemeService extends ChangeNotifier {
         secondary: _secondaryColor,
         brightness: _isDarkMode ? Brightness.dark : Brightness.light,
       ),
-      textTheme: base.textTheme.apply(fontFamily: _fontFamily),
-      useMaterial3: true,
+      textTheme: GoogleFonts.getTextTheme(_fontFamily, base.textTheme),
       // You can customize more components here based on the colors
       appBarTheme: AppBarTheme(
         backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
