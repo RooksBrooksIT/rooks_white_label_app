@@ -24,7 +24,7 @@ class WelcomeScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Welcome 👋',
+                        'Welcome',
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.w800,
@@ -50,22 +50,16 @@ class WelcomeScreen extends StatelessWidget {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          const Color(0xFFB388FF),
-                          Colors.purpleAccent.shade100,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey[300]!),
                     ),
                     child: Text(
                       'Premium',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Colors.deepPurple[900],
+                        color: const Color.fromARGB(255, 0, 0, 0),
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -76,7 +70,7 @@ class WelcomeScreen extends StatelessWidget {
               const SizedBox(height: 32),
 
               // HERO CARD
-              _buildHeroCard(),
+              _buildHeroCard(context),
 
               const SizedBox(height: 40),
 
@@ -94,8 +88,8 @@ class WelcomeScreen extends StatelessWidget {
                 title: 'Unified Service Delivery',
                 description:
                     'Deliver technical and maintenance services through a single, structured system.',
-                gradientColors: [Colors.blue.shade50, Colors.lightBlue.shade50],
-                iconColor: Colors.blueAccent,
+                gradientColors: [Colors.white, Colors.white],
+                iconColor: Colors.black,
               ),
 
               const SizedBox(height: 16),
@@ -105,8 +99,8 @@ class WelcomeScreen extends StatelessWidget {
                 title: 'Client Service Requests',
                 description:
                     'Clients raise service requests using a branded mobile application.',
-                gradientColors: [Colors.purple.shade50, Colors.pink.shade50],
-                iconColor: Colors.purpleAccent,
+                gradientColors: [Colors.white, Colors.white],
+                iconColor: Colors.black,
               ),
 
               const SizedBox(height: 16),
@@ -116,8 +110,8 @@ class WelcomeScreen extends StatelessWidget {
                 title: 'Operational Control',
                 description:
                     'Manage tickets, assign engineers, and track resolution from one dashboard.',
-                gradientColors: [Colors.orange.shade50, Colors.amber.shade50],
-                iconColor: Colors.orangeAccent,
+                gradientColors: [Colors.white, Colors.white],
+                iconColor: Colors.black,
               ),
 
               const SizedBox(height: 40),
@@ -130,7 +124,7 @@ class WelcomeScreen extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              _buildBrandingCard(),
+              _buildBrandingCard(context),
 
               const SizedBox(height: 40),
 
@@ -146,6 +140,7 @@ class WelcomeScreen extends StatelessWidget {
                 icon: Icons.security_rounded,
                 title: 'Enterprise Security',
                 description: 'Bank-level encryption and data protection',
+                context: context,
               ),
 
               const SizedBox(height: 12),
@@ -154,6 +149,7 @@ class WelcomeScreen extends StatelessWidget {
                 icon: Icons.auto_graph_rounded,
                 title: 'Scalable Infrastructure',
                 description: 'Grow seamlessly with your business needs',
+                context: context,
               ),
 
               const SizedBox(height: 12),
@@ -162,6 +158,7 @@ class WelcomeScreen extends StatelessWidget {
                 icon: Icons.palette_rounded,
                 title: 'White-label Ready',
                 description: 'Full brand customization available',
+                context: context,
               ),
 
               const SizedBox(height: 12),
@@ -170,6 +167,7 @@ class WelcomeScreen extends StatelessWidget {
                 icon: Icons.insights_rounded,
                 title: 'Advanced Analytics',
                 description: 'Real-time insights and reporting',
+                context: context,
               ),
 
               // BOTTOM SPACING FOR FLOATING CTA
@@ -182,19 +180,16 @@ class WelcomeScreen extends StatelessWidget {
   }
 
   // HERO CARD
-  Widget _buildHeroCard() {
+  Widget _buildHeroCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.deepPurple.shade600, Colors.purple.shade600],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey[200]!),
         boxShadow: [
           BoxShadow(
-            color: Colors.deepPurple.withOpacity(0.3),
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -203,18 +198,14 @@ class WelcomeScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.rocket_launch_rounded,
-            color: Colors.white,
-            size: 40,
-          ),
+          Icon(Icons.rocket_launch_rounded, color: Colors.black, size: 40),
           const SizedBox(height: 16),
           Text(
             'Transform Your Service Management',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w700,
-              color: Colors.white,
+              color: Colors.grey[900],
               height: 1.3,
             ),
           ),
@@ -223,7 +214,7 @@ class WelcomeScreen extends StatelessWidget {
             'A premium platform by Rooks & Brooks Technologies designed for modern businesses.',
             style: TextStyle(
               fontSize: 15,
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.grey[700],
               height: 1.5,
             ),
           ),
@@ -273,11 +264,7 @@ class WelcomeScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: gradientColors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
       ),
@@ -330,15 +317,11 @@ class WelcomeScreen extends StatelessWidget {
   }
 
   // BRANDING CARD
-  Widget _buildBrandingCard() {
+  Widget _buildBrandingCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.grey[50]!, Colors.grey[100]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
       ),
@@ -357,9 +340,9 @@ class WelcomeScreen extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.branding_watermark_rounded,
-              color: Colors.deepPurple,
+              color: Colors.black,
               size: 32,
             ),
           ),
@@ -398,6 +381,7 @@ class WelcomeScreen extends StatelessWidget {
     required IconData icon,
     required String title,
     required String description,
+    required BuildContext context,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -415,7 +399,7 @@ class WelcomeScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.deepPurple, size: 24),
+          Icon(icon, color: Colors.black),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -452,7 +436,7 @@ class WelcomeScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.deepPurple.withOpacity(0.3),
+              color: Colors.black,
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -472,8 +456,8 @@ class WelcomeScreen extends StatelessWidget {
             );
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color.fromARGB(255, 36, 12, 85),
-            foregroundColor: Colors.white,
+            backgroundColor: Colors.white,
+            foregroundColor: const Color.fromARGB(255, 12, 12, 12),
             padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'payment_screen.dart';
 import 'branding_customization_screen.dart';
 
@@ -80,147 +81,165 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
+    return Theme(
+      data: Theme.of(context).copyWith(scaffoldBackgroundColor: Colors.white),
+      child: Container(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF5F7FA), Color(0xFFE8F0FE), Color(0xFFD0E1F9)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.grey.shade100,
+              Colors.blue.shade50.withOpacity(0.5),
+              Colors.grey.shade200,
+            ],
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    Expanded(
-                      child: Column(
-                        children: const [
-                          Text(
-                            'CHOOSE WHAT FITS YOU',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
+        child: Scaffold(
+          backgroundColor: const Color.fromARGB(255, 233, 231, 231),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // Header with Glassy Effect
+                ClipRRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      color: Colors.white.withOpacity(0.2),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                          Expanded(
+                            child: Column(
+                              children: const [
+                                Text(
+                                  'CHOOSE WHAT FITS YOU',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Choose the plan that suits your Workflow best',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Choose the plan that suits your Workflow best',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.black54,
-                            ),
-                          ),
+                          const SizedBox(width: 48),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 48),
-                  ],
-                ),
-              ),
-
-              // Plan Duration Selector (Tabs)
-              Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Container(
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: Row(
-                    children: [
-                      _buildTab(PlanType.freeTrial, 'Free Trial'),
-                      _buildTab(PlanType.monthly, 'Monthly'),
-                      _buildTab(PlanType.yearly, 'Yearly'),
-                    ],
                   ),
                 ),
-              ),
 
-              // Main Plan Card
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: selectedPlanType == PlanType.freeTrial
-                      ? _buildMainCard(trialPlan, isTrial: true)
-                      : _buildMainCard(
-                          plans[selectedPlanIndex],
-                          isYearly: selectedPlanType == PlanType.yearly,
-                        ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Bottom Selectors (Hidden for Trial)
-              if (selectedPlanType != PlanType.freeTrial)
+                // Plan Duration Selector (Tabs)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(plans.length, (index) {
-                      return _buildBottomSelector(index);
-                    }),
-                  ),
-                ),
-
-              const SizedBox(height: 20),
-
-              // Subscribe Button
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 20,
-                ),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (selectedPlanType == PlanType.freeTrial) {
-                        _handlePlanSelection(context, trialPlan, isTrial: true);
-                      } else {
-                        _handlePlanSelection(
-                          context,
-                          plans[selectedPlanIndex],
-                          isYearly: selectedPlanType == PlanType.yearly,
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D47A1),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 4,
+                  padding: const EdgeInsets.all(24.0),
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(25),
                     ),
-                    child: Text(
-                      selectedPlanType == PlanType.freeTrial
-                          ? 'Start 7-Day Free Trial'
-                          : 'Subscribe now',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                    child: Row(
+                      children: [
+                        _buildTab(PlanType.freeTrial, 'Free Trial'),
+                        _buildTab(PlanType.monthly, 'Monthly'),
+                        _buildTab(PlanType.yearly, 'Yearly'),
+                      ],
                     ),
                   ),
                 ),
-              ),
-            ],
+
+                // Main Plan Card
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: selectedPlanType == PlanType.freeTrial
+                        ? _buildMainCard(trialPlan, isTrial: true)
+                        : _buildMainCard(
+                            plans[selectedPlanIndex],
+                            isYearly: selectedPlanType == PlanType.yearly,
+                          ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Bottom Selectors (Hidden for Trial)
+                if (selectedPlanType != PlanType.freeTrial)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(plans.length, (index) {
+                        return _buildBottomSelector(index);
+                      }),
+                    ),
+                  ),
+
+                const SizedBox(height: 20),
+
+                // Subscribe Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 20,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (selectedPlanType == PlanType.freeTrial) {
+                          _handlePlanSelection(
+                            context,
+                            trialPlan,
+                            isTrial: true,
+                          );
+                        } else {
+                          _handlePlanSelection(
+                            context,
+                            plans[selectedPlanIndex],
+                            isYearly: selectedPlanType == PlanType.yearly,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 4,
+                      ),
+                      child: Text(
+                        selectedPlanType == PlanType.freeTrial
+                            ? 'Start 7-Day Free Trial'
+                            : 'Subscribe now',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color.fromARGB(255, 0, 0, 0),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -241,14 +260,18 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         },
         child: Container(
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF0D47A1) : Colors.transparent,
+            color: isSelected
+                ? const Color.fromARGB(206, 255, 255, 255)
+                : const Color.fromARGB(0, 192, 50, 50),
             borderRadius: BorderRadius.circular(25),
           ),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.white : Colors.black54,
+              color: isSelected
+                  ? const Color.fromARGB(255, 0, 0, 0)
+                  : Colors.black54,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               fontSize: 14,
             ),
@@ -276,12 +299,12 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.5),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.8), width: 1),
+        border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0D47A1).withOpacity(0.1),
+            color: const Color.fromARGB(255, 235, 235, 235),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -397,16 +420,16 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         width: MediaQuery.of(context).size.width * 0.26,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
+          color: isSelected ? Colors.white : Colors.grey[50],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF0D47A1) : Colors.transparent,
+            color: isSelected ? Colors.black : Colors.transparent,
             width: 1.5,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: const Color(0xFF0D47A1).withOpacity(0.2),
+                    color: Colors.black,
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),

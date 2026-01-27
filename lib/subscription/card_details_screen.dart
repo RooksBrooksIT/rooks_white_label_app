@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'transaction_completed_screen.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
 
 class CardDetailsScreen extends StatefulWidget {
   final int paymentAmount;
@@ -62,37 +63,44 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Add Card'),
+    return Theme(
+      data: ThemeService.instance.defaultTheme,
+      child: Scaffold(
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            _buildRealisticCard(),
-            const SizedBox(height: 40),
-            _buildCardForm(),
-            const SizedBox(height: 32),
-            _buildPayButton(),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.lock_outline, size: 16, color: Colors.grey.shade600),
-                const SizedBox(width: 8),
-                Text(
-                  'Your payment information is secure',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                ),
-              ],
-            ),
-          ],
+        appBar: AppBar(
+          title: const Text('Add Card'),
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          centerTitle: true,
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              _buildRealisticCard(),
+              const SizedBox(height: 40),
+              _buildCardForm(),
+              const SizedBox(height: 32),
+              _buildPayButton(),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.lock_outline,
+                    size: 16,
+                    color: Colors.grey.shade600,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Your payment information is secure',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

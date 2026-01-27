@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'branding_customization_screen.dart';
+import '../frontend/screens/app_main_page.dart';
 
 class TransactionCompletedScreen extends StatelessWidget {
   final String planName;
@@ -21,23 +22,19 @@ class TransactionCompletedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.white,
-              Color(0xFFE3F2FD), // Light Blue
-              Color(0xFFBBDEFB), // Blue
-            ],
-            stops: [0.0, 0.6, 1.0],
-          ),
+    return Theme(
+      data: ThemeData.light().copyWith(
+        scaffoldBackgroundColor: Colors.white,
+        primaryColor: Colors.black,
+        colorScheme: const ColorScheme.light(
+          primary: Colors.black,
+          secondary: Colors.blueAccent,
+          surface: Colors.white,
         ),
-        child: SafeArea(
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FA),
+        body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
               horizontal: 24.0,
@@ -46,95 +43,105 @@ class TransactionCompletedScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
                 // Success Icon
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: 90,
+                  height: 90,
                   decoration: BoxDecoration(
-                    color: Colors.green.shade400,
+                    color: Colors.white,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.green.withOpacity(0.3),
+                        color: Colors.black.withOpacity(0.05),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.check, color: Colors.white, size: 48),
+                  child: const Center(
+                    child: Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 70,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 // Title
                 const Text(
-                  'TRANSACTION COMPLETED',
+                  'PAYMENT SUCCESSFUL',
                   style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
                     color: Colors.black87,
-                    letterSpacing: 0.5,
+                    letterSpacing: 1.5,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 // Subtitle
                 Text(
-                  'Your payment has been processed successfully and your subscription has been activated.',
+                  'Thank you for your purchase!\nYour subscription is now active.',
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
+                    fontSize: 15,
+                    color: Colors.black54,
                     height: 1.5,
+                    fontWeight: FontWeight.w500,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 48),
                 // Details Card
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.white.withOpacity(0.8)),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.grey.withOpacity(0.1)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
                       ),
                     ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Payment Details',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                      const Center(
+                        child: Text(
+                          'TRANSACTION DETAILS',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black45,
+                            letterSpacing: 1.0,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
-                      _buildDetailRow('Plan', '$planName Plan'),
+                      _buildDetailRow('PLAN', '$planName Plan'),
                       _buildDetailRow(
-                        'Billing Cycle',
-                        isYearly ? '12 Months' : '1 Month',
+                        'BILLING CYCLE',
+                        isYearly ? 'Yearly' : 'Monthly',
                       ),
-                      _buildDetailRow('Amount Paid', '₹ $amountPaid'),
-                      _buildDetailRow('Payment Method', paymentMethod),
-                      _buildDetailRow('Transaction ID', transactionId),
+                      _buildDetailRow('AMOUNT PAID', '₹ $amountPaid'),
+                      _buildDetailRow('PAYMENT METHOD', paymentMethod),
+                      _buildDetailRow('TRANSACTION ID', transactionId),
                       _buildDetailRow(
-                        'Date & Time',
+                        'DATE & TIME',
                         _formatDateTime(timestamp),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 40),
-                // Customize App Button (Primary Action)
+                const SizedBox(height: 48),
+                // Primary Action Button
                 SizedBox(
                   width: double.infinity,
-                  height: 56,
+                  height: 60,
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.push(
@@ -151,44 +158,48 @@ class TransactionCompletedScreen extends StatelessWidget {
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D47A1), // Dark Blue
+                      backgroundColor: Colors.black87,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      elevation: 4,
+                      elevation: 0,
                     ),
                     child: const Text(
-                      'Customize Your App',
+                      'CUSTOMIZE YOUR APP',
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w900,
                         color: Colors.white,
+                        letterSpacing: 1.0,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                // Go to Dashboard Button (Secondary)
+                const SizedBox(height: 16),
+                // Secondary Action Button
                 SizedBox(
                   width: double.infinity,
-                  height: 56,
-                  child: OutlinedButton(
+                  height: 60,
+                  child: TextButton(
                     onPressed: () {
-                      // Navigate to Dashboard (Placeholder, pop to root for now)
-                      Navigator.of(context).popUntil((route) => route.isFirst);
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AppMainPage()),
+                        (route) => false,
+                      );
                     },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF1565C0),
-                      side: const BorderSide(color: Color(0xFF1565C0)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.black54,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                     child: const Text(
-                      'Go to Dashboard',
+                      'GO TO DASHBOARD',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),

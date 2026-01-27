@@ -9,6 +9,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  // Initialize Theme
+  await ThemeService.instance.init();
+
   // Initialize Stripe
   // TODO: Make sure to set your publishable key in StripeService
   await StripeService.instance.initialize();
@@ -66,22 +69,35 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple,
+      backgroundColor: Theme.of(context).primaryColor,
       body: SafeArea(
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                'assets/images/logo.png',
-                width: 120,
-                height: 120,
-                fit: BoxFit.contain,
-              ),
+              ThemeService.instance.logoUrl != null
+                  ? Image.network(
+                      ThemeService.instance.logoUrl!,
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                        'assets/images/logo.png',
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.contain,
+                      ),
+                    )
+                  : Image.asset(
+                      'assets/images/logo.png',
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.contain,
+                    ),
               const SizedBox(height: 20),
-              const Text(
-                'My Flutter App',
-                style: TextStyle(
+              Text(
+                ThemeService.instance.appName,
+                style: const TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
