@@ -9,16 +9,11 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Initialize Stripe
-  // TODO: Make sure to set your publishable key in StripeService
   await StripeService.instance.initialize();
 
   runApp(const MyApp());
 }
 
-/* ------------------------------------------------------
-   ROOT APP
------------------------------------------------------- */
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -38,9 +33,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/* ------------------------------------------------------
-   SPLASH SCREEN
------------------------------------------------------- */
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 

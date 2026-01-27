@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'transaction_completed_screen.dart';
 
+
 class CardDetailsScreen extends StatefulWidget {
   final int paymentAmount;
   final String planName;
