@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'payment_screen.dart'; // Import the payment screen
+import 'dart:ui';
+import 'payment_screen.dart';
+import 'branding_customization_screen.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
   const SubscriptionPlansScreen({super.key});
@@ -9,612 +11,384 @@ class SubscriptionPlansScreen extends StatefulWidget {
       _SubscriptionPlansScreenState();
 }
 
-class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
-  int selectedPlanIndex = 2; // Default: Pro (now at index 2)
-  bool isYearly = true; // Toggle for yearly/monthly billing
+enum PlanType { freeTrial, monthly, yearly }
 
-  // Plan data
+class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
+  PlanType selectedPlanType = PlanType.monthly;
+  int selectedPlanIndex = 1; // Default: Gold (Index 1) for Paid plans
+
+  // Plan data for Paid tiers
   final List<Map<String, dynamic>> plans = [
     {
-      'name': 'Try Demo',
-      'monthlyPrice': 0,
-      'yearlyPrice': 0,
-      'originalYearlyPrice': 0,
-      'subtitle': 'Experience all features',
-      'features': [
-        'Full access to all features',
-        'No credit card required',
-        'Cancel anytime',
-        'After 7 days, choose a paid plan',
-      ],
-      'color': Colors.green,
+      'name': 'Silver Plan',
+      'monthlyPrice': 199,
+      'monthlyOriginalPrice': 299,
+      'yearlyPrice': 1990,
+      'yearlyOriginalPrice': 2990,
+      'subtitle': 'Best for small teams & basic usage',
+      'features': ['0-30 Customers', '0-5 Engineers', 'Web support'],
+      'color': const Color(0xFFE0E0E0),
     },
     {
-      'name': 'Essential',
-      'monthlyPrice': 999,
-      'yearlyPrice': 9990,
-      'originalYearlyPrice': 11988,
-      'subtitle': 'For small teams & startups',
+      'name': 'Gold Plan',
+      'monthlyPrice': 799,
+      'monthlyOriginalPrice': 999,
+      'yearlyPrice': 7990,
+      'yearlyOriginalPrice': 9990,
+      'subtitle': 'Ideal for growing businesses',
       'features': [
-        'Service request management',
-        'Basic ticket tracking',
-        'Email notifications',
-        'Standard support',
+        '0-100 Customers',
+        'Up to 30 Photos & PDF Uploads',
+        'Geo Location, Attendance, Barcode Available',
+        '0-10 Engineer',
+        'Web support',
       ],
-      'color': Colors.blue,
+      'color': const Color(0xFFFFD700),
     },
     {
-      'name': 'Pro',
+      'name': 'Platinum Plan',
       'monthlyPrice': 1999,
-      'yearlyPrice': 19190,
-      'originalYearlyPrice': 23988,
-      'subtitle': 'Most popular for growing businesses',
+      'monthlyOriginalPrice': 2999,
+      'yearlyPrice': 19990,
+      'yearlyOriginalPrice': 29990,
+      'subtitle': 'Best for enterprises & unlimited usage',
       'features': [
-        'Everything in Essential',
-        'Engineer assignment',
-        'Priority support',
-        'Service history & analytics',
-        'Custom branding',
+        'Unlimited Customers',
+        'Unlimited Photos & PDF Uploads',
+        'Geo Location, Attendance, Barcode Available',
+        'Unlimited Engineer',
+        'Web support',
       ],
-      'color': Colors.deepPurple,
-    },
-    {
-      'name': 'Business',
-      'monthlyPrice': 3499,
-      'yearlyPrice': 34990,
-      'originalYearlyPrice': 41988,
-      'subtitle': 'For large organizations & enterprises',
-      'features': [
-        'Everything in Pro',
-        'Unlimited users & technicians',
-        'Advanced analytics & reporting',
-        'Dedicated account manager',
-        'Custom integrations & API access',
-        'White-label solution',
-        '24/7 Priority phone support',
-      ],
-      'color': Colors.green.shade700,
+      'color': const Color(0xFFE5E4E2),
     },
   ];
 
-  // Comparison data
-  final List<Map<String, dynamic>> comparisonData = [
-    {
-      'feature': 'Service Request Management',
-      'essential': true,
-      'pro': true,
-      'business': true,
-    },
-    {
-      'feature': 'Basic Ticket Tracking',
-      'essential': true,
-      'pro': true,
-      'business': true,
-    },
-    {
-      'feature': 'Email Notifications',
-      'essential': true,
-      'pro': true,
-      'business': true,
-    },
-    {
-      'feature': 'Standard Support',
-      'essential': true,
-      'pro': false,
-      'business': false,
-    },
-    {
-      'feature': 'Engineer Assignment',
-      'essential': false,
-      'pro': true,
-      'business': true,
-    },
-    {
-      'feature': 'Priority Support',
-      'essential': false,
-      'pro': true,
-      'business': true,
-    },
-    {
-      'feature': 'Service History & Analytics',
-      'essential': false,
-      'pro': true,
-      'business': true,
-    },
-    {
-      'feature': 'Custom Branding',
-      'essential': false,
-      'pro': true,
-      'business': true,
-    },
-    {
-      'feature': 'Unlimited Users',
-      'essential': false,
-      'pro': false,
-      'business': true,
-    },
-    {
-      'feature': 'Advanced Reporting',
-      'essential': false,
-      'pro': false,
-      'business': true,
-    },
-    {
-      'feature': 'Dedicated Account Manager',
-      'essential': false,
-      'pro': false,
-      'business': true,
-    },
-    {
-      'feature': 'Custom Integrations',
-      'essential': false,
-      'pro': false,
-      'business': true,
-    },
-    {
-      'feature': 'White-label Solution',
-      'essential': false,
-      'pro': false,
-      'business': true,
-    },
-    {
-      'feature': '24/7 Phone Support',
-      'essential': false,
-      'pro': false,
-      'business': true,
-    },
-  ];
+  // Data for Trial tier
+  final Map<String, dynamic> trialPlan = {
+    'name': '7-Day Free Trial',
+    'price': 0,
+    'originalPrice': 0,
+    'subtitle': 'Full access to premium features for 7 days',
+    'features': [
+      'Access to all Gold Plan features',
+      'Experience Geo Location & Barcode',
+      'No credit card required for trial',
+      'Automatic expiration after 7 days',
+      'Web support included',
+    ],
+    'color': const Color(0xFFE3F2FD),
+  };
 
   @override
   Widget build(BuildContext context) {
-    final selectedPlan = plans[selectedPlanIndex];
-    final price = isYearly
-        ? selectedPlan['yearlyPrice']
-        : selectedPlan['monthlyPrice'];
-    final originalPrice = isYearly ? selectedPlan['originalYearlyPrice'] : null;
-
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-
-      // FLOATING CTA BUTTON
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: 56,
-        child: ElevatedButton(
-          onPressed: () {
-            // Confirm and then navigate based on selected plan
-            _confirmPlanSelection(context, selectedPlan);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.deepPurple,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          child: Text(
-            selectedPlanIndex == 0
-                ? 'Start Free Demo'
-                : 'Continue with Selected Plan',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+    return Theme(
+      data: Theme.of(context).copyWith(scaffoldBackgroundColor: Colors.white),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.grey.shade100,
+              Colors.blue.shade50.withOpacity(0.5),
+              Colors.grey.shade200,
+            ],
           ),
         ),
-      ),
-
-      appBar: AppBar(
-        title: const Text('Choose Your Plan'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.compare_arrows, size: 24),
-            onPressed: () {
-              _showComparisonTable(context);
-            },
-            tooltip: 'Compare Plans',
-          ),
-        ],
-      ),
-
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 90),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 90,
-                ),
-                child: IntrinsicHeight(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Subscription Plans',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                        ),
+        child: Scaffold(
+          backgroundColor: const Color.fromARGB(255, 233, 231, 231),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // Header with Glassy Effect
+                ClipRRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
                       ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Select a plan that fits your business needs',
-                        style: TextStyle(fontSize: 16, color: Colors.black54),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Billing Toggle
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Monthly',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: !isYearly
-                                    ? Colors.deepPurple
-                                    : Colors.grey,
-                                fontWeight: !isYearly
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            Switch(
-                              value: isYearly,
-                              onChanged: (value) {
-                                setState(() {
-                                  isYearly = value;
-                                });
-                              },
-                              activeColor: Colors.deepPurple,
-                            ),
-                            const SizedBox(width: 20),
-                            Text(
-                              'Yearly',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: isYearly
-                                    ? Colors.deepPurple
-                                    : Colors.grey,
-                                fontWeight: isYearly
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (isYearly)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.green.shade200,
+                      color: Colors.white.withOpacity(0.2),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                          Expanded(
+                            child: Column(
+                              children: const [
+                                Text(
+                                  'CHOOSE WHAT FITS YOU',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                'Save up to 20% with yearly billing!',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green.shade800,
+                                SizedBox(height: 4),
+                                Text(
+                                  'Choose the plan that suits your Workflow best',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black54,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
-                        ),
-
-                      const SizedBox(height: 24),
-
-                      // PLANS - Dynamically generated from plans list
-                      ...List.generate(plans.length, (index) {
-                        final plan = plans[index];
-                        final isSelected = selectedPlanIndex == index;
-                        final isDemo = index == 0;
-
-                        if (isDemo) {
-                          return Column(
-                            children: [
-                              _planCard(
-                                index: index,
-                                title: plan['name'],
-                                price: 'Free for 7 days',
-                                subtitle: plan['subtitle'],
-                                features: plan['features'],
-                                color: plan['color'],
-                                isSelected: isSelected,
-                                isDemo: true,
-                              ),
-                              if (index < plans.length - 1) ...[
-                                const SizedBox(height: 8),
-                                const Divider(thickness: 1),
-                                const SizedBox(height: 8),
-                              ],
-                            ],
-                          );
-                        } else {
-                          return Column(
-                            children: [
-                              _planCard(
-                                index: index,
-                                title: plan['name'],
-                                price: isYearly
-                                    ? '₹${plan['yearlyPrice']} / year'
-                                    : '₹${plan['monthlyPrice']} / month',
-                                originalPrice: isYearly
-                                    ? '₹${plan['originalYearlyPrice']}'
-                                    : null,
-                                savings: isYearly
-                                    ? index == 2
-                                          ? 'Save 20%'
-                                          : 'Save 17%'
-                                    : null,
-                                subtitle: plan['subtitle'],
-                                features: plan['features'],
-                                color: plan['color'],
-                                isSelected: isSelected,
-                                isPopular: index == 2, // Pro plan is popular
-                                isYearly: isYearly,
-                              ),
-                              if (index < plans.length - 1)
-                                const SizedBox(height: 20),
-                            ],
-                          );
-                        }
-                      }),
-                      const Spacer(),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Future<void> _confirmPlanSelection(
-    BuildContext context,
-    Map<String, dynamic> selectedPlan,
-  ) async {
-    final isDemo = selectedPlan['name'] == 'Try Demo';
-    if (isDemo) {
-      _startFreeDemo(context);
-      return;
-    }
-
-    final price = isYearly
-        ? selectedPlan['yearlyPrice']
-        : selectedPlan['monthlyPrice'];
-    final billingLabel = isYearly ? 'yearly' : 'monthly';
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Plan'),
-        content: Text(
-          'Proceed with ${selectedPlan['name']} plan on $billingLabel billing for ₹$price?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Yes'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      _handlePlanSelection(context, selectedPlan);
-    }
-  }
-
-  void _handlePlanSelection(
-    BuildContext context,
-    Map<String, dynamic> selectedPlan,
-  ) {
-    if (selectedPlanIndex == 0) {
-      _startFreeDemo(context);
-    } else {
-      // Navigate to payment screen
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PaymentScreen(
-            planName: selectedPlan['name'],
-            isYearly: isYearly,
-            price: isYearly
-                ? selectedPlan['yearlyPrice']
-                : selectedPlan['monthlyPrice'],
-            originalPrice: isYearly
-                ? selectedPlan['originalYearlyPrice']
-                : null,
-          ),
-        ),
-      );
-    }
-  }
-
-  void _startFreeDemo(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Start Free Demo'),
-        content: const Text(
-          'Your 7-day free trial has started! You now have full access to all features. '
-          'You can cancel anytime before the trial ends.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Demo started successfully!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            child: const Text('Continue to App'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showComparisonTable(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.85,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(25),
-            topRight: Radius.circular(25),
-          ),
-        ),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.deepPurple.shade50,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(25),
-                  topRight: Radius.circular(25),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Plan Comparison',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 24),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-            ),
-
-            // Plan Headers
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade300, width: 1),
-                ),
-              ),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.3,
-                    child: const Text(
-                      'Features',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                          const SizedBox(width: 48),
+                        ],
                       ),
                     ),
                   ),
-                  Expanded(
+                ),
+
+                // Plan Duration Selector (Tabs)
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(25),
+                    ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _planHeader('Essential', Colors.blue),
-                        _planHeader('Pro', Colors.deepPurple, isPopular: true),
-                        _planHeader('Business', Colors.green.shade700),
+                        _buildTab(PlanType.freeTrial, 'Free Trial'),
+                        _buildTab(PlanType.monthly, 'Monthly'),
+                        _buildTab(PlanType.yearly, 'Yearly'),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
 
-            // Comparison Table
-            Expanded(
-              child: ListView.builder(
-                itemCount: comparisonData.length,
-                itemBuilder: (context, index) {
-                  final feature = comparisonData[index];
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
+                // Main Plan Card
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: selectedPlanType == PlanType.freeTrial
+                        ? _buildMainCard(trialPlan, isTrial: true)
+                        : _buildMainCard(
+                            plans[selectedPlanIndex],
+                            isYearly: selectedPlanType == PlanType.yearly,
+                          ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Bottom Selectors (Hidden for Trial)
+                if (selectedPlanType != PlanType.freeTrial)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(plans.length, (index) {
+                        return _buildBottomSelector(index);
+                      }),
                     ),
-                    decoration: BoxDecoration(
-                      color: index.isEven ? Colors.white : Colors.grey.shade50,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Colors.grey.shade200,
-                          width: 0.5,
+                  ),
+
+                const SizedBox(height: 20),
+
+                // Subscribe Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 20,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (selectedPlanType == PlanType.freeTrial) {
+                          _handlePlanSelection(
+                            context,
+                            trialPlan,
+                            isTrial: true,
+                          );
+                        } else {
+                          _handlePlanSelection(
+                            context,
+                            plans[selectedPlanIndex],
+                            isYearly: selectedPlanType == PlanType.yearly,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 4,
+                      ),
+                      child: Text(
+                        selectedPlanType == PlanType.freeTrial
+                            ? 'Start 7-Day Free Trial'
+                            : 'Subscribe now',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color.fromARGB(255, 0, 0, 0),
                         ),
                       ),
                     ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTab(PlanType type, String label) {
+    final isSelected = selectedPlanType == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            selectedPlanType = type;
+            if (type != PlanType.freeTrial && selectedPlanIndex == -1) {
+              selectedPlanIndex = 1;
+            }
+          });
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: isSelected
+                ? const Color.fromARGB(206, 255, 255, 255)
+                : const Color.fromARGB(0, 192, 50, 50),
+            borderRadius: BorderRadius.circular(25),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected
+                  ? const Color.fromARGB(255, 0, 0, 0)
+                  : Colors.black54,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainCard(
+    Map<String, dynamic> plan, {
+    bool isYearly = false,
+    bool isTrial = false,
+  }) {
+    final price = isTrial
+        ? plan['price']
+        : (isYearly ? plan['yearlyPrice'] : plan['monthlyPrice']);
+    final originalPrice = isTrial
+        ? plan['originalPrice']
+        : (isYearly
+              ? plan['yearlyOriginalPrice']
+              : plan['monthlyOriginalPrice']);
+    final durationLabel = isTrial ? '/7 Days' : (isYearly ? '/Year' : '/Month');
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: const Color.fromARGB(255, 235, 235, 235),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            Text(
+              plan['name'],
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  '₹$price',
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                if (originalPrice != null && originalPrice > 0) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '₹$originalPrice',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      decoration: TextDecoration.lineThrough,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            Text(
+              durationLabel,
+              style: const TextStyle(fontSize: 14, color: Colors.black54),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              isTrial
+                  ? 'No credit card required'
+                  : 'Applicable for ${isYearly ? 'annual' : 'monthly'} billing',
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+            ),
+            const SizedBox(height: 30),
+            Text(
+              plan['subtitle'],
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: ListView.builder(
+                itemCount: plan['features'].length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: MediaQuery.of(context).size.width * 0.3,
-                          child: Text(
-                            feature['feature'],
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                        const Icon(
+                          Icons.check,
+                          size: 20,
+                          color: Colors.black87,
                         ),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _featureCell(feature['essential']),
-                              _featureCell(feature['pro']),
-                              _featureCell(feature['business']),
-                            ],
+                          child: Text(
+                            plan['features'][index],
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade800,
+                            ),
                           ),
                         ),
                       ],
@@ -629,285 +403,63 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     );
   }
 
-  Widget _planHeader(String title, Color color, {bool isPopular = false}) {
-    return Column(
-      children: [
-        if (isPopular)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.deepPurple,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Text(
-              'POPULAR',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        if (isPopular) const SizedBox(height: 4),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _buildBottomSelector(int index) {
+    final plan = plans[index];
+    final isSelected = selectedPlanIndex == index;
+    final isYearly = selectedPlanType == PlanType.yearly;
+    final price = isYearly ? plan['yearlyPrice'] : plan['monthlyPrice'];
 
-  Widget _featureCell(bool isAvailable) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: isAvailable ? Colors.green.shade100 : Colors.red.shade100,
-      ),
-      child: Icon(
-        isAvailable ? Icons.check : Icons.close,
-        size: 16,
-        color: isAvailable ? Colors.green.shade700 : Colors.red.shade700,
-      ),
-    );
-  }
-
-  Widget _planCard({
-    required int index,
-    required String title,
-    required String price,
-    required String subtitle,
-    required List<String> features,
-    required Color color,
-    bool isSelected = false,
-    bool isPopular = false,
-    bool isDemo = false,
-    String? originalPrice,
-    String? savings,
-    bool? isYearly,
-  }) {
     return GestureDetector(
       onTap: () {
         setState(() {
           selectedPlanIndex = index;
         });
-        if (index == 0) {
-          _startFreeDemo(context);
-        } else {
-          _confirmPlanSelection(context, plans[index]);
-        }
       },
-      child: Container(
-        margin: EdgeInsets.only(bottom: isDemo ? 10 : 0),
-        padding: const EdgeInsets.all(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: MediaQuery.of(context).size.width * 0.26,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? (isDemo ? Colors.green.shade50 : Colors.deepPurple.shade50)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected ? Colors.white : Colors.grey[50],
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected
-                ? (isDemo ? Colors.green : Colors.deepPurple)
-                : Colors.grey.shade300,
+            color: isSelected ? Colors.black : Colors.transparent,
             width: 1.5,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black,
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (isDemo)
-              Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'FREE TRIAL',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+            Text(
+              plan['name'],
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w600,
               ),
-            if (isPopular && !isDemo)
-              Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.deepPurple,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'MOST POPULAR',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Radio button
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected
-                          ? (isDemo ? Colors.green : Colors.deepPurple)
-                          : Colors.grey.shade400,
-                      width: 2,
-                    ),
-                  ),
-                  child: isSelected
-                      ? Center(
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isDemo ? Colors.green : Colors.deepPurple,
-                            ),
-                          ),
-                        )
-                      : null,
-                ),
-              ],
+              textAlign: TextAlign.center,
             ),
-
-            const SizedBox(height: 12),
-
-            // Price with savings information
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  price,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: isDemo ? Colors.green.shade700 : Colors.deepPurple,
-                  ),
-                ),
-
-                if (savings != null && originalPrice != null)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            originalPrice,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey.shade600,
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              savings,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green.shade800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isYearly == true
-                            ? 'Billed annually (${_calculateMonthlyEquivalent(price)})'
-                            : 'Billed monthly',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-            ...features.map(
-              (feature) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      size: 18,
-                      color: isDemo ? Colors.green.shade600 : Colors.deepPurple,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        feature,
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    ),
-                  ],
-                ),
+            const SizedBox(height: 4),
+            Text(
+              '₹$price',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
+            ),
+            Text(
+              isYearly ? '/Year' : '/Month',
+              style: const TextStyle(fontSize: 8, color: Colors.black54),
             ),
           ],
         ),
@@ -915,17 +467,52 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     );
   }
 
-  String _calculateMonthlyEquivalent(String yearlyPrice) {
-    final regex = RegExp(r'₹([\d,]+)');
-    final match = regex.firstMatch(yearlyPrice);
+  void _handlePlanSelection(
+    BuildContext context,
+    Map<String, dynamic> selectedPlan, {
+    bool isYearly = false,
+    bool isTrial = false,
+  }) {
+    final price = isTrial
+        ? selectedPlan['price']
+        : (isYearly
+              ? selectedPlan['yearlyPrice']
+              : selectedPlan['monthlyPrice']);
+    final originalPrice = isTrial
+        ? selectedPlan['originalPrice']
+        : (isYearly
+              ? selectedPlan['yearlyOriginalPrice']
+              : selectedPlan['monthlyOriginalPrice']);
 
-    if (match != null) {
-      final priceStr = match.group(1)!.replaceAll(',', '');
-      final price = int.tryParse(priceStr) ?? 0;
-      final monthly = price / 12;
-      return '₹${monthly.toStringAsFixed(0)}/month';
+    if (isTrial) {
+      // Bypass Payment and Go directly to Customization
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BrandingCustomizationScreen(
+            planName: selectedPlan['name'],
+            price: price,
+            originalPrice: originalPrice,
+            isYearly: isYearly,
+            paymentMethod: 'Free Trial',
+            transactionId: 'trial_${DateTime.now().millisecondsSinceEpoch}',
+          ),
+        ),
+      );
+      return;
     }
 
-    return '';
+    // Navigate to Payment Screen for Paid Plans
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentScreen(
+          planName: selectedPlan['name'],
+          price: price,
+          originalPrice: originalPrice,
+          isYearly: isYearly,
+        ),
+      ),
+    );
   }
 }

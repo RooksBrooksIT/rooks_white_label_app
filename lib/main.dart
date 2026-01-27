@@ -1,33 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:subscription_rooks_app/firebase_options.dart';
 import 'package:subscription_rooks_app/subscription/welcome_screen.dart';
+import 'package:subscription_rooks_app/services/stripe_service.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize Theme
+  await ThemeService.instance.init();
+
+  // Initialize Stripe
+  // TODO: Make sure to set your publishable key in StripeService
+  await StripeService.instance.initialize();
+
   runApp(const MyApp());
 }
 
-/* ------------------------------------------------------
-   ROOT APP
------------------------------------------------------- */
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Flutter App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const SplashScreen(),
+    return ListenableBuilder(
+      listenable: ThemeService.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Flutter App',
+          theme: ThemeService.instance.themeData,
+          home: const SplashScreen(),
+        );
+      },
     );
   }
 }
 
-/* ------------------------------------------------------
-   SPLASH SCREEN
------------------------------------------------------- */
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -53,22 +64,35 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple,
+      backgroundColor: Theme.of(context).primaryColor,
       body: SafeArea(
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                'assets/images/logo.png',
-                width: 120,
-                height: 120,
-                fit: BoxFit.contain,
-              ),
+              ThemeService.instance.logoUrl != null
+                  ? Image.network(
+                      ThemeService.instance.logoUrl!,
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                        'assets/images/logo.png',
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.contain,
+                      ),
+                    )
+                  : Image.asset(
+                      'assets/images/logo.png',
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.contain,
+                    ),
               const SizedBox(height: 20),
-              const Text(
-                'My Flutter App',
-                style: TextStyle(
+              Text(
+                ThemeService.instance.appName,
+                style: const TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
