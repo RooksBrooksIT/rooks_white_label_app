@@ -44,6 +44,17 @@ dependencies:
   flutter_colorpicker: ^1.1.0
   firebase_storage: ^13.0.5
   google_fonts: ^7.0.1
+  shared_preferences: ^2.5.4
+  firebase_messaging: ^16.1.0
+  flutter_local_notifications: ^19.5.0
+  intl: ^0.20.2
+  lottie: ^3.3.2
+  url_launcher: ^6.3.2
+  mobile_scanner: ^7.1.4
+  pdf: ^3.11.3
+  printing: ^5.14.2
+  path_provider: ^2.1.5
+  open_file: ^3.5.11
 
 dev_dependencies:
   flutter_test:

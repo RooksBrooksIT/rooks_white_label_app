@@ -1,0 +1,103 @@
+﻿Initialized native services in: C:\Users\Sajin\.gradle\native
+Initialized jansi services in: C:\Users\Sajin\.gradle\native
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Starting process 'Gradle build daemon'. Working directory: C:\Users\Sajin\.gradle\daemon\8.14 Command: C:\Program Files\Java\jdk-17\bin\java.exe --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-opens=java.base/java.nio.charset=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.xml/javax.xml.namespace=ALL-UNNAMED -XX:MaxMetaspaceSize=4G -XX:ReservedCodeCacheSize=512m -XX:+HeapDumpOnOutOfMemoryError -Xmx8G -Dfile.encoding=windows-1252 -Duser.country=US -Duser.language=en -Duser.variant -cp C:\Users\Sajin\.gradle\wrapper\dists\gradle-8.14-all\c2qonpi39x1mddn7hk5gh9iqj\gradle-8.14\lib\gradle-daemon-main-8.14.jar -javaagent:C:\Users\Sajin\.gradle\wrapper\dists\gradle-8.14-all\c2qonpi39x1mddn7hk5gh9iqj\gradle-8.14\lib\agents\gradle-instrumentation-agent-8.14.jar org.gradle.launcher.daemon.bootstrap.GradleDaemon 8.14
+Successfully started process 'Gradle build daemon'
+An attempt to start the daemon took 1.788 secs.
+The client will now receive all logging from the daemon (pid: 19560). The daemon log file: C:\Users\Sajin\.gradle\daemon\8.14\daemon-19560.out.log
+Daemon will be stopped at the end of the build 
+Using 12 worker leases.
+Received JVM installation metadata from 'C:\Program Files\Java\jdk-17': {JAVA_HOME=C:\Program Files\Java\jdk-17, JAVA_VERSION=17.0.13, JAVA_VENDOR=Oracle Corporation, RUNTIME_NAME=Java(TM) SE Runtime Environment, RUNTIME_VERSION=17.0.13+10-LTS-268, VM_NAME=Java HotSpot(TM) 64-Bit Server VM, VM_VERSION=17.0.13+10-LTS-268, VM_VENDOR=Oracle Corporation, OS_ARCH=amd64}
+Watching the file system is configured to be enabled if available
+Not watching D:\Rooks Tech\rooks_white_label_app\android since the file system is not supported
+File system watching is active
+Starting Build
+Now considering [C:\Users\Sajin\flutter\packages\flutter_tools\gradle] as hierarchies to watch
+
+> Configure project :gradle
+Evaluating project ':gradle' using build file 'C:\Users\Sajin\flutter\packages\flutter_tools\gradle\build.gradle.kts'.
+Resolved plugin [id: 'org.gradle.java-gradle-plugin']
+Resolved plugin [id: 'org.gradle.groovy']
+Resolved plugin [id: 'org.gradle.kotlin.kotlin-dsl', version: '5.2.0']
+Resolved plugin [id: 'org.jetbrains.kotlin.jvm', version: '1.9.20']
+Using Kotlin Gradle Plugin gradle85 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+file or directory 'C:\Users\Sajin\flutter\packages\flutter_tools\gradle\src\main\java', not found
+Resolved plugin [id: 'dev.flutter.flutter-plugin-loader', version: '1.0.0']
+Resolved plugin [id: 'com.android.application', version: '8.11.1', apply: false]
+Resolved plugin [id: 'com.google.gms.google-services', version: '4.3.15', apply: false]
+Resolved plugin [id: 'org.jetbrains.kotlin.android', version: '2.2.20', apply: false]
+Resolve mutations for :gradle:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker Thread 8,5,main]) started.
+:gradle:checkKotlinGradlePluginConfigurationErrors (Thread[included builds,5,main]) started.
+
+> Task :gradle:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':gradle:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :gradle:compileKotlin (Thread[included builds,5,main]) started.
+:gradle:compileKotlin (Thread[included builds,5,main]) started.
+
+> Task :gradle:compileKotlin UP-TO-DATE
+Caching disabled for task ':gradle:compileKotlin' because:
+  Build cache is disabled
+Skipping task ':gradle:compileKotlin' as it is up-to-date.
+Resolve mutations for :gradle:compileJava (Thread[included builds,5,main]) started.
+:gradle:compileJava (Thread[included builds,5,main]) started.
+
+> Task :gradle:compileJava NO-SOURCE
+Skipping task ':gradle:compileJava' as it has no source files and no previous output files.
+Resolve mutations for :gradle:compileGroovy (Thread[included builds,5,main]) started.
+:gradle:compileGroovy (Thread[included builds,5,main]) started.
+
+> Task :gradle:compileGroovy NO-SOURCE
+Skipping task ':gradle:compileGroovy' as it has no source files and no previous output files.
+Resolve mutations for :gradle:pluginDescriptors (Thread[included builds,5,main]) started.
+:gradle:pluginDescriptors (Thread[included builds,5,main]) started.
+
+> Task :gradle:pluginDescriptors UP-TO-DATE
+Caching disabled for task ':gradle:pluginDescriptors' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':gradle:pluginDescriptors' as it is up-to-date.
+Resolve mutations for :gradle:processResources (Thread[included builds,5,main]) started.
+:gradle:processResources (Thread[included builds,5,main]) started.
+
+> Task :gradle:processResources UP-TO-DATE
+Caching disabled for task ':gradle:processResources' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':gradle:processResources' as it is up-to-date.
+Resolve mutations for :gradle:classes (Thread[included builds,5,main]) started.
+:gradle:classes (Thread[Execution worker Thread 9,5,main]) started.
+
+> Task :gradle:classes UP-TO-DATE
+Skipping task ':gradle:classes' as it has no actions.
+Resolve mutations for :gradle:jar (Thread[Execution worker Thread 9,5,main]) started.
+:gradle:jar (Thread[Execution worker Thread 9,5,main]) started.
+
+> Task :gradle:jar UP-TO-DATE
+Caching disabled for task ':gradle:jar' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':gradle:jar' as it is up-to-date.
+Settings evaluated using settings file 'D:\Rooks Tech\rooks_white_label_app\android\settings.gradle.kts'.
+Projects loaded. Root project using build file 'D:\Rooks Tech\rooks_white_label_app\android\build.gradle.kts'.
+Included projects: [root project 'android', project ':app', project ':cloud_firestore', project ':firebase_auth', project ':firebase_core', project ':firebase_database', project ':firebase_messaging', project ':firebase_storage', project ':flutter_local_notifications', project ':flutter_plugin_android_lifecycle', project ':image_picker_android', project ':mobile_scanner', project ':open_file_android', project ':path_provider_android', project ':printing', project ':shared_preferences_android', project ':stripe_android', project ':url_launcher_android']
+
+> Configure project :
+Evaluating root project 'android' using build file 'D:\Rooks Tech\rooks_white_label_app\android\build.gradle.kts'.
+
+> Configure project :app
+Evaluating project ':app' using build file 'D:\Rooks Tech\rooks_white_label_app\android\app\build.gradle.kts'.
+Resolved plugin [id: 'com.android.application']
+Resolved plugin [id: 'com.google.gms.google-services']
+Resolved plugin [id: 'kotlin-android']
+Resolved plugin [id: 'dev.flutter.flutter-gradle-plugin']
+Using default execution profile
+Build d63ef483-91f7-4917-a9f0-5dd7fb044dbf is started
+Using Kotlin Gradle Plugin gradle813 variant
+Caching disabled for Kotlin DSL script compilation (Project/TopLevel/stage2) because:
+  Build cache is disabled
+w: file:///D:/Rooks%20Tech/rooks_white_label_app/android/app/build.gradle.kts:23:9: 'jvmTarget: String' is deprecated. Please migrate to the compilerOptions DSL. More details are here: https://kotl.in/u1r8ln
+Build d63ef483-91f7-4917-a9f0-5dd7fb044dbf is closed
+4 actionable tasks: 4 up-to-date
+Watched directory hierarchies: [C:\Users\Sajin\flutter\packages\flutter_tools\gradle]

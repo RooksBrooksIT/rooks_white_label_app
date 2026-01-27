@@ -1,13 +1,12 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/storage_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'transaction_completed_screen.dart';
-
 import 'package:google_fonts/google_fonts.dart';
 
 class BrandingCustomizationScreen extends StatefulWidget {
@@ -38,6 +37,7 @@ class _BrandingCustomizationScreenState
   // Branding State
   Color _primaryColor = Colors.deepPurple;
   Color _secondaryColor = Colors.amber;
+  Color _backgroundColor = Colors.white;
   File? _logoFile;
   bool _useDarkMode = false;
   String _selectedFont = 'Roboto';
@@ -148,23 +148,37 @@ class _BrandingCustomizationScreenState
     }
   }
 
-  void _showColorPicker(bool isPrimary) {
+  void _showColorPicker(String type) {
+    Color currentColor;
+    if (type == 'primary') {
+      currentColor = _primaryColor;
+    } else if (type == 'secondary') {
+      currentColor = _secondaryColor;
+    } else {
+      currentColor = _backgroundColor;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isPrimary ? 'Pick Primary Color' : 'Pick Secondary Color'),
+        title: Text('Pick ${type[0].toUpperCase()}${type.substring(1)} Color'),
         content: SingleChildScrollView(
           child: ColorPicker(
-            pickerColor: isPrimary ? _primaryColor : _secondaryColor,
+            pickerColor: currentColor,
             onColorChanged: (color) {
               setState(() {
-                if (isPrimary) {
+                if (type == 'primary') {
                   _primaryColor = color;
-                } else {
+                } else if (type == 'secondary') {
                   _secondaryColor = color;
+                } else {
+                  _backgroundColor = color;
                 }
-                // When manually picking, set to Custom mode
-                _selectedThemeIndex = _presetThemes.length;
+
+                if (type != 'background') {
+                  // When manually picking primary/secondary, set to Custom mode
+                  _selectedThemeIndex = _presetThemes.length;
+                }
               });
             },
             showLabel: true,
@@ -185,34 +199,63 @@ class _BrandingCustomizationScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Customize Branding'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
+    return Theme(
+      data: ThemeService.instance.defaultTheme.copyWith(
+        scaffoldBackgroundColor: Colors.transparent,
       ),
-      backgroundColor: Colors.grey.shade50,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.grey.shade100,
+              Colors.blue.shade50.withOpacity(0.5),
+              Colors.grey.shade200,
+            ],
+          ),
+        ),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            title: const Text('Customize Branding'),
+            backgroundColor: Colors.white.withOpacity(0.2),
+            foregroundColor: Colors.black,
+            elevation: 0,
+            flexibleSpace: ClipRRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+          ),
+          body: Stack(
             children: [
-              _buildHeader(),
-              const SizedBox(height: 32),
-              _buildAppInfoSection(),
-              const SizedBox(height: 32),
-              _buildLogoUploadSection(),
-              const SizedBox(height: 32),
-              _buildColorThemeSection(),
-              const SizedBox(height: 32),
-              _buildVisualSettingsSection(),
-              const SizedBox(height: 48),
-              _buildPreviewSection(),
-              const SizedBox(height: 48),
-              _buildContinueButton(),
-              const SizedBox(height: 20),
+              SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 32),
+                      _buildAppInfoSection(),
+                      const SizedBox(height: 32),
+                      _buildLogoUploadSection(),
+                      const SizedBox(height: 32),
+                      _buildColorThemeSection(),
+                      const SizedBox(height: 32),
+                      _buildVisualSettingsSection(),
+                      const SizedBox(height: 48),
+                      _buildPreviewSection(),
+                      const SizedBox(height: 48),
+                      _buildContinueButton(),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -395,7 +438,7 @@ class _BrandingCustomizationScreenState
                 child: _buildManualColorButton(
                   'Primary',
                   _primaryColor,
-                  () => _showColorPicker(true),
+                  () => _showColorPicker('primary'),
                 ),
               ),
               const SizedBox(width: 16),
@@ -403,12 +446,24 @@ class _BrandingCustomizationScreenState
                 child: _buildManualColorButton(
                   'Secondary',
                   _secondaryColor,
-                  () => _showColorPicker(false),
+                  () => _showColorPicker('secondary'),
                 ),
               ),
             ],
           ),
         ],
+        // Background Color Selection
+        const SizedBox(height: 24),
+        const Text(
+          'Background Color',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 12),
+        _buildManualColorButton(
+          'Background',
+          _backgroundColor,
+          () => _showColorPicker('background'),
+        ),
       ],
     );
   }
@@ -663,7 +718,7 @@ class _BrandingCustomizationScreenState
             width: 250,
             height: 450,
             decoration: BoxDecoration(
-              color: _useDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+              color: _useDarkMode ? const Color(0xFF1E1E1E) : _backgroundColor,
               borderRadius: BorderRadius.circular(25),
               border: Border.all(color: Colors.grey.shade300, width: 8),
               boxShadow: [
@@ -680,9 +735,7 @@ class _BrandingCustomizationScreenState
                 Container(
                   height: 60,
                   decoration: BoxDecoration(
-                    color: _useDarkMode
-                        ? const Color(0xFF2C2C2C)
-                        : Colors.white,
+                    color: _backgroundColor, // Use selected background color
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(17),
                       topRight: Radius.circular(17),
@@ -707,7 +760,11 @@ class _BrandingCustomizationScreenState
                                 : _appNameController.text,
                             style: GoogleFonts.getFont(
                               _selectedFont,
-                              color: _useDarkMode ? Colors.white : Colors.black,
+                              color:
+                                  _useDarkMode ||
+                                      _backgroundColor.computeLuminance() < 0.5
+                                  ? Colors.white
+                                  : Colors.black,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
@@ -748,7 +805,11 @@ class _BrandingCustomizationScreenState
                                     _selectedFont,
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
-                                    color: _useDarkMode
+                                    color:
+                                        _useDarkMode ||
+                                            _backgroundColor
+                                                    .computeLuminance() <
+                                                0.5
                                         ? Colors.white
                                         : Colors.black87,
                                   ),
@@ -759,7 +820,11 @@ class _BrandingCustomizationScreenState
                                   style: GoogleFonts.getFont(
                                     _selectedFont,
                                     fontSize: 10,
-                                    color: _useDarkMode
+                                    color:
+                                        _useDarkMode ||
+                                            _backgroundColor
+                                                    .computeLuminance() <
+                                                0.5
                                         ? Colors.grey.shade400
                                         : Colors.grey.shade600,
                                   ),
@@ -776,9 +841,7 @@ class _BrandingCustomizationScreenState
                 Container(
                   height: 50,
                   decoration: BoxDecoration(
-                    color: _useDarkMode
-                        ? const Color(0xFF2C2C2C)
-                        : Colors.white,
+                    color: _backgroundColor,
                     borderRadius: const BorderRadius.only(
                       bottomLeft: Radius.circular(17),
                       bottomRight: Radius.circular(17),
@@ -835,6 +898,7 @@ class _BrandingCustomizationScreenState
               'appName': _appNameController.text,
               'primaryColor': _primaryColor.value,
               'secondaryColor': _secondaryColor.value,
+              'backgroundColor': _backgroundColor.value,
               'useDarkMode': _useDarkMode,
               'fontFamily': _selectedFont,
             };
@@ -873,8 +937,11 @@ class _BrandingCustomizationScreenState
             ThemeService.instance.updateTheme(
               primary: _primaryColor,
               secondary: _secondaryColor,
+              backgroundColor: _backgroundColor,
               isDarkMode: _useDarkMode,
               fontFamily: _selectedFont,
+              appName: _appNameController.text,
+              logoUrl: brandingData['logoUrl'] as String?,
             );
 
             if (!mounted) return;

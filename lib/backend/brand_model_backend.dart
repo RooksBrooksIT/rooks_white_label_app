@@ -1,0 +1,162 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/firestore_service.dart';
+
+class BrandModelBackend {
+  final FirestoreService _firestore = FirestoreService.instance;
+  static const String deviceTypesCollection = 'deviceTypes';
+
+  /// Generates a Firestore-safe collection name from a device type string.
+  String generateCollectionName(String deviceType) {
+    String cleanName = deviceType.toLowerCase().replaceAll(
+      RegExp(r'[^a-z0-9]'),
+      '',
+    );
+    return '${cleanName}Brands';
+  }
+
+  /// Generates a document ID from a brand name.
+  String generateDocumentId(String brandName) {
+    return brandName
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+  }
+
+  /// Loads all dynamic device types from Firestore.
+  Future<Map<String, String>> loadDeviceTypes() async {
+    Map<String, String> allDeviceTypes = {};
+
+    QuerySnapshot customTypesSnapshot = await _firestore
+        .collection(deviceTypesCollection)
+        .get();
+
+    for (var doc in customTypesSnapshot.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      allDeviceTypes[data['deviceType'] as String] =
+          data['collectionName'] as String;
+    }
+
+    return allDeviceTypes;
+  }
+
+  /// Adds or updates a device record.
+  Future<void> saveDeviceItem({
+    required String deviceType,
+    required String collectionName,
+    required String brandName,
+    required String model,
+    required String specification,
+    required String description,
+    String? editingDocumentId,
+  }) async {
+    if (editingDocumentId != null) {
+      // Update existing
+      await _firestore
+          .collection(collectionName)
+          .doc(editingDocumentId)
+          .update({
+            'brandName': brandName,
+            'model': model,
+            'specification': specification,
+            'description': description,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+    } else {
+      // Add new
+      // First ensure device type exists in the master collection
+      final deviceTypeSnapshot = await _firestore
+          .collection(deviceTypesCollection)
+          .where('deviceType', isEqualTo: deviceType)
+          .get();
+
+      if (deviceTypeSnapshot.docs.isEmpty) {
+        await _firestore.collection(deviceTypesCollection).add({
+          'deviceType': deviceType,
+          'collectionName': collectionName,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      String documentId = generateDocumentId(brandName);
+
+      final existingDoc = await _firestore
+          .collection(collectionName)
+          .doc(documentId)
+          .get();
+
+      if (existingDoc.exists) {
+        throw Exception('A device with brand name "$brandName" already exists');
+      }
+
+      // Generate brandId (BR001, BR002, etc.)
+      QuerySnapshot querySnapshot = await _firestore
+          .collection(collectionName)
+          .orderBy('brandId', descending: true)
+          .limit(1)
+          .get();
+
+      int nextId = 1;
+      if (querySnapshot.docs.isNotEmpty) {
+        var lastDoc = querySnapshot.docs.first;
+        final data = lastDoc.data() as Map<String, dynamic>;
+        if (data.containsKey('brandId')) {
+          String lastBrandId = data['brandId'] as String;
+          String numericPart = lastBrandId.replaceAll('BR', '');
+          try {
+            nextId = int.parse(numericPart) + 1;
+          } catch (_) {
+            nextId = 1;
+          }
+        }
+      }
+
+      String brandId = 'BR${nextId.toString().padLeft(3, '0')}';
+
+      await _firestore.collection(collectionName).doc(documentId).set({
+        'brandId': brandId,
+        'brandName': brandName,
+        'model': model,
+        'specification': specification,
+        'description': description,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  /// Deletes a device record.
+  Future<void> deleteDeviceItem(
+    String collectionName,
+    String documentId,
+  ) async {
+    await _firestore.collection(collectionName).doc(documentId).delete();
+  }
+
+  /// Deletes a device type and all its associated device records.
+  Future<void> deleteDeviceType(
+    String deviceType,
+    String collectionName,
+  ) async {
+    // Delete all devices in the collection
+    QuerySnapshot snapshot = await _firestore.collection(collectionName).get();
+
+    for (QueryDocumentSnapshot doc in snapshot.docs) {
+      await doc.reference.delete();
+    }
+
+    // Delete the device type entry
+    QuerySnapshot deviceTypeDocs = await _firestore
+        .collection(deviceTypesCollection)
+        .where('deviceType', isEqualTo: deviceType)
+        .get();
+
+    for (QueryDocumentSnapshot doc in deviceTypeDocs.docs) {
+      await doc.reference.delete();
+    }
+  }
+
+  /// Returns a stream of devices for a given collection.
+  Stream<QuerySnapshot> streamDevices(String collectionName) {
+    return _firestore.collection(collectionName).snapshots();
+  }
+}

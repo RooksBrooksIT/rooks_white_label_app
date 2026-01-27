@@ -157,82 +157,87 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget build(BuildContext context) {
     final nextBillingDate = getNextBillingDate();
     final formattedDate = formatDate(nextBillingDate);
-    // final screenWidth = MediaQuery.of(context).size.width; // Unused
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Payment'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+    return Theme(
+      data: ThemeData.light().copyWith(
+        scaffoldBackgroundColor: Colors.white,
+        primaryColor: Colors.black,
+        colorScheme: const ColorScheme.light(
+          primary: Colors.black,
+          secondary: Colors.blueAccent,
+          surface: Colors.white,
         ),
       ),
-      body: SingleChildScrollView(
-        padding: screenPadding,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minHeight: MediaQuery.of(context).size.height,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FA),
+        appBar: AppBar(
+          title: const Text(
+            'Payment',
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          child: IntrinsicHeight(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: screenPadding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title Section
-                if (isDesktop)
-                  _buildDesktopHeader(formattedDate)
-                else
-                  _buildMobileTabletHeader(formattedDate),
+                // Summary Section (Moved to top for better flow)
+                _buildSubscriptionSummary(formattedDate),
 
                 const SizedBox(height: 32),
 
-                // Payment Methods - Responsive Layout
-                if (isDesktop) ...[
-                  // Desktop Layout
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(flex: 2, child: _buildPaymentMethodsSection()),
-                        const SizedBox(width: 32),
-                        Expanded(
-                          flex: 1,
-                          child: Column(
-                            children: [
-                              _buildSecurityBadges(),
-                              const SizedBox(height: 40),
-                              _buildActionButtons(),
-                              const SizedBox(height: 24),
-                              const Spacer(),
-                              _buildTermsText(),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                // Title Section
+                Text(
+                  'SELECT PAYMENT METHOD',
+                  style: TextStyle(
+                    fontSize: titleFontSize * 0.8,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black87,
+                    letterSpacing: 1.2,
                   ),
-                ] else if (isTablet) ...[
-                  // Tablet Layout
-                  _buildPaymentMethodsSection(),
-                  const SizedBox(height: 32),
-                  _buildSecurityBadges(),
-                  const SizedBox(height: 40),
-                  _buildActionButtons(),
-                  const SizedBox(height: 24),
-                  _buildTermsText(),
-                ] else ...[
-                  // Mobile Layout
-                  _buildPaymentMethodsSection(),
-                  const SizedBox(height: 32),
-                  _buildSecurityBadges(),
-                  const SizedBox(height: 32),
-                  _buildActionButtons(),
-                  const SizedBox(height: 24),
-                  _buildTermsText(),
-                ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Secure and seamless payment options',
+                  style: TextStyle(
+                    fontSize: subtitleFontSize,
+                    color: Colors.black54,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Responsive Layout for Payment Methods
+                if (isDesktop)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 2, child: _buildPaymentMethodsSection()),
+                      const SizedBox(width: 32),
+                      Expanded(flex: 1, child: _buildRightSideSidebar()),
+                    ],
+                  )
+                else
+                  Column(
+                    children: [
+                      _buildPaymentMethodsSection(),
+                      const SizedBox(height: 32),
+                      _buildSecurityBadges(),
+                      const SizedBox(height: 40),
+                      _buildActionButtons(),
+                      const SizedBox(height: 24),
+                      _buildTermsText(),
+                    ],
+                  ),
+                const SizedBox(height: 40),
               ],
             ),
           ),
@@ -241,58 +246,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildDesktopHeader(String formattedDate) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'CHOOSE YOUR PAYMENT METHOD',
-                style: TextStyle(
-                  fontSize: titleFontSize,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Secure and seamless payment options for your subscription',
-                style: TextStyle(
-                  fontSize: subtitleFontSize,
-                  color: Colors.black54,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 40),
-        _buildSubscriptionSummary(formattedDate),
-      ],
-    );
-  }
-
-  Widget _buildMobileTabletHeader(String formattedDate) {
+  Widget _buildRightSideSidebar() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'CHOOSE YOUR PAYMENT METHOD',
-          style: TextStyle(
-            fontSize: titleFontSize,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Secure and seamless payment options for your subscription',
-          style: TextStyle(fontSize: subtitleFontSize, color: Colors.black54),
-        ),
-        const SizedBox(height: 32),
-        _buildSubscriptionSummary(formattedDate),
+        _buildSecurityBadges(),
+        const SizedBox(height: 40),
+        _buildActionButtons(),
+        const SizedBox(height: 24),
+        _buildTermsText(),
       ],
     );
   }
@@ -302,7 +263,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       width: isDesktop ? 400 : double.infinity,
       padding: EdgeInsets.all(containerPadding),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(color: Colors.grey.shade300),
       ),
@@ -331,7 +292,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       style: TextStyle(
                         fontSize: isDesktop ? 22 : 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
+                        color: Colors.black87,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -385,7 +346,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     style: TextStyle(
                       fontSize: priceFontSize,
                       fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
+                      color: Colors.black87,
                     ),
                   ),
                 ],
@@ -405,7 +366,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              style: TextButton.styleFrom(foregroundColor: Colors.deepPurple),
+              style: TextButton.styleFrom(foregroundColor: Colors.black87),
             ),
           ),
         ],
@@ -484,7 +445,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       constraints: BoxConstraints(minHeight: itemHeight.toDouble()),
       child: Material(
         borderRadius: BorderRadius.circular(borderRadius),
-        color: Colors.grey.shade50,
+        color: Colors.white,
         child: InkWell(
           borderRadius: BorderRadius.circular(borderRadius),
           onTap: () {
@@ -544,7 +505,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       selectedPaymentMethod = value!;
                     });
                   },
-                  activeColor: Colors.deepPurple,
+                  activeColor: Colors.black87,
                 ),
               ],
             ),
@@ -562,7 +523,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       constraints: BoxConstraints(minHeight: itemHeight.toDouble()),
       child: Material(
         borderRadius: BorderRadius.circular(borderRadius),
-        color: Colors.grey.shade50,
+        color: Colors.white,
         child: InkWell(
           borderRadius: BorderRadius.circular(borderRadius),
           onTap: () => _onCardSelected(type),
@@ -618,7 +579,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       _onCardSelected(value);
                     }
                   },
-                  activeColor: Colors.deepPurple,
+                  activeColor: Colors.black87,
                 ),
               ],
             ),
@@ -636,7 +597,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       constraints: BoxConstraints(minHeight: itemHeight.toDouble()),
       child: Material(
         borderRadius: BorderRadius.circular(borderRadius),
-        color: Colors.grey.shade50,
+        color: Colors.white,
         child: InkWell(
           borderRadius: BorderRadius.circular(borderRadius),
           onTap: () {
@@ -698,7 +659,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     });
                     _showBankListDialog();
                   },
-                  activeColor: Colors.deepPurple,
+                  activeColor: Colors.black87,
                 ),
               ],
             ),
@@ -755,7 +716,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               _processPayment();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurple,
+              backgroundColor: Colors.black87,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(borderRadius),
               ),

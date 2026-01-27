@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
 
 class FirestoreService {
   FirestoreService._();
@@ -6,8 +7,21 @@ class FirestoreService {
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  /// Returns a collection reference prefixed with the database name.
+  /// Structure: /[databaseName]/main/[collectionName]
+  CollectionReference<Map<String, dynamic>> collection(String collectionName) {
+    final dbName = ThemeService.instance.databaseName;
+    return _db.collection(dbName).doc('main').collection(collectionName);
+  }
+
   // Collection reference for subscriptions
-  CollectionReference get subscriptionsRef => _db.collection('subscriptions');
+  CollectionReference get subscriptionsRef => collection('subscriptions');
+
+  Future<T> runTransaction<T>(
+    Future<T> Function(Transaction transaction) updateFunction,
+  ) {
+    return _db.runTransaction(updateFunction);
+  }
 
   // Create/update current subscription for a user
   Future<void> upsertSubscription({
@@ -40,7 +54,7 @@ class FirestoreService {
       data['branding'] = brandingData;
     }
 
-    // Save to valid firestore path: subscriptions/{uid}
+    // Save to valid firestore path: [dbName]/main/subscriptions/{uid}
     await subscriptionsRef.doc(uid).set(data, SetOptions(merge: true));
   }
 
@@ -70,9 +84,7 @@ class FirestoreService {
     required String appName,
     required Map<String, dynamic> brandingData,
   }) async {
-    // Sanitize app name for collection ID (remove spaces/special chars if needed,
-    // but Firestore allows spaces. Using verbatim for now as requested.)
-    await _db.collection(appName).doc('branding').set({
+    await collection(appName).doc('branding').set({
       ...brandingData,
       'updatedAt': FieldValue.serverTimestamp(),
     });
