@@ -7,11 +7,13 @@ class FirestoreService {
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// Returns a collection reference prefixed with the database name.
-  /// Structure: /[databaseName]/main/[collectionName]
+  /// Returns a collection reference rooted under:
+  /// main (coll) -> {appName} (doc) -> {collectionName} (coll)
   CollectionReference<Map<String, dynamic>> collection(String collectionName) {
-    final dbName = ThemeService.instance.databaseName;
-    return _db.collection(dbName).doc('main').collection(collectionName);
+    final appName = ThemeService.instance.appName;
+    // Special case for 'admin' to ensure it matches the singular requirement in spec if needed
+    // but usually, we just use the name passed.
+    return _db.collection('main').doc(appName).collection(collectionName);
   }
 
   // Collection reference for subscriptions
