@@ -16,6 +16,8 @@ import 'package:subscription_rooks_app/frontend/screens/admin_view_engineer_upda
 import 'package:subscription_rooks_app/frontend/screens/app_main_page.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/frontend/screens/barcode_identifier.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_attendance_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_attendance_reports.dart';
 
 import 'package:subscription_rooks_app/backend/screens/admin_dashboard.dart';
 
@@ -285,6 +287,33 @@ class _admindashboardState extends State<admindashboard> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => AdminEngineerReports(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDashboardCard(
+                    title: 'Engineer Attendance',
+                    icon: Icons.how_to_reg,
+                    color: const Color(0xFF00796B),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminAttendancePage(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDashboardCard(
+                    title: 'Attendance Reports',
+                    icon: Icons.analytics,
+                    color: const Color(0xFF3949AB),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const AdminAttendanceReportsPage(),
                         ),
                       );
                     },

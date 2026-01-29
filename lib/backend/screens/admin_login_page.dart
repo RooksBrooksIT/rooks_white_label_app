@@ -14,7 +14,7 @@ class AdminLoginBackend {
   ) async {
     try {
       QuerySnapshot snapshot = await FirestoreService.instance
-          .collection('admins')
+          .collection('admin')
           .where('email', isEqualTo: email)
           .where('password', isEqualTo: password)
           .get();
@@ -43,7 +43,7 @@ class AdminLoginBackend {
     try {
       // Check if admin already exists
       QuerySnapshot snapshot = await FirestoreService.instance
-          .collection('admins')
+          .collection('admin')
           .where('email', isEqualTo: email)
           .get();
 
@@ -54,7 +54,8 @@ class AdminLoginBackend {
         };
       }
 
-      await FirestoreService.instance.collection('admins').add({
+      // Using name as the document ID to match {username} in the spec
+      await FirestoreService.instance.collection('admin').doc(name).set({
         'email': email,
         'password': password,
         'name': name,
