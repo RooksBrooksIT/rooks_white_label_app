@@ -12,47 +12,43 @@ class AppMainPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final width = media.size.width;
-    final height = media.size.height;
     final isLargeScreen = width > 768;
-    final isMediumScreen = width > 600;
 
     return Scaffold(
-      body: Container(
-        color: Colors.white,
-        child: Stack(
-          children: [
-            // Subtle background pattern
-            _buildBackgroundPattern(context),
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // Subtle background pattern - Simplified
+          _buildBackgroundPattern(context),
 
-            Center(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isLargeScreen ? 60 : 24,
-                  vertical: 20,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Header Section
-                    _buildHeaderSection(context, isLargeScreen),
+          Center(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: isLargeScreen ? 60 : 24,
+                vertical: 20,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Header Section
+                  _buildHeaderSection(context, isLargeScreen),
 
-                    SizedBox(height: isLargeScreen ? 60 : 40),
+                  SizedBox(height: isLargeScreen ? 60 : 40),
 
-                    // Login Cards
-                    _buildLoginCardsSection(context, isLargeScreen, width),
+                  // Login Cards
+                  _buildLoginCardsSection(context, isLargeScreen, width),
 
-                    SizedBox(height: isLargeScreen ? 50 : 30),
+                  SizedBox(height: isLargeScreen ? 50 : 40),
 
-                    // About Us Section
-                    _buildAboutSection(context, isLargeScreen),
+                  // About Us Section
+                  _buildAboutSection(context, isLargeScreen),
 
-                    SizedBox(height: isLargeScreen ? 30 : 20),
-                  ],
-                ),
+                  SizedBox(height: 20),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -68,7 +64,7 @@ class AppMainPage extends StatelessWidget {
             height: 300,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Theme.of(context).primaryColor.withOpacity(0.03),
+              color: Colors.grey[100]!.withOpacity(0.5),
             ),
           ),
         ),
@@ -80,7 +76,7 @@ class AppMainPage extends StatelessWidget {
             height: 250,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Theme.of(context).primaryColor.withOpacity(0.03),
+              color: Colors.grey[50]!.withOpacity(0.5),
             ),
           ),
         ),
@@ -108,55 +104,56 @@ class AppMainPage extends StatelessWidget {
         Container(
           padding: EdgeInsets.all(isLargeScreen ? 20 : 16),
           decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor.withOpacity(0.05),
+            color: Colors.grey[50],
             shape: BoxShape.circle,
-            border: Border.all(
-              color: Theme.of(context).primaryColor.withOpacity(0.2),
-              width: 1.5,
-            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
           child: logoUrl != null
               ? Image.network(
                   logoUrl,
-                  width: isLargeScreen ? 100 : 70,
-                  height: isLargeScreen ? 100 : 70,
+                  width: isLargeScreen ? 90 : 65,
+                  height: isLargeScreen ? 90 : 65,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) => Icon(
-                    Icons.business,
-                    size: isLargeScreen ? 100 : 70,
-                    color: Theme.of(context).primaryColor,
+                    Icons.business_rounded,
+                    size: isLargeScreen ? 90 : 65,
+                    color: Colors.black,
                   ),
                 )
               : Image.asset(
                   'assets/images/logo.png',
-                  width: isLargeScreen ? 100 : 70,
-                  height: isLargeScreen ? 100 : 70,
+                  width: isLargeScreen ? 90 : 65,
+                  height: isLargeScreen ? 90 : 65,
                   fit: BoxFit.contain,
-                  color: Theme.of(context).primaryColor,
                 ),
         ),
-        SizedBox(height: isLargeScreen ? 30 : 20),
+        SizedBox(height: isLargeScreen ? 30 : 25),
 
         // Title
         Text(
           ThemeService.instance.appName,
           style: TextStyle(
-            fontSize: isLargeScreen ? 42 : 32,
-            fontWeight: FontWeight.w700,
-            color: Theme.of(context).primaryColor,
-            letterSpacing: 1.2,
+            fontSize: isLargeScreen ? 38 : 30,
+            fontWeight: FontWeight.w900,
+            color: Colors.black,
+            letterSpacing: -0.5,
           ),
         ),
         SizedBox(height: 8),
 
         // Subtitle
         Text(
-          "Professional Service Management Solution",
+          "Select your portal to continue",
           style: TextStyle(
-            fontSize: isLargeScreen ? 18 : 14,
-            color: Colors.black54,
-            fontWeight: FontWeight.w300,
-            letterSpacing: 0.8,
+            fontSize: isLargeScreen ? 16 : 14,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w400,
           ),
         ),
       ],
@@ -170,43 +167,47 @@ class AppMainPage extends StatelessWidget {
   ) {
     if (isLargeScreen) {
       return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           _buildProfessionalCard(
             context: context,
             title: "Customer",
-            subtitle: "Access your services\nand requests",
-            icon: Icons.person_outline,
-            gradient: [Color(0xFF4CAF50), Color(0xFF45a049)],
-            width: width * 0.26,
+            subtitle: "Access services & requests",
+            icon: Icons.person_outline_rounded,
+            backgroundColor: Colors.white,
+            textColor: Colors.black,
+            borderColor: Colors.grey[300],
+            cardWidth: width * 0.22,
             onTap: () {
               Navigator.of(
                 context,
               ).push(MaterialPageRoute(builder: (_) => CustomerTypePage()));
             },
           ),
-          SizedBox(width: 24),
+          SizedBox(width: 20),
           _buildProfessionalCard(
             context: context,
             title: "Admin",
-            subtitle: "Manage platform\nand users",
+            subtitle: "Manage platform & users",
             icon: Icons.admin_panel_settings_outlined,
-            gradient: [Color(0xFF2196F3), Color(0xFF1976D2)],
-            width: width * 0.26,
+            backgroundColor: Colors.black,
+            textColor: Colors.white,
+            cardWidth: width * 0.22,
             onTap: () {
               Navigator.of(
                 context,
               ).push(MaterialPageRoute(builder: (_) => AdminLogin()));
             },
           ),
-          SizedBox(width: 24),
+          SizedBox(width: 20),
           _buildProfessionalCard(
             context: context,
             title: "Engineer",
-            subtitle: "Handle service\nrequests",
+            subtitle: "Handle service tasks",
             icon: Icons.engineering_outlined,
-            gradient: [Color(0xFFFF9800), Color(0xFFF57C00)],
-            width: width * 0.26,
+            backgroundColor: Colors.grey[100]!,
+            textColor: Colors.black,
+            cardWidth: width * 0.22,
             onTap: () {
               Navigator.of(
                 context,
@@ -221,10 +222,12 @@ class AppMainPage extends StatelessWidget {
           _buildProfessionalCard(
             context: context,
             title: "Customer",
-            subtitle: "Access your services and requests",
-            icon: Icons.person_outline,
-            gradient: [Color(0xFF4CAF50), Color(0xFF45a049)],
-            width: double.infinity,
+            subtitle: "Access services and requests",
+            icon: Icons.person_outline_rounded,
+            backgroundColor: Colors.white,
+            textColor: Colors.black,
+            borderColor: Colors.grey[300],
+            cardWidth: double.infinity,
             onTap: () {
               Navigator.of(
                 context,
@@ -237,8 +240,9 @@ class AppMainPage extends StatelessWidget {
             title: "Admin",
             subtitle: "Manage platform and users",
             icon: Icons.admin_panel_settings_outlined,
-            gradient: [Color(0xFF2196F3), Color(0xFF1976D2)],
-            width: double.infinity,
+            backgroundColor: Colors.black,
+            textColor: Colors.white,
+            cardWidth: double.infinity,
             onTap: () {
               Navigator.of(
                 context,
@@ -249,10 +253,11 @@ class AppMainPage extends StatelessWidget {
           _buildProfessionalCard(
             context: context,
             title: "Engineer",
-            subtitle: "Handle service requests",
+            subtitle: "Handle service tasks",
             icon: Icons.engineering_outlined,
-            gradient: [Color(0xFFFF9800), Color(0xFFF57C00)],
-            width: double.infinity,
+            backgroundColor: Colors.grey[100]!,
+            textColor: Colors.black,
+            cardWidth: double.infinity,
             onTap: () {
               Navigator.of(
                 context,
@@ -269,80 +274,89 @@ class AppMainPage extends StatelessWidget {
     required String title,
     required String subtitle,
     required IconData icon,
-    required List<Color> gradient,
-    required double width,
-    VoidCallback? onTap, // Added optional onTap callback
+    required Color backgroundColor,
+    required Color textColor,
+    Color? borderColor,
+    required double cardWidth,
+    required VoidCallback onTap,
   }) {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: width,
-        height: 140,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: gradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+    return Container(
+      width: cardWidth,
+      height: 120,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+        border: borderColor != null
+            ? Border.all(color: borderColor, width: 1.5)
+            : null,
+        boxShadow: backgroundColor == Colors.black
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(16),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap:
-                onTap ??
-                () {
-                  _showLoginToast(context, title);
-                },
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, color: Colors.white, size: 28),
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: textColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
                   ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
+                  child: Icon(icon, color: textColor, size: 24),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.white.withOpacity(0.9),
-                            fontWeight: FontWeight.w400,
-                          ),
-                          maxLines: 2,
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textColor.withOpacity(0.7),
+                          fontWeight: FontWeight.w400,
                         ),
-                      ],
-                    ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: Colors.white.withOpacity(0.8),
-                    size: 18,
-                  ),
-                ],
-              ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: textColor.withOpacity(0.4),
+                  size: 14,
+                ),
+              ],
             ),
           ),
         ),
@@ -354,58 +368,28 @@ class AppMainPage extends StatelessWidget {
     return Column(
       children: [
         Text(
-          "Version 1.2.0",
+          "v 1.2.0",
           style: TextStyle(
-            color: Colors.grey,
-            fontSize: isLargeScreen ? 16 : 14,
-            fontWeight: FontWeight.w300,
+            color: Colors.grey[400],
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
           ),
         ),
-        SizedBox(height: 16),
-        ElevatedButton(
-          onPressed: () {
-            _showProfessionalAboutDialog(context);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).primaryColor,
-            foregroundColor: Colors.white,
-            elevation: 4,
+        SizedBox(height: 20),
+        OutlinedButton.icon(
+          onPressed: () => _showProfessionalAboutDialog(context),
+          icon: Icon(Icons.info_outline_rounded, size: 18),
+          label: Text("About Platform"),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.black,
+            side: BorderSide(color: Colors.grey[300]!, width: 1.5),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(25),
+              borderRadius: BorderRadius.circular(30),
             ),
-            padding: EdgeInsets.symmetric(
-              horizontal: isLargeScreen ? 40 : 30,
-              vertical: isLargeScreen ? 16 : 12,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.info_outline, size: 20),
-              SizedBox(width: 8),
-              Text(
-                "About ${ThemeService.instance.appName}",
-                style: TextStyle(
-                  fontSize: isLargeScreen ? 16 : 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           ),
         ),
       ],
-    );
-  }
-
-  void _showLoginToast(BuildContext context, String userType) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$userType Portal - Redirecting...'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: Duration(seconds: 2),
-      ),
     );
   }
 
@@ -415,126 +399,81 @@ class AppMainPage extends StatelessWidget {
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
           ),
-          elevation: 10,
+          elevation: 0,
           backgroundColor: Colors.white,
           child: Container(
-            constraints: BoxConstraints(maxWidth: 500),
+            constraints: BoxConstraints(maxWidth: 450),
+            padding: EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Header
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(30),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
                         Icons.business_center_rounded,
-                        color: Colors.white,
-                        size: 50,
+                        color: Colors.black,
+                        size: 28,
                       ),
-                      SizedBox(height: 16),
-                      Text(
-                        ThemeService.instance.appName,
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        "Enterprise Service Management Platform",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white.withOpacity(0.9),
-                          fontWeight: FontWeight.w300,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Content
-                Padding(
-                  padding: EdgeInsets.all(30),
-                  child: Column(
-                    children: [
-                      Text(
-                        "${ThemeService.instance.appName} is a comprehensive enterprise solution designed to streamline service management processes. Our platform connects customers, administrators, and service engineers in a seamless ecosystem.",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[700],
-                          height: 1.6,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 25),
-
-                      // Features Grid
-                      Wrap(
-                        spacing: 20,
-                        runSpacing: 15,
-                        alignment: WrapAlignment.center,
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildFeatureChip(
-                            Icons.security,
-                            "Secure & Reliable",
+                          Text(
+                            ThemeService.instance.appName,
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.black,
+                            ),
                           ),
-                          _buildFeatureChip(
-                            Icons.rocket_launch,
-                            "Fast Performance",
+                          Text(
+                            "Enterprise Platform",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
                           ),
-                          _buildFeatureChip(
-                            Icons.phone_iphone,
-                            "Mobile Friendly",
-                          ),
-                          _buildFeatureChip(Icons.support, "24/7 Support"),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-
-                // Footer
-                Container(
-                  padding: EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.grey[600],
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 25,
-                            vertical: 12,
-                          ),
-                        ),
-                        child: Text("CLOSE"),
-                      ),
-                    ],
+                    IconButton(
+                      icon: Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    "A comprehensive white-label solution designed to streamline service management. We connect teams and customers with professional tools and seamless workflows.",
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey[700],
+                      height: 1.6,
+                    ),
+                    textAlign: TextAlign.left,
                   ),
                 ),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _buildFeatureChip("Secure"),
+                    _buildFeatureChip("Scalable"),
+                    _buildFeatureChip("Modern"),
+                  ],
+                ),
+                SizedBox(height: 12),
               ],
             ),
           ),
@@ -543,28 +482,21 @@ class AppMainPage extends StatelessWidget {
     );
   }
 
-  Widget _buildFeatureChip(IconData icon, String text) {
+  Widget _buildFeatureChip(String text) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.blue[50],
+        color: Colors.grey[50],
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.blue[100]!),
+        border: Border.all(color: Colors.grey[200]!),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: Color(0xFF1E3C72)),
-          SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 12,
-              color: Color(0xFF1E3C72),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          color: Colors.black87,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
