@@ -177,18 +177,6 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen>
                       Column(
                         children: [
                           _buildButton(
-                            label: 'Log In',
-                            color: Colors.black,
-                            textColor: Colors.white,
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const AppMainPage(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          _buildButton(
                             label: 'Register',
                             color: Colors.white,
                             textColor: Colors.black,
@@ -201,6 +189,18 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen>
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 18),
+                      _buildButton(
+                        label: 'Log In',
+                        color: Colors.black,
+                        textColor: Colors.white,
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AppMainPage(),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 40),
                     ],
