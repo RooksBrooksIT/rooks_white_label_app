@@ -1,177 +1,161 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
+import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/subscription/subscription_plans_screen.dart';
+import 'package:subscription_rooks_app/frontend/screens/app_main_page.dart';
 
-class WelcomeScreen extends StatelessWidget {
+class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
+
+  @override
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends State<WelcomeScreen> {
+  int _currentStep = 1; // Flow starts at Step 1 (Platform Overview)
+
+  // Form keys and controllers for Step 2
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _referralCodeController = TextEditingController(); // For customers
+  String _selectedRole = 'customer';
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  final List<Map<String, String>> _roles = [
+    {'value': 'customer', 'label': 'Customer', 'icon': 'person'},
+    {'value': 'engineer', 'label': 'Engineer', 'icon': 'engineering'},
+    {
+      'value': 'admin',
+      'label': 'Administrator',
+      'icon': 'admin_panel_settings',
+    },
+  ];
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _referralCodeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleRegister() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    String? linkedAppName;
+
+    // Referral Code Validation for Non-Admins
+    if (_selectedRole != 'admin') {
+      final code = _referralCodeController.text.trim();
+      if (code.isEmpty) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a referral code.')),
+        );
+        return;
+      }
+
+      linkedAppName = await FirestoreService.instance.validateReferralCode(
+        code,
+      );
+      if (linkedAppName == null) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Invalid Referral Code.')));
+        return;
+      }
+    }
+
+    final result = await AuthStateService.instance.registerUser(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+      role: _selectedRole,
+      additionalData: linkedAppName != null
+          ? {
+              'linkedAppName': linkedAppName,
+              'referralCode': _referralCodeController.text.trim(),
+            }
+          : null,
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (result['success']) {
+      // Determine Navigation
+      if (_selectedRole == 'admin') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registration successful! Now choose your plan.'),
+          ),
+        );
+        // Admin -> Subscription Flow
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SubscriptionPlansScreen()),
+        );
+      } else {
+        // Customer/User -> Main App (Skip Subscription)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Registration successful! Welcome.')),
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const AppMainPage()),
+          (route) => false,
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'] ?? 'Registration failed')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
+          onPressed: () {
+            if (_currentStep == 2) {
+              setState(() => _currentStep = 1);
+            } else {
+              Navigator.pop(context);
+            }
+          },
+        ),
+        title: _buildStepIndicator(),
+        centerTitle: true,
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _buildFloatingCTA(context),
+      floatingActionButton: _buildFloatingCTA(),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // HEADER WITH PREMIUM DESIGN
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.grey[900],
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Service Management Platform',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey[600],
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: Text(
-                      'Premium',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: const Color.fromARGB(255, 0, 0, 0),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 32),
-
-              // HERO CARD
-              _buildHeroCard(context),
-
-              const SizedBox(height: 40),
-
-              // SECTION TITLE WITH DECORATION
-              _buildSectionHeader(
-                title: 'What This Platform Does',
-                subtitle: 'Complete service management solution',
-              ),
-
-              const SizedBox(height: 16),
-
-              // FEATURE CARDS WITH MODERN DESIGN
-              _buildFeatureCard(
-                icon: Icons.auto_awesome_mosaic_rounded,
-                title: 'Unified Service Delivery',
-                description:
-                    'Deliver technical and maintenance services through a single, structured system.',
-                gradientColors: [Colors.white, Colors.white],
-                iconColor: Colors.black,
-              ),
-
-              const SizedBox(height: 16),
-
-              _buildFeatureCard(
-                icon: Icons.smartphone_rounded,
-                title: 'Client Service Requests',
-                description:
-                    'Clients raise service requests using a branded mobile application.',
-                gradientColors: [Colors.white, Colors.white],
-                iconColor: Colors.black,
-              ),
-
-              const SizedBox(height: 16),
-
-              _buildFeatureCard(
-                icon: Icons.dashboard_customize_rounded,
-                title: 'Operational Control',
-                description:
-                    'Manage tickets, assign engineers, and track resolution from one dashboard.',
-                gradientColors: [Colors.white, Colors.white],
-                iconColor: Colors.black,
-              ),
-
-              const SizedBox(height: 40),
-
-              // BRANDING SECTION
-              _buildSectionHeader(
-                title: 'Built for Your Brand',
-                subtitle: 'Fully customizable experience',
-              ),
-
-              const SizedBox(height: 16),
-
-              _buildBrandingCard(context),
-
-              const SizedBox(height: 40),
-
-              // BENEFITS SECTION
-              _buildSectionHeader(
-                title: 'Why Choose Our Platform',
-                subtitle: 'Key benefits for your business',
-              ),
-
-              const SizedBox(height: 16),
-
-              _buildBenefitItem(
-                icon: Icons.security_rounded,
-                title: 'Enterprise Security',
-                description: 'Bank-level encryption and data protection',
-                context: context,
-              ),
-
-              const SizedBox(height: 12),
-
-              _buildBenefitItem(
-                icon: Icons.auto_graph_rounded,
-                title: 'Scalable Infrastructure',
-                description: 'Grow seamlessly with your business needs',
-                context: context,
-              ),
-
-              const SizedBox(height: 12),
-
-              _buildBenefitItem(
-                icon: Icons.palette_rounded,
-                title: 'White-label Ready',
-                description: 'Full brand customization available',
-                context: context,
-              ),
-
-              const SizedBox(height: 12),
-
-              _buildBenefitItem(
-                icon: Icons.insights_rounded,
-                title: 'Advanced Analytics',
-                description: 'Real-time insights and reporting',
-                context: context,
-              ),
-
-              // BOTTOM SPACING FOR FLOATING CTA
-              const SizedBox(height: 100),
+              if (_currentStep == 1)
+                _buildStep1Content()
+              else
+                _buildStep2Content(),
+              const SizedBox(height: 120), // Bottom padding for FAB
             ],
           ),
         ),
@@ -179,17 +163,275 @@ class WelcomeScreen extends StatelessWidget {
     );
   }
 
-  // HERO CARD
-  Widget _buildHeroCard(BuildContext context) {
+  Widget _buildStepIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _stepDot(1),
+          Container(height: 2, width: 24, color: Colors.grey[300]),
+          _stepDot(2),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepDot(int step) {
+    bool isActive = _currentStep == step;
+    bool isCompleted = _currentStep > step;
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: isActive
+            ? Colors.black
+            : (isCompleted ? Colors.green : Colors.transparent),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isActive ? Colors.black : Colors.grey[300]!,
+          width: 2,
+        ),
+      ),
+      child: Center(
+        child: isCompleted
+            ? const Icon(Icons.check, size: 18, color: Colors.white)
+            : Text(
+                '$step',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: isActive ? Colors.white : Colors.grey[500],
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildStep1Content() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Step 1: Platform Overview',
+          style: GoogleFonts.outfit(
+            fontSize: 32,
+            fontWeight: FontWeight.w800,
+            color: Colors.black,
+            letterSpacing: -1.0,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Discover how our Service Management Platform can transform your business delivery.',
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            color: Colors.grey[600],
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 40),
+        _buildHeroCard(),
+        const SizedBox(height: 40),
+        Text(
+          'Key Capabilities',
+          style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 20),
+        _buildFeatureCard(
+          icon: Icons.auto_awesome_mosaic_rounded,
+          title: 'Unified Delivery',
+          description:
+              'Manage technical and maintenance services through one cohesive system.',
+        ),
+        _buildFeatureCard(
+          icon: Icons.smartphone_rounded,
+          title: 'Client Application',
+          description:
+              'Custom branded mobile apps for your customers to raise requests.',
+        ),
+        _buildFeatureCard(
+          icon: Icons.dashboard_customize_rounded,
+          title: 'Full Operational Control',
+          description:
+              'Assigned tickets, engineer tracking, and resolution analytics.',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStep2Content() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Step 2: Registration',
+            style: GoogleFonts.outfit(
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+              color: Colors.black,
+              letterSpacing: -1.0,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Enter your details below to create your organization account.',
+            style: GoogleFonts.inter(fontSize: 16, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 40),
+
+          // Role Selection
+          const Text(
+            'Primary Role',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: DropdownButtonFormField<String>(
+              value: _selectedRole,
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                prefixIcon: Icon(Icons.badge_outlined, color: Colors.black),
+              ),
+              items: _roles.map((role) {
+                return DropdownMenuItem<String>(
+                  value: role['value'],
+                  child: Text(role['label']!),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) setState(() => _selectedRole = value);
+              },
+            ),
+          ),
+
+          if (_selectedRole != 'admin') ...[
+            const SizedBox(height: 24),
+            _buildFormTextField(
+              label: 'Referral Code',
+              controller: _referralCodeController,
+              icon: Icons.vpn_key_outlined,
+              validator: (v) => v!.isEmpty ? 'Referral code is required' : null,
+            ),
+          ],
+
+          const SizedBox(height: 32),
+
+          _buildFormTextField(
+            label: 'Organization / Full Name',
+            controller: _nameController,
+            icon: Icons.person_outline,
+            validator: (v) => v!.isEmpty ? 'Enter name' : null,
+          ),
+          const SizedBox(height: 24),
+          _buildFormTextField(
+            label: 'Corporate Email',
+            controller: _emailController,
+            icon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            validator: (v) =>
+                v!.isEmpty || !v.contains('@') ? 'Enter valid email' : null,
+          ),
+          const SizedBox(height: 24),
+          _buildFormTextField(
+            label: 'Secure Password',
+            controller: _passwordController,
+            icon: Icons.lock_outline,
+            obscureText: _obscurePassword,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+              ),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
+            ),
+            validator: (v) =>
+                v!.length < 6 ? 'Password must be 6+ characters' : null,
+          ),
+          const SizedBox(height: 24),
+          _buildFormTextField(
+            label: 'Confirm Password',
+            controller: _confirmPasswordController,
+            icon: Icons.lock_reset_outlined,
+            obscureText: _obscurePassword,
+            validator: (v) =>
+                v != _passwordController.text ? 'Passwords do not match' : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormTextField({
+    required String label,
+    required TextEditingController controller,
+    required IconData icon,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          validator: validator,
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, color: Colors.black87),
+            suffixIcon: suffixIcon,
+            filled: true,
+            fillColor: Colors.grey[50],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: Colors.grey[200]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: Colors.grey[200]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Colors.black, width: 2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeroCard() {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.black,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey[200]!),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -198,23 +440,27 @@ class WelcomeScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.rocket_launch_rounded, color: Colors.black, size: 40),
+          const Icon(
+            Icons.rocket_launch_rounded,
+            color: Colors.white,
+            size: 40,
+          ),
           const SizedBox(height: 16),
           Text(
-            'Transform Your Service Management',
-            style: TextStyle(
+            'Ready for Modern Service Delivery',
+            style: GoogleFonts.outfit(
               fontSize: 22,
               fontWeight: FontWeight.w700,
-              color: Colors.grey[900],
+              color: Colors.white,
               height: 1.3,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'A premium platform by Rooks & Brooks Technologies designed for modern businesses.',
-            style: TextStyle(
+            'Our platform is designed to scale with your business while maintaining a premium brand experience.',
+            style: GoogleFonts.inter(
               fontSize: 15,
-              color: Colors.grey[700],
+              color: Colors.white.withOpacity(0.7),
               height: 1.5,
             ),
           ),
@@ -223,262 +469,120 @@ class WelcomeScreen extends StatelessWidget {
     );
   }
 
-  // SECTION HEADER
-  Widget _buildSectionHeader({
-    required String title,
-    required String subtitle,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: Colors.grey[900],
-            letterSpacing: -0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.grey[600],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // FEATURE CARD
   Widget _buildFeatureCard({
     required IconData icon,
     required String title,
     required String description,
-    required List<Color> gradientColors,
-    required Color iconColor,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: iconColor.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey[900],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey[700],
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // BRANDING CARD
-  Widget _buildBrandingCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.branding_watermark_rounded,
-              color: Colors.black,
-              size: 32,
-            ),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Fully Branded Experience',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey[900],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Customize with your brand name, logo, colors, and splash screen for a seamless professional experience.',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey[700],
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // BENEFIT ITEM
-  Widget _buildBenefitItem({
-    required IconData icon,
-    required String title,
-    required String description,
-    required BuildContext context,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.black),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[900],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right_rounded, color: Colors.grey),
-        ],
-      ),
-    );
-  }
-
-  // FLOATING CTA
-  Widget _buildFloatingCTA(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Container(
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.black),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingCTA() {
+    String label = _currentStep == 1
+        ? 'Continue to Account Setup'
+        : 'Create My Account';
+    IconData icon = _currentStep == 1
+        ? Icons.arrow_forward_rounded
+        : Icons.check_circle_outline;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        width: double.infinity,
+        height: 64,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black,
+              color: Colors.black.withOpacity(0.2),
               blurRadius: 20,
               offset: const Offset(0, 8),
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const SubscriptionPlansScreen(),
-              ),
-            );
-          },
+          onPressed: _isLoading
+              ? null
+              : () {
+                  if (_currentStep == 1) {
+                    setState(() => _currentStep = 2);
+                  } else {
+                    _handleRegister();
+                  }
+                },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: const Color.fromARGB(255, 12, 12, 12),
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
             ),
             elevation: 0,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.rocket_launch_rounded, size: 20),
-              const SizedBox(width: 10),
-              Text(
-                'Select a Plan to Continue',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.2,
+              if (_isLoading)
+                const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                )
+              else ...[
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              const Icon(Icons.arrow_forward_rounded, size: 20),
+                const SizedBox(width: 12),
+                Icon(icon, size: 22),
+              ],
             ],
           ),
         ),

@@ -1,12 +1,14 @@
 import 'dart:io';
+import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/storage_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
-import 'transaction_completed_screen.dart';
+import 'package:subscription_rooks_app/frontend/screens/app_main_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class BrandingCustomizationScreen extends StatefulWidget {
@@ -870,6 +872,15 @@ class _BrandingCustomizationScreenState
     );
   }
 
+  String _generateReferralCode() {
+    final random = Random();
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return List.generate(
+      6,
+      (index) => chars[random.nextInt(chars.length)],
+    ).join();
+  }
+
   Widget _buildContinueButton() {
     return SizedBox(
       width: double.infinity,
@@ -903,7 +914,13 @@ class _BrandingCustomizationScreenState
               'fontFamily': _selectedFont,
             };
 
-            const uid = 'demo-user'; // TODO: Use real auth uid
+            // Use real auth uid if available
+            final uid =
+                AuthStateService.instance.currentUser?.uid ?? 'demo-user';
+
+            // Generate Referral Code
+            final referralCode = _generateReferralCode();
+            brandingData['referralCode'] = referralCode;
 
             // Upload logo if exists
             if (_logoFile != null) {
@@ -916,13 +933,20 @@ class _BrandingCustomizationScreenState
               }
             }
 
-            // 1. Save to App-Specific Collection (as requested)
+            // 1. Save to App-Specific Collection
             await FirestoreService.instance.saveAppBranding(
               appName: _appNameController.text,
               brandingData: brandingData,
             );
 
-            // 2. Save Full Subscription with Branding (linked to user)
+            // 2. Save Referral Code Mapping
+            await FirestoreService.instance.saveReferralCode(
+              code: referralCode,
+              appName: _appNameController.text,
+              adminUid: uid,
+            );
+
+            // 3. Save Full Subscription with Branding (linked to user)
             await FirestoreService.instance.upsertSubscription(
               uid: uid,
               planName: widget.planName,
@@ -931,6 +955,13 @@ class _BrandingCustomizationScreenState
               originalPrice: widget.originalPrice,
               paymentMethod: widget.paymentMethod,
               brandingData: brandingData,
+            );
+
+            // 4. Update Global User Directory (Link Admin to this App)
+            await FirestoreService.instance.saveUserDirectory(
+              uid: uid,
+              appName: _appNameController.text,
+              role: 'admin',
             );
 
             // Update App Theme
@@ -947,21 +978,63 @@ class _BrandingCustomizationScreenState
             if (!mounted) return;
             Navigator.pop(context); // Close loading
 
-            // Navigate to Transaction Completed
+            // Show Success Dialog with Referral Code
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                title: const Text('Setup Complete!'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Your application is ready. Share this referral code with your customers so they can register:',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: Text(
+                        referralCode,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'You can verify this later in your dashboard.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Let\'s Go'),
+                  ),
+                ],
+              ),
+            );
+
+            if (!mounted) return;
+            // Navigate to Main App
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(
-                builder: (context) => TransactionCompletedScreen(
-                  planName: widget.planName,
-                  isYearly: widget.isYearly,
-                  amountPaid: widget.price,
-                  paymentMethod: widget.paymentMethod,
-                  transactionId: widget.transactionId,
-                  timestamp: DateTime.now(),
-                ),
-              ),
-              (route) =>
-                  false, // Remove all previous routes including Plans and Payment
+                builder: (_) => const AppMainPage(),
+              ), // Go to Home
+              (route) => false,
             );
           } catch (e) {
             if (mounted) {

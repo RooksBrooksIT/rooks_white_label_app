@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:subscription_rooks_app/services/stripe_service.dart';
 import 'package:subscription_rooks_app/services/storage_service.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
 
 import 'dart:io';
 import 'card_details_screen.dart';
@@ -881,7 +882,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
 
       // TODO: Replace with real authenticated uid once auth is wired.
-      const uid = 'demo-user';
+      final uid = AuthStateService.instance.currentUser?.uid ?? 'demo-user';
 
       // Upload logo if exists
       Map<String, dynamic>? finalBrandingData = widget.brandingData;

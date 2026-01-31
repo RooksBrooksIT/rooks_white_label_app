@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_rooks_app/frontend/screens/app_main_page.dart';
-import 'package:subscription_rooks_app/subscription/welcome_screen.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
+import 'package:subscription_rooks_app/subscription/welcome_screen.dart';
+import 'package:subscription_rooks_app/frontend/screens/unified_login_screen.dart';
 
 class AuthSelectionScreen extends StatefulWidget {
   const AuthSelectionScreen({super.key});
@@ -177,31 +178,60 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen>
                       Column(
                         children: [
                           _buildButton(
-                            label: 'Log In',
-                            color: Colors.black,
-                            textColor: Colors.white,
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const AppMainPage(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          _buildButton(
                             label: 'Register',
                             color: Colors.white,
                             textColor: Colors.black,
                             isOutlined: true,
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const WelcomeScreen(),
-                              ),
-                            ),
+                            onPressed: () =>
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const WelcomeScreen(),
+                                  ),
+                                ).then(
+                                  (_) => setState(() {}),
+                                ), // Refresh state after returning
                           ),
                         ],
                       ),
+                      const SizedBox(height: 18),
+                      // Conditional Log In Button
+                      Opacity(
+                        opacity: AuthStateService.instance.isRegistered
+                            ? 1.0
+                            : 0.5,
+                        child: _buildButton(
+                          label: 'Log In',
+                          color: Colors.black,
+                          textColor: Colors.white,
+                          onPressed: AuthStateService.instance.isRegistered
+                              ? () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const UnifiedLoginScreen(),
+                                  ),
+                                )
+                              : () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Please register first to enable login.',
+                                      ),
+                                    ),
+                                  );
+                                },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (!AuthStateService.instance.isRegistered)
+                        Text(
+                          "* One-time registration required for first-time setup",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
                       const SizedBox(height: 40),
                     ],
                   ),
