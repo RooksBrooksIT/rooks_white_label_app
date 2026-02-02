@@ -8,49 +8,78 @@ class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   /// Returns a collection reference rooted under:
-  /// main (coll) -> {appName} (doc) -> {collectionName} (coll)
-  /// If `scope` is provided, it uses that as the appName. Otherwise, it uses the current global AppName from ThemeService.
+  /// {organizationName}_{createdDate} (coll) -> {documentId} (doc) -> {subCollectionName} (coll)
+  /// This follows the format: OrganizationName_createdDate
+  /// Standardized tenant collection path: {tenantId} (coll) -> data (doc) -> {subCollection} (coll)
   CollectionReference<Map<String, dynamic>> collection(
     String collectionName, {
-    String? scope,
+    String? tenantId,
+    String? appId,
   }) {
-    final appName = scope ?? ThemeService.instance.appName;
-    return _db.collection('main').doc(appName).collection(collectionName);
+    final effectiveTenant = tenantId ?? ThemeService.instance.databaseName;
+    final effectiveApp = appId ?? 'data';
+    return _db
+        .collection(effectiveTenant)
+        .doc(effectiveApp)
+        .collection(collectionName);
   }
 
-  // Collection reference for subscriptions (Global or App specific?)
-  // Subscriptions are usually global for the 'Platform Provider' (Rooks),
-  // but if we want them isolated, they should be in the app scope or a separate global one.
-  // For now, let's keep subscriptions global to the Platform Provider logic if needed,
-  // OR if this is 'admin' logic, maybe it lives in a special admin place.
-  // Current implementation points to 'main/CurrentApp/subscriptions' which might vary.
-  // Let's explicitly scope subscriptions if they track the *User's* subscription to Rooks.
-  // If 'subscriptions' means 'This App's Subscribers', it goes in the App Scope.
-  // Based on context, this seems to be the White Label Customer's subscription to Rooks.
-  // So it should probably be in a master collection or consistently scoped.
-  // Let's assume 'subscriptions' acts on the current context for now, but be careful.
-  CollectionReference get subscriptionsRef => _db.collection('subscriptions');
-  // CHANGED: Moved out of 'main/appName' to global 'subscriptions' to track White Label Clients properly across the platform.
+  /// Tenant-specific reference for subscriptions
+  CollectionReference<Map<String, dynamic>> subscriptionsRef({
+    required String tenantId,
+    String? appId,
+  }) => collection('subscriptions', tenantId: tenantId, appId: appId);
+
+  /// Tenant-specific reference for referral codes
+  CollectionReference<Map<String, dynamic>> referralCodesRef({
+    required String tenantId,
+    String? appId,
+  }) => collection('referral_codes', tenantId: tenantId, appId: appId);
+
+  /// Tenant-specific reference for branding
+  DocumentReference<Map<String, dynamic>> brandingDoc({
+    required String tenantId,
+    String? appId,
+  }) => collection('branding', tenantId: tenantId, appId: appId).doc('config');
 
   // --- Global User Directory ---
   // Maps UID -> AppName/TenantID
   Future<void> saveUserDirectory({
     required String uid,
-    required String appName,
+    required String tenantId,
     required String role,
   }) async {
+    // 1. Local tenant mapping (for tenant-specific user management)
+    await collection('users', tenantId: tenantId).doc(uid).set({
+      'tenantId': tenantId,
+      'role': role,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    // 2. Global lookup (for routing during login)
     await _db.collection('global_user_directory').doc(uid).set({
-      'appName': appName,
+      'tenantId': tenantId,
       'role': role,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
-  Future<String?> getUserAppAssociation(String uid) async {
+  Future<String?> getUserTenantAssociation(String uid) async {
     try {
       final doc = await _db.collection('global_user_directory').doc(uid).get();
       if (doc.exists) {
-        return doc.data()?['appName'] as String?;
+        return doc.data()?['tenantId'] as String?;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// New: Get User Role and Org/App associations
+  Future<Map<String, dynamic>?> getUserMetadata(String uid) async {
+    try {
+      final doc = await _db.collection('global_user_directory').doc(uid).get();
+      if (doc.exists) {
+        return doc.data();
       }
     } catch (_) {}
     return null;
@@ -62,15 +91,17 @@ class FirestoreService {
     return _db.runTransaction(updateFunction);
   }
 
-  // Create/update current subscription for a user
+  // Create/update current subscription for a tenant user
   Future<void> upsertSubscription({
     required String uid,
+    required String tenantId,
     required String planName,
     required bool isYearly,
     required int price,
     int? originalPrice,
     String paymentMethod = 'unknown',
     Map<String, dynamic>? brandingData,
+    String? appId,
   }) async {
     final now = DateTime.now();
     final nextBilling = isYearly
@@ -93,13 +124,22 @@ class FirestoreService {
       data['branding'] = brandingData;
     }
 
-    // Save to valid firestore path: [dbName]/main/subscriptions/{uid}
-    await subscriptionsRef.doc(uid).set(data, SetOptions(merge: true));
+    await subscriptionsRef(
+      tenantId: tenantId,
+      appId: appId,
+    ).doc(uid).set(data, SetOptions(merge: true));
   }
 
-  // Stream subscription for a specific user
-  Stream<Map<String, dynamic>?> streamSubscription(String uid) {
-    return subscriptionsRef.doc(uid).snapshots().map((snapshot) {
+  // Stream subscription for a specific user within a tenant
+  Stream<Map<String, dynamic>?> streamSubscription(
+    String uid,
+    String tenantId, {
+    String? appId,
+  }) {
+    return subscriptionsRef(
+      tenantId: tenantId,
+      appId: appId,
+    ).doc(uid).snapshots().map((snapshot) {
       if (snapshot.exists && snapshot.data() != null) {
         return snapshot.data() as Map<String, dynamic>;
       }
@@ -107,38 +147,46 @@ class FirestoreService {
     });
   }
 
-  // Update only branding data for a user
+  // Update only branding data for a tenant
   Future<void> updateBranding({
-    required String uid,
+    required String tenantId,
     required Map<String, dynamic> brandingData,
+    String? appId,
   }) async {
-    await subscriptionsRef.doc(uid).set({
-      'branding': brandingData,
+    await brandingDoc(tenantId: tenantId, appId: appId).set({
+      ...brandingData,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
   // Create an app-specific collection to store branding configuration
   Future<void> saveAppBranding({
-    required String appName,
+    required String tenantId,
     required Map<String, dynamic> brandingData,
+    String? appId,
   }) async {
-    await collection(appName).doc('branding').set({
-      ...brandingData,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    await brandingDoc(
+      tenantId: tenantId,
+      appId: appId,
+    ).set({...brandingData, 'updatedAt': FieldValue.serverTimestamp()});
   }
 
   // --- Referral Code Logic ---
 
   // Check if a referral code matches any active subscription/app
   // Returns the appName associated with the code if valid, null otherwise.
-  Future<String?> validateReferralCode(String code) async {
+  Future<String?> validateReferralCode(
+    String code,
+    String tenantId, {
+    String? appId,
+  }) async {
     try {
-      final doc = await _db.collection('referral_codes').doc(code).get();
+      final doc = await referralCodesRef(
+        tenantId: tenantId,
+        appId: appId,
+      ).doc(code).get();
       if (doc.exists) {
-        // Return the appName or adminUid linked to this code
-        return doc.data()?['appName'] as String?;
+        return doc.data()?['tenantId'] as String?;
       }
     } catch (e) {
       // debugPrint('Error checking referral code: $e');
@@ -146,18 +194,38 @@ class FirestoreService {
     return null;
   }
 
-  // Save a new referral code linked to an app
+  // Save a new referral code linked to a tenant
   Future<void> saveReferralCode({
     required String code,
-    required String appName,
+    required String tenantId,
     required String adminUid,
+    String? appId,
   }) async {
-    await _db.collection('referral_codes').doc(code).set({
+    await referralCodesRef(tenantId: tenantId, appId: appId).doc(code).set({
       'code': code,
-      'appName': appName,
+      'tenantId': tenantId,
       'adminUid': adminUid,
+      'appId': appId,
       'createdAt': FieldValue.serverTimestamp(),
       'isActive': true,
     });
+  }
+
+  /// Global lookup for referral codes across all tenants (used during registration)
+  Future<String?> validateGlobalReferralCode(String code) async {
+    try {
+      final snapshot = await _db
+          .collectionGroup('referral_codes')
+          .where('code', isEqualTo: code)
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.first.get('tenantId') as String?;
+      }
+    } catch (e) {
+      // debugPrint('Error validating global referral code: $e');
+    }
+    return null;
   }
 }

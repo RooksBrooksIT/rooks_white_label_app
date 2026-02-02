@@ -22,19 +22,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _referralCodeController = TextEditingController(); // For customers
-  String _selectedRole = 'customer';
+  String _selectedRole = 'admin';
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  final List<Map<String, String>> _roles = [
-    {'value': 'customer', 'label': 'Customer', 'icon': 'person'},
-    {'value': 'engineer', 'label': 'Engineer', 'icon': 'engineering'},
-    {
-      'value': 'admin',
-      'label': 'Administrator',
-      'icon': 'admin_panel_settings',
-    },
-  ];
+  // Role is fixed to Administration as per requirements
 
   @override
   void dispose() {
@@ -64,9 +56,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         return;
       }
 
-      linkedAppName = await FirestoreService.instance.validateReferralCode(
-        code,
-      );
+      linkedAppName = await FirestoreService.instance
+          .validateGlobalReferralCode(code);
       if (linkedAppName == null) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(
@@ -293,27 +284,28 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           ),
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.grey[50],
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.grey[200]!),
             ),
-            child: DropdownButtonFormField<String>(
-              value: _selectedRole,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                prefixIcon: Icon(Icons.badge_outlined, color: Colors.black),
-              ),
-              items: _roles.map((role) {
-                return DropdownMenuItem<String>(
-                  value: role['value'],
-                  child: Text(role['label']!),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) setState(() => _selectedRole = value);
-              },
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.admin_panel_settings_outlined,
+                  color: Colors.black,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Administration',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
             ),
           ),
 

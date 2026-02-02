@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:subscription_rooks_app/firebase_options.dart';
-import 'package:subscription_rooks_app/frontend/screens/auth_selection_screen.dart';
+import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
 import 'package:subscription_rooks_app/services/stripe_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -33,7 +34,7 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           title: 'Flutter App',
           theme: ThemeService.instance.themeData,
-          home: const AuthSelectionScreen(),
+          home: const RoleSelectionScreen(),
         );
       },
     );

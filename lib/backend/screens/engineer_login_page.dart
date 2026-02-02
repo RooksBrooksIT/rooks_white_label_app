@@ -37,10 +37,19 @@ class EngineerLoginBackend {
   static Future<Map<String, dynamic>> login(
     String username,
     String password,
+    String referralCode,
   ) async {
     try {
+      // 1. Identify Tenant via Referral Code
+      final tenantId = await FirestoreService.instance
+          .validateGlobalReferralCode(referralCode);
+      if (tenantId == null) {
+        return {'success': false, 'message': 'Invalid Referral Code.'};
+      }
+
+      // 2. Query Engineer within the specific Organization
       final querySnapshot = await FirestoreService.instance
-          .collection('EngineerLogin')
+          .collection('EngineerLogin', tenantId: tenantId)
           .where('Username', isEqualTo: username)
           .where('Password', isEqualTo: password)
           .get();
@@ -48,12 +57,13 @@ class EngineerLoginBackend {
       if (querySnapshot.docs.isNotEmpty) {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('engineerName', username);
+        await prefs.setString('tenantId', tenantId); // Store tenant association
         await registerFcmToken(username);
         return {'success': true, 'username': username};
       } else {
         return {
           'success': false,
-          'message': 'Invalid credentials. Please try again.',
+          'message': 'Invalid credentials for this organization.',
         };
       }
     } catch (e) {
@@ -68,10 +78,18 @@ class EngineerLoginBackend {
     String username,
     String phone,
     String newPass,
+    String referralCode,
   ) async {
     try {
+      // 1. Identify Tenant via Referral Code
+      final tenantId = await FirestoreService.instance
+          .validateGlobalReferralCode(referralCode);
+      if (tenantId == null) {
+        return {'success': false, 'message': 'Invalid Referral Code.'};
+      }
+
       final query = await FirestoreService.instance
-          .collection('EngineerLogin')
+          .collection('EngineerLogin', tenantId: tenantId)
           .where('Username', isEqualTo: username)
           .where('Phone', isEqualTo: phone)
           .get();
@@ -79,14 +97,14 @@ class EngineerLoginBackend {
       if (query.docs.isNotEmpty) {
         final docId = query.docs.first.id;
         await FirestoreService.instance
-            .collection('EngineerLogin')
+            .collection('EngineerLogin', tenantId: tenantId)
             .doc(docId)
             .update({'Password': newPass});
         return {'success': true, 'message': 'Password updated successfully.'};
       } else {
         return {
           'success': false,
-          'message': 'Username or phone number is incorrect.',
+          'message': 'Username, phone number, or referral code is incorrect.',
         };
       }
     } catch (e) {
