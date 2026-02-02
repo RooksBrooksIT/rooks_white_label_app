@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_geo_location_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_login_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/customer_login_pages.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_login_page.dart';
@@ -194,9 +195,12 @@ class AppMainPage extends StatelessWidget {
             gradient: [Color(0xFF2196F3), Color(0xFF1976D2)],
             width: width * 0.26,
             onTap: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => AdminLogin()));
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      EngineerTrackingScreen(engineerId: '', engineerName: ''),
+                ),
+              );
             },
           ),
           SizedBox(width: 24),
@@ -240,9 +244,12 @@ class AppMainPage extends StatelessWidget {
             gradient: [Color(0xFF2196F3), Color(0xFF1976D2)],
             width: double.infinity,
             onTap: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => AdminLogin()));
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      EngineerTrackingScreen(engineerId: '', engineerName: ''),
+                ),
+              );
             },
           ),
           SizedBox(height: 16),
