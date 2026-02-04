@@ -17,6 +17,7 @@ import 'package:subscription_rooks_app/frontend/screens/admin_tickets_overview.d
 import 'package:subscription_rooks_app/frontend/screens/barcode_identifier.dart';
 import 'package:subscription_rooks_app/frontend/screens/unified_login_screen.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:flutter/services.dart';
 
 import 'package:subscription_rooks_app/backend/screens/admin_dashboard.dart';
 
@@ -28,12 +29,14 @@ class admindashboard extends StatefulWidget {
 }
 
 class _admindashboardState extends State<admindashboard> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int engineerUpdateCount = 0;
   int totalCustomers = 0;
   int activeEngineers = 0;
   int pendingTickets = 0;
-  String adminName = 'Rooks Admin';
-  String adminEmail = 'rooksadmin@email.com';
+  String adminName = 'Loading...';
+  String adminEmail = '';
+  String referralCode = '';
 
   // Dynamic Color Palette from ThemeService
   late Color primaryColor;
@@ -68,7 +71,15 @@ class _admindashboardState extends State<admindashboard> {
   }
 
   void _loadAdminData() async {
-    // In a real app, you might load this from shared preferences or Firestore
+    final profile = await AdminDashboardBackend.getAdminProfile();
+    final code = await AdminDashboardBackend.getReferralCode();
+    if (mounted) {
+      setState(() {
+        adminName = profile['name']!;
+        adminEmail = profile['email']!;
+        referralCode = code;
+      });
+    }
   }
 
   @override
@@ -84,7 +95,9 @@ class _admindashboardState extends State<admindashboard> {
         return shouldLeave ?? false;
       },
       child: Scaffold(
+        key: _scaffoldKey,
         backgroundColor: backgroundColor,
+        endDrawer: _buildDrawer(),
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
@@ -306,7 +319,9 @@ class _admindashboardState extends State<admindashboard> {
         onPressed: () async {
           if (await _showBackConfirmDialog(context) == true) {
             Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => UnifiedLoginScreen()),
+              MaterialPageRoute(
+                builder: (context) => const UnifiedLoginScreen(),
+              ),
               (route) => false,
             );
           }
@@ -314,8 +329,8 @@ class _admindashboardState extends State<admindashboard> {
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.logout_rounded, color: Colors.white),
-          onPressed: () => _showLogoutConfirmationDialog(context),
+          icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
+          onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
         ),
         const SizedBox(width: 8),
       ],
@@ -701,6 +716,174 @@ class _admindashboardState extends State<admindashboard> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      backgroundColor: backgroundColor,
+      child: Column(
+        children: [
+          _buildDrawerHeader(),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _buildDrawerItem(
+                  icon: Icons.qr_code_rounded,
+                  title: 'Referral Code',
+                  subtitle: referralCode.isEmpty
+                      ? 'Not Available'
+                      : referralCode,
+                  subtitleStyle: TextStyle(
+                    fontSize: referralCode.isEmpty ? 14 : 18,
+                    fontWeight: referralCode.isEmpty
+                        ? FontWeight.w500
+                        : FontWeight.w900,
+                    color: referralCode.isEmpty ? textLightColor : primaryColor,
+                    letterSpacing: referralCode.isEmpty ? 0 : 1.2,
+                  ),
+                  onTap: () {
+                    if (referralCode.isNotEmpty) {
+                      Clipboard.setData(ClipboardData(text: referralCode));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Referral code copied to clipboard'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                  trailing: referralCode.isNotEmpty
+                      ? const Icon(Icons.copy_rounded, size: 20)
+                      : null,
+                ),
+                _buildDrawerItem(
+                  icon: Icons.person_outline_rounded,
+                  title: 'Profile',
+                  subtitle: 'Manage your profile',
+                  onTap: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Profile management coming soon!'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                ),
+                const Divider(indent: 20, endIndent: 20),
+                _buildDrawerItem(
+                  icon: Icons.logout_rounded,
+                  title: 'Logout',
+                  subtitle: 'Sign out of your account',
+                  color: errorColor,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showLogoutConfirmationDialog(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Text(
+              'Version 1.0.0',
+              style: TextStyle(
+                color: textLightColor.withOpacity(0.5),
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 64, 24, 24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [primaryColor, secondaryColor],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 35,
+            backgroundColor: Colors.white.withOpacity(0.2),
+            child: const Icon(
+              Icons.person_rounded,
+              color: Colors.white,
+              size: 40,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            adminName,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text(
+            adminEmail,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.8),
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    Widget? trailing,
+    Color? color,
+    TextStyle? subtitleStyle,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: (color ?? primaryColor).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: color ?? primaryColor, size: 22),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: color ?? textColor,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style:
+            subtitleStyle ??
+            TextStyle(
+              fontSize: 12,
+              color: textLightColor,
+              fontWeight: FontWeight.w500,
+            ),
+      ),
+      trailing: trailing,
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
     );
   }
 
