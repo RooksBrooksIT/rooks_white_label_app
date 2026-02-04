@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:intl/intl.dart';
-
 import 'package:subscription_rooks_app/frontend/screens/engineer_barcode_identifier.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_barcode_scanner_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_login_page.dart';
@@ -14,7 +13,9 @@ import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-
+import 'package:geolocator/geolocator.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -126,6 +127,8 @@ class AdminDetails {
   final Timestamp? completedAt;
   final String id;
   final String assignedDate;
+  final double? lat;
+  final double? lng;
   AdminDetails({
     required this.docId,
     required this.bookingId,
@@ -147,6 +150,8 @@ class AdminDetails {
     this.completedAt,
 
     this.id = '',
+    this.lat,
+    this.lng,
   }) : assignedDate = assignedTimestamp != null
            ? '${assignedTimestamp.toDate().day}/${assignedTimestamp.toDate().month}/${assignedTimestamp.toDate().year}'
            : 'Not assigned';
@@ -180,6 +185,8 @@ class AdminDetails {
       assignedTimestamp: data['AssignedTimestamp'],
       completedAt: data['completedAt'],
       id: data['id'] ?? '',
+      lat: (data['lat'] as num?)?.toDouble(),
+      lng: (data['lng'] as num?)?.toDouble(),
       // AssignedTimestamp: data['AssignedTimestamp'],
     );
   }
@@ -578,6 +585,19 @@ class _EngineerPageState extends State<EngineerPage> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize Local Notifications
+    const AndroidInitializationSettings androidInitSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const DarwinInitializationSettings iosInitSettings =
+        DarwinInitializationSettings();
+    const InitializationSettings initSettings = InitializationSettings(
+      android: androidInitSettings,
+      iOS: iosInitSettings,
+    );
+
+    flutterLocalNotificationsPlugin.initialize(initSettings);
+
     _handleInitialNotification();
     _updateEngineerToken();
     _listenToNotifications();
@@ -1512,6 +1532,188 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
   String _selectedPaymentType = 'Cash';
   String _selectedPaymentMethod = 'Visiting Charge';
   List<Map<String, dynamic>> _payments = [];
+  double? _capturedLat;
+  double? _capturedLng;
+
+  // Location Tracking
+  StreamSubscription<Position>? _positionStream;
+  bool _isTracking = false;
+
+  Future<void> _requestLocationPermission() async {
+    final status = await Permission.location.request();
+    if (status.isGranted) {
+      // Also request always allow for background tracking if possible
+      await Permission.locationAlways.request();
+    }
+  }
+
+  Future<void> _startLocationTracking({bool isOrderTaken = false}) async {
+    // If we are just continuing tracking (Order Received), don't reset if already tracking
+    if (_isTracking && !isOrderTaken) return;
+
+    await _stopLocationTracking(
+      disposeOnly: true,
+    ); // Clean up old stream if any
+
+    await _requestLocationPermission();
+
+    if (await Permission.location.isGranted) {
+      try {
+        // Initial update
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        );
+
+        final dbRef = FirebaseDatabase.instance.ref();
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+
+        // 1. Update engineer node
+        await dbRef.child('engineers/${widget.userName}').update({
+          'name': widget.userName,
+          'status': 'ACTIVE',
+          'activeBookingId': widget.booking.bookingId,
+          'trackingStatus': 'ACTIVE',
+          'lastSeen': timestamp,
+          'location': {
+            'lat': position.latitude,
+            'lng': position.longitude,
+            'timestamp': timestamp,
+            'accuracy': position.accuracy,
+            'speed': position.speed,
+            'heading': position.heading,
+          },
+        });
+
+        // 2. Create/Update order_tracking node
+        await dbRef.child('order_tracking/${widget.booking.bookingId}').update({
+          'engineerName': widget.userName,
+          'status': isOrderTaken ? 'ORDER_TAKEN' : 'ORDER_RECEIVED',
+          'trackingStatus': 'ACTIVE',
+          'lastUpdated': timestamp,
+          'lastLocation': {
+            'lat': position.latitude,
+            'lng': position.longitude,
+            'timestamp': timestamp,
+          },
+        });
+
+        // _updateFirebaseLocation(position); // Calls duplicate update, removed
+
+        // Stream updates
+        _positionStream =
+            Geolocator.getPositionStream(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.high,
+                distanceFilter: 10, // Update every 10m
+              ),
+            ).listen((Position position) {
+              _updateFirebaseLocation(position);
+            });
+
+        setState(() {
+          _isTracking = true;
+        });
+
+        // Show snackbar
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Live location tracking started'),
+              backgroundColor: ProfessionalTheme.success,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('Error starting location tracking: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to start tracking: $e'),
+              backgroundColor: ProfessionalTheme.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Location permission is required for tracking'),
+            backgroundColor: ProfessionalTheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopLocationTracking({bool disposeOnly = false}) async {
+    await _positionStream?.cancel();
+    _positionStream = null;
+
+    if (!disposeOnly) {
+      final dbRef = FirebaseDatabase.instance.ref();
+      try {
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        // Update order_tracking to STOPPED
+        await dbRef.child('order_tracking/${widget.booking.bookingId}').update({
+          'trackingStatus': 'STOPPED',
+          'lastUpdated': timestamp,
+        });
+
+        // Optional: Clear active booking on engineer node?
+        // Requirement didn't explicitly ask to clear activeBookingId, but implies tracking stops.
+        // keeping minimal changes as requested.
+      } catch (e) {
+        debugPrint('Error stopping tracking in firebase: $e');
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _isTracking = false;
+      });
+    }
+  }
+
+  Future<void> _updateFirebaseLocation(Position position) async {
+    final dbRef = FirebaseDatabase.instance.ref();
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    try {
+      // 1. Update Engineers Node
+      await dbRef.child('engineers/${widget.userName}').update({
+        'name': widget.userName,
+        // 'status': 'on_the_way', // Don't overwrite status here if possible, or keep as is?
+        // Requirement says "Continue updating engineers/{engineerName}"
+        // 'status': 'ACTIVE', // Enforce active?
+        'lastSeen': timestamp,
+        'location': {
+          'lat': position.latitude,
+          'lng': position.longitude,
+          'timestamp': timestamp,
+          'accuracy': position.accuracy,
+          'speed': position.speed,
+          'heading': position.heading,
+        },
+      });
+
+      // 2. Mirror to order_tracking
+      await dbRef.child('order_tracking/${widget.booking.bookingId}').update({
+        'lastLocation': {
+          'lat': position.latitude,
+          'lng': position.longitude,
+          'timestamp': timestamp,
+          'heading': position.heading,
+          'speed': position.speed,
+        },
+        'lastUpdated': timestamp,
+      });
+    } catch (e) {
+      debugPrint('Error updating Firebase location: $e');
+    }
+  }
 
   @override
   void initState() {
@@ -1831,6 +2033,8 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
             'lastUpdated': FieldValue.serverTimestamp(),
             'PaymentType': paymentTypeToSave,
             'lastUpdatedBy': widget.userName,
+            'lat': _capturedLat,
+            'lng': _capturedLng,
           };
 
           // Payments: Use Timestamp.now() for nested timestamps
@@ -2164,6 +2368,17 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
         'color': ProfessionalTheme.info(context),
         'text': 'Observation',
       },
+      'Order Taken': {
+        'color': ProfessionalTheme.info(
+          context,
+        ), // Reusing info color (blue-ish)
+        'text': 'Order Taken',
+      },
+      'Order Received': {
+        'color':
+            ProfessionalTheme.warning, // Reusing warning color (orange-ish)
+        'text': 'Order Received',
+      },
     };
 
     final config =
@@ -2289,10 +2504,12 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
   Widget _buildStatusSection() {
     final allowedStatuses = [
       'Completed',
+      'Assigned',
+      'Order Taken',
+      'Order Received',
       'Pending for Approval',
       'Pending for Spares',
       'Under Observation',
-      'Assigned',
     ];
 
     String? dropdownValue = allowedStatuses.contains(_currentStatus)
@@ -2365,12 +2582,19 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
                 : (String? newValue) {
                     if (newValue != null) {
                       setState(() {
-                        // Update the current selection but do NOT make the
-                        // form read-only immediately. Read-only should be
-                        // applied only after the engineer confirms the
-                        // update and the write succeeds.
                         _currentStatus = newValue;
                       });
+
+                      // Trigger location tracking based on status
+                      final statusLower = newValue.toLowerCase();
+                      if (statusLower == 'order taken') {
+                        _startLocationTracking(isOrderTaken: true);
+                      } else if (statusLower == 'order received') {
+                        _startLocationTracking(isOrderTaken: false);
+                      } else if (statusLower == 'completed' ||
+                          statusLower == 'cancelled') {
+                        _stopLocationTracking();
+                      }
                     }
                   },
             icon: Icon(
@@ -2390,9 +2614,283 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
             ),
           ),
         ],
+
+        // Manual Location Log Button
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _isLoadingLocation ? null : _logManualLocation,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              side: BorderSide(color: ProfessionalTheme.primary(context)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            icon: _isLoadingLocation
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: ProfessionalTheme.primary(context),
+                    ),
+                  )
+                : Icon(
+                    Icons.my_location,
+                    color: ProfessionalTheme.primary(context),
+                  ),
+            label: Text(
+              _isLoadingLocation ? 'Logging...' : 'Log Current Location',
+              style: TextStyle(
+                color: ProfessionalTheme.primary(context),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+
+        // Display Captured Location
+        if (_capturedLat != null && _capturedLng != null) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Latitude',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: ProfessionalTheme.textSecondary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: ProfessionalTheme.surface(context),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: ProfessionalTheme.borderLight(context),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.explore_outlined,
+                            size: 16,
+                            color: ProfessionalTheme.textTertiary(context),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _capturedLat!.toStringAsFixed(6),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: ProfessionalTheme.textPrimary(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Longitude',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: ProfessionalTheme.textSecondary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: ProfessionalTheme.surface(context),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: ProfessionalTheme.borderLight(context),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.explore_outlined,
+                            size: 16,
+                            color: ProfessionalTheme.textTertiary(context),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _capturedLng!.toStringAsFixed(6),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: ProfessionalTheme.textPrimary(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
+
+  Future<void> _logManualLocation() async {
+    setState(() {
+      _isLoadingLocation = true;
+    });
+
+    try {
+      // 1. Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showSnackBar(
+          'Location services are disabled. Please enable GPS.',
+          ProfessionalTheme.error,
+        );
+        setState(() => _isLoadingLocation = false);
+        return;
+      }
+
+      // 2. Check permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _showSnackBar('Location permission denied', ProfessionalTheme.error);
+          setState(() => _isLoadingLocation = false);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        _showSnackBar(
+          'Location permissions are permanently denied',
+          ProfessionalTheme.error,
+        );
+        setState(() => _isLoadingLocation = false);
+        return;
+      }
+
+      // 3. Get Position
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // 4. Parse booking ID safely with trim()
+      dynamic orderId = widget.booking.bookingId.trim();
+      if (int.tryParse(orderId) != null) {
+        orderId = int.parse(orderId);
+      }
+
+      // 5. Send to Firebase (Firestore)
+      // Switch to Firestore to avoid RTDB strict schema/permission issues
+      await FirebaseFirestore.instance.collection('manual_location_logs').add({
+        "orderId": orderId,
+        "lat": position.latitude,
+        "lng": position.longitude,
+        "timestamp": DateTime.now().toIso8601String(),
+        "engineerName": widget.userName,
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+
+      _showSnackBar(
+        'Location logged to Firebase successfully!',
+        ProfessionalTheme.success,
+      );
+
+      // 6. Update local state
+      if (mounted) {
+        setState(() {
+          _capturedLat = position.latitude;
+          _capturedLng = position.longitude;
+        });
+      }
+
+      // 7. Sync to Firestore (Admin_details) immediately
+      try {
+        var query = await FirebaseFirestore.instance
+            .collection('Admin_details')
+            .where('bookingId', isEqualTo: widget.booking.bookingId)
+            .get();
+
+        for (var doc in query.docs) {
+          await doc.reference.update({
+            'lat': position.latitude,
+            'lng': position.longitude,
+            'lastUpdated': FieldValue.serverTimestamp(),
+          });
+        }
+      } catch (e) {
+        debugPrint('Error syncing to Firestore Admin_details: $e');
+      }
+
+      // 8. Sync to RTDB for live tracking
+      try {
+        final dbRef = FirebaseDatabase.instance.ref();
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+
+        // Update Engineers Node
+        await dbRef.child('engineers/${widget.userName}').update({
+          'location': {
+            'lat': position.latitude,
+            'lng': position.longitude,
+            'timestamp': timestamp,
+          },
+          'lastSeen': timestamp,
+        });
+
+        // Update Order Tracking Node
+        await dbRef.child('order_tracking/${widget.booking.bookingId}').update({
+          'lastLocation': {
+            'lat': position.latitude,
+            'lng': position.longitude,
+            'timestamp': timestamp,
+          },
+          'lastUpdated': timestamp,
+        });
+      } catch (e) {
+        debugPrint('Error syncing to RTDB: $e');
+      }
+    } on FirebaseException catch (e) {
+      debugPrint('Firebase Error: ${e.code} - ${e.message}');
+      _showSnackBar('Database Error: ${e.message}', ProfessionalTheme.error);
+    } catch (e) {
+      debugPrint('Error logging location: $e');
+      _showSnackBar('Failed: $e', ProfessionalTheme.error);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingLocation = false;
+        });
+      }
+    }
+  }
+
+  bool _isLoadingLocation = false;
 
   Widget _buildDescriptionSection() {
     return Column(

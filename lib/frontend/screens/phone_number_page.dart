@@ -175,13 +175,20 @@ class _PhoneNumberPageState extends State<PhoneNumberPage>
   void _showForgotPasswordDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        // Pass current login phone so dialog can pre-fill and run real-time checks
-        return ForgotPasswordDialog(
-          initialPhone: _loginPhoneController.text.trim(),
-        );
-      },
+      builder: (ctx) => AlertDialog(
+        title: const Text('Forgot Password'),
+        content: const Text('Contact Admin to change the password'),
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              backgroundColor: Theme.of(context).primaryColor,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 

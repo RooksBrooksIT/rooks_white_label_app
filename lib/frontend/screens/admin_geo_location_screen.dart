@@ -7,21 +7,21 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as latlong;
 
-class EngineerTrackingScreen extends StatefulWidget {
+class AdminGeoLocationScreen extends StatefulWidget {
   final String engineerId;
   final String engineerName;
 
-  const EngineerTrackingScreen({
+  const AdminGeoLocationScreen({
     super.key,
     required this.engineerId,
     required this.engineerName,
   });
 
   @override
-  State<EngineerTrackingScreen> createState() => _EngineerTrackingScreenState();
+  State<AdminGeoLocationScreen> createState() => _AdminGeoLocationScreenState();
 }
 
-class _EngineerTrackingScreenState extends State<EngineerTrackingScreen> {
+class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
   Position? _currentPosition;
   StreamSubscription<Position>? _positionStream;
   bool _isTracking = false;

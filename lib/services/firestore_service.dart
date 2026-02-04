@@ -7,15 +7,83 @@ class FirestoreService {
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// Returns a collection reference prefixed with the database name.
-  /// Structure: /[databaseName]/main/[collectionName]
-  CollectionReference<Map<String, dynamic>> collection(String collectionName) {
-    final dbName = ThemeService.instance.databaseName;
-    return _db.collection(dbName).doc('main').collection(collectionName);
+  /// Returns a collection reference rooted under:
+  /// {organizationName}_{createdDate} (coll) -> {documentId} (doc) -> {subCollectionName} (coll)
+  /// This follows the format: OrganizationName_createdDate
+  /// Standardized tenant collection path: {tenantId} (coll) -> data (doc) -> {subCollection} (coll)
+  CollectionReference<Map<String, dynamic>> collection(
+    String collectionName, {
+    String? tenantId,
+    String? appId,
+  }) {
+    final effectiveTenant = tenantId ?? ThemeService.instance.databaseName;
+    final effectiveApp = appId ?? 'data';
+    return _db
+        .collection(effectiveTenant)
+        .doc(effectiveApp)
+        .collection(collectionName);
   }
 
-  // Collection reference for subscriptions
-  CollectionReference get subscriptionsRef => collection('subscriptions');
+  /// Tenant-specific reference for subscriptions
+  CollectionReference<Map<String, dynamic>> subscriptionsRef({
+    required String tenantId,
+    String? appId,
+  }) => collection('subscriptions', tenantId: tenantId, appId: appId);
+
+  /// Tenant-specific reference for referral codes
+  CollectionReference<Map<String, dynamic>> referralCodesRef({
+    required String tenantId,
+    String? appId,
+  }) => collection('referral_codes', tenantId: tenantId, appId: appId);
+
+  /// Tenant-specific reference for branding
+  DocumentReference<Map<String, dynamic>> brandingDoc({
+    required String tenantId,
+    String? appId,
+  }) => collection('branding', tenantId: tenantId, appId: appId).doc('config');
+
+  // --- Global User Directory ---
+  // Maps UID -> AppName/TenantID
+  Future<void> saveUserDirectory({
+    required String uid,
+    required String tenantId,
+    required String role,
+  }) async {
+    // 1. Local tenant mapping (for tenant-specific user management)
+    await collection('users', tenantId: tenantId).doc(uid).set({
+      'tenantId': tenantId,
+      'role': role,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    // 2. Global lookup (for routing during login)
+    await _db.collection('global_user_directory').doc(uid).set({
+      'tenantId': tenantId,
+      'role': role,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<String?> getUserTenantAssociation(String uid) async {
+    try {
+      final doc = await _db.collection('global_user_directory').doc(uid).get();
+      if (doc.exists) {
+        return doc.data()?['tenantId'] as String?;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// New: Get User Role and Org/App associations
+  Future<Map<String, dynamic>?> getUserMetadata(String uid) async {
+    try {
+      final doc = await _db.collection('global_user_directory').doc(uid).get();
+      if (doc.exists) {
+        return doc.data();
+      }
+    } catch (_) {}
+    return null;
+  }
 
   Future<T> runTransaction<T>(
     Future<T> Function(Transaction transaction) updateFunction,
@@ -23,15 +91,17 @@ class FirestoreService {
     return _db.runTransaction(updateFunction);
   }
 
-  // Create/update current subscription for a user
+  // Create/update current subscription for a tenant user
   Future<void> upsertSubscription({
     required String uid,
+    required String tenantId,
     required String planName,
     required bool isYearly,
     required int price,
     int? originalPrice,
     String paymentMethod = 'unknown',
     Map<String, dynamic>? brandingData,
+    String? appId,
   }) async {
     final now = DateTime.now();
     final nextBilling = isYearly
@@ -54,13 +124,22 @@ class FirestoreService {
       data['branding'] = brandingData;
     }
 
-    // Save to valid firestore path: [dbName]/main/subscriptions/{uid}
-    await subscriptionsRef.doc(uid).set(data, SetOptions(merge: true));
+    await subscriptionsRef(
+      tenantId: tenantId,
+      appId: appId,
+    ).doc(uid).set(data, SetOptions(merge: true));
   }
 
-  // Stream subscription for a specific user
-  Stream<Map<String, dynamic>?> streamSubscription(String uid) {
-    return subscriptionsRef.doc(uid).snapshots().map((snapshot) {
+  // Stream subscription for a specific user within a tenant
+  Stream<Map<String, dynamic>?> streamSubscription(
+    String uid,
+    String tenantId, {
+    String? appId,
+  }) {
+    return subscriptionsRef(
+      tenantId: tenantId,
+      appId: appId,
+    ).doc(uid).snapshots().map((snapshot) {
       if (snapshot.exists && snapshot.data() != null) {
         return snapshot.data() as Map<String, dynamic>;
       }
@@ -68,25 +147,85 @@ class FirestoreService {
     });
   }
 
-  // Update only branding data for a user
+  // Update only branding data for a tenant
   Future<void> updateBranding({
-    required String uid,
+    required String tenantId,
     required Map<String, dynamic> brandingData,
+    String? appId,
   }) async {
-    await subscriptionsRef.doc(uid).set({
-      'branding': brandingData,
+    await brandingDoc(tenantId: tenantId, appId: appId).set({
+      ...brandingData,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
   // Create an app-specific collection to store branding configuration
   Future<void> saveAppBranding({
-    required String appName,
+    required String tenantId,
     required Map<String, dynamic> brandingData,
+    String? appId,
   }) async {
-    await collection(appName).doc('branding').set({
-      ...brandingData,
-      'updatedAt': FieldValue.serverTimestamp(),
+    await brandingDoc(
+      tenantId: tenantId,
+      appId: appId,
+    ).set({...brandingData, 'updatedAt': FieldValue.serverTimestamp()});
+  }
+
+  // --- Referral Code Logic ---
+
+  // Check if a referral code matches any active subscription/app
+  // Returns the appName associated with the code if valid, null otherwise.
+  Future<String?> validateReferralCode(
+    String code,
+    String tenantId, {
+    String? appId,
+  }) async {
+    try {
+      final doc = await referralCodesRef(
+        tenantId: tenantId,
+        appId: appId,
+      ).doc(code).get();
+      if (doc.exists) {
+        return doc.data()?['tenantId'] as String?;
+      }
+    } catch (e) {
+      // debugPrint('Error checking referral code: $e');
+    }
+    return null;
+  }
+
+  // Save a new referral code linked to a tenant
+  Future<void> saveReferralCode({
+    required String code,
+    required String tenantId,
+    required String adminUid,
+    String? appId,
+  }) async {
+    await referralCodesRef(tenantId: tenantId, appId: appId).doc(code).set({
+      'code': code,
+      'tenantId': tenantId,
+      'adminUid': adminUid,
+      'appId': appId,
+      'createdAt': FieldValue.serverTimestamp(),
+      'isActive': true,
     });
+  }
+
+  /// Global lookup for referral codes across all tenants (used during registration)
+  Future<String?> validateGlobalReferralCode(String code) async {
+    try {
+      final snapshot = await _db
+          .collectionGroup('referral_codes')
+          .where('code', isEqualTo: code)
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.first.get('tenantId') as String?;
+      }
+    } catch (e) {
+      // debugPrint('Error validating global referral code: $e');
+    }
+    return null;
   }
 }

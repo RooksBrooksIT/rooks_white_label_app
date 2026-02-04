@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EngineerUpdates extends StatefulWidget {
   const EngineerUpdates({super.key});
@@ -1957,6 +1958,78 @@ class _EngineerUpdateCardState extends State<EngineerUpdateCard> {
                             ],
                           ),
                         ),
+
+                        // Captured Location Section
+                        if (data['lat'] != null && data['lng'] != null) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.blue.withOpacity(0.2),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.location_on,
+                                  color: Colors.blue,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Logged Location',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Lat: ${data['lat'].toStringAsFixed(6)}, Lng: ${data['lng'].toStringAsFixed(6)}',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[800],
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    final lat = data['lat'];
+                                    final lng = data['lng'];
+                                    final url =
+                                        'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+                                    if (await canLaunchUrl(Uri.parse(url))) {
+                                      await launchUrl(
+                                        Uri.parse(url),
+                                        mode: LaunchMode.externalApplication,
+                                      );
+                                    }
+                                  },
+                                  icon: const Icon(Icons.map, size: 16),
+                                  label: const Text(
+                                    'View',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
 
                         // Only show payment info OR total amount, not both
                         if (payments != null && payments.isNotEmpty)

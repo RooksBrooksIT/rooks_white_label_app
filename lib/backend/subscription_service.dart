@@ -1,9 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import '../services/firestore_service.dart';
 
 /// A service class responsible for handling subscription-related Firestore operations.
 class SubscriptionService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirestoreService _firestore = FirestoreService.instance;
 
   /// Sanitizes the username by converting it to lowercase and removing all spaces
   /// and special characters.
@@ -37,11 +38,11 @@ class SubscriptionService {
     try {
       String usernameDate = generateUsernameDateSegment(username);
 
-      // Path: main (coll) -> {appName} (doc) -> {username_date} (coll) -> {autoId} (doc)
+      // Path: main/{appName}/subscriptions/{username_date}/entries/{autoId}
       await _firestore
-          .collection('main')
-          .doc(appName)
-          .collection(usernameDate)
+          .collection('subscriptions')
+          .doc(usernameDate)
+          .collection('entries')
           .add({
             'username': username,
             'email': email,

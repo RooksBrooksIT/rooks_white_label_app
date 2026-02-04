@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_rooks_app/backend/screens/admin_login_page.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
 
 class AdminSignup extends StatefulWidget {
   const AdminSignup({super.key});
@@ -35,16 +35,21 @@ class _AdminSignupState extends State<AdminSignup> {
 
     setState(() => _isLoading = true);
 
-    final result = await AdminLoginBackend.signup(email, password, name);
+    final result = await AuthStateService.instance.registerUser(
+      name: name,
+      email: email,
+      password: password,
+      role: 'admin',
+    );
 
     setState(() => _isLoading = false);
 
     if (result['success']) {
       if (!mounted) return;
-      _showSnackBar('Signup successful! Please login.');
+      _showSnackBar('Admin registration successful!');
       Navigator.pop(context); // Go back to login
     } else {
-      _showSnackBar(result['message']);
+      _showSnackBar(result['message'] ?? 'Registration failed');
     }
   }
 
