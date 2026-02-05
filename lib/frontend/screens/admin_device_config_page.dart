@@ -18,6 +18,7 @@ class _AdminDeviceConfigurationPageState
   bool _isLoading = false;
 
   Color get primaryColor => Theme.of(context).primaryColor;
+  Color get accentColor => primaryColor.withOpacity(0.1);
 
   @override
   void dispose() {
@@ -26,16 +27,45 @@ class _AdminDeviceConfigurationPageState
     super.dispose();
   }
 
+  IconData _getIconData(String type) {
+    String lowerType = type.toLowerCase();
+    if (lowerType.contains('desktop') ||
+        lowerType.contains('pc') ||
+        lowerType.contains('computer')) {
+      return Icons.desktop_windows;
+    } else if (lowerType.contains('tv') || lowerType.contains('television')) {
+      return Icons.tv;
+    } else if (lowerType.contains('laptop') || lowerType.contains('notebook')) {
+      return Icons.laptop;
+    } else if (lowerType.contains('mobile') || lowerType.contains('phone')) {
+      return Icons.phone_android;
+    } else if (lowerType.contains('tablet') || lowerType.contains('ipad')) {
+      return Icons.tablet_mac;
+    } else if (lowerType.contains('printer')) {
+      return Icons.print;
+    }
+    return Icons.devices_other;
+  }
+
   Future<void> _deleteDevice(String deviceType) async {
     try {
       await _firestore.collection('deviceDetails').doc(deviceType).delete();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Device "$deviceType" deleted successfully')),
+        SnackBar(
+          content: Text('Device "$deviceType" deleted successfully'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error deleting device: $e')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting device: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -44,116 +74,106 @@ class _AdminDeviceConfigurationPageState
         TextEditingController(text: deviceType);
     final TextEditingController editDescriptionController =
         TextEditingController(text: currentDescription);
+
     final result = await showDialog<bool>(
       context: context,
       builder: (context) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            double dialogWidth = constraints.maxWidth > 500
-                ? 500
-                : constraints.maxWidth * 0.9;
-            return Dialog(
-              child: Container(
-                width: dialogWidth,
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Edit Device',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: editDeviceTypeController,
-                      decoration: const InputDecoration(
-                        labelText: 'Device Type',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: editDescriptionController,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          child: const Text('Cancel'),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                          ),
-                          onPressed: () async {
-                            final newDeviceType = editDeviceTypeController.text
-                                .trim();
-                            final newDescription = editDescriptionController
-                                .text
-                                .trim();
-                            if (newDeviceType.isNotEmpty &&
-                                newDescription.isNotEmpty) {
-                              // If device type changed, delete old doc and create new one
-                              if (newDeviceType != deviceType) {
-                                final doc = await _firestore
-                                    .collection('deviceDetails')
-                                    .doc(deviceType)
-                                    .get();
-                                if (doc.exists) {
-                                  final data =
-                                      doc.data() as Map<String, dynamic>;
-                                  data['deviceType'] = newDeviceType;
-                                  data['description'] = newDescription;
-                                  await _firestore
-                                      .collection('deviceDetails')
-                                      .doc(deviceType)
-                                      .delete();
-                                  await _firestore
-                                      .collection('deviceDetails')
-                                      .doc(newDeviceType)
-                                      .set(data);
-                                }
-                              } else {
-                                await _firestore
-                                    .collection('deviceDetails')
-                                    .doc(deviceType)
-                                    .update({'description': newDescription});
-                              }
-                              Navigator.of(context).pop(true);
-                            }
-                          },
-                          child: const Text('Save'),
-                        ),
-                      ],
-                    ),
-                  ],
+        return AlertDialog(
+          title: const Text('Edit Device'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: editDeviceTypeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Device Name',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: editDescriptionController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
               ),
-            );
-          },
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Save'),
+            ),
+          ],
         );
       },
     );
+
     if (result == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Device "${editDeviceTypeController.text.trim()}" updated successfully',
-          ),
-        ),
-      );
+      final newDeviceType = editDeviceTypeController.text.trim();
+      final newDescription = editDescriptionController.text.trim();
+
+      if (newDeviceType.isNotEmpty && newDescription.isNotEmpty) {
+        try {
+          if (newDeviceType != deviceType) {
+            final doc = await _firestore
+                .collection('deviceDetails')
+                .doc(deviceType)
+                .get();
+            if (doc.exists) {
+              final data = doc.data() as Map<String, dynamic>;
+              data['deviceType'] = newDeviceType;
+              data['description'] = newDescription;
+              // Remove explicit icon storage, uses auto-mapping
+              data.remove('icon');
+              await _firestore
+                  .collection('deviceDetails')
+                  .doc(deviceType)
+                  .delete();
+              await _firestore
+                  .collection('deviceDetails')
+                  .doc(newDeviceType)
+                  .set(data);
+            }
+          } else {
+            await _firestore.collection('deviceDetails').doc(deviceType).update(
+              {'description': newDescription},
+            );
+          }
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Device updated successfully'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error updating device: $e'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -161,200 +181,115 @@ class _AdminDeviceConfigurationPageState
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
       builder: (context) {
         return Container(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 40,
                 height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).dividerColor,
+                  color: Colors.grey.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
+              const SizedBox(height: 20),
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: primaryColor.withOpacity(0.1),
+                child: Icon(
+                  _getIconData(deviceType),
+                  color: primaryColor,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 deviceType,
-                style: TextStyle(
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: primaryColor,
+                  fontSize: 20,
                 ),
               ),
               const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Theme.of(context).textTheme.bodyMedium?.color,
+              Text(
+                description,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.edit),
+                      label: const Text('Edit Details'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _editDevice(deviceType, description);
+                      },
+                    ),
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 24),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth < 400) {
-                    // Vertical layout for small screens
-                    return Column(
-                      children: [
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.edit),
-                            label: const Text('Edit'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryColor,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              _editDevice(deviceType, description);
-                            },
-                          ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      label: const Text(
+                        'Delete',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: const BorderSide(color: Colors.red),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            icon: Icon(
-                              Icons.delete,
-                              color: Theme.of(context).colorScheme.error,
+                      ),
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Delete Device?'),
+                            content: const Text(
+                              'Are you sure? This will remove this device configuration.',
                             ),
-                            label: Text(
-                              'Delete',
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel'),
                               ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Theme.of(
-                                context,
-                              ).colorScheme.error,
-                              side: BorderSide(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
-                            onPressed: () async {
-                              final shouldDelete = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Delete Device'),
-                                  content: const Text(
-                                    'Are you sure you want to delete this device? This action cannot be undone.',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Theme.of(
-                                          context,
-                                        ).colorScheme.error,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(true),
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text(
+                                  'Delete',
+                                  style: TextStyle(color: Colors.red),
                                 ),
-                              );
-                              if (shouldDelete == true) {
-                                Navigator.of(context).pop();
-                                await _deleteDevice(deviceType);
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-                    );
-                  } else {
-                    // Horizontal layout for larger screens
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.edit),
-                          label: const Text('Edit'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                          ),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            _editDevice(deviceType, description);
-                          },
-                        ),
-                        OutlinedButton.icon(
-                          icon: Icon(
-                            Icons.delete,
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                          label: Text(
-                            'Delete',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.error,
-                            side: BorderSide(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                          onPressed: () async {
-                            final shouldDelete = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Delete Device'),
-                                content: const Text(
-                                  'Are you sure you want to delete this device? This action cannot be undone.',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Theme.of(
-                                        context,
-                                      ).colorScheme.error,
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(true),
-                                    child: const Text('Delete'),
-                                  ),
-                                ],
                               ),
-                            );
-                            if (shouldDelete == true) {
-                              Navigator.of(context).pop();
-                              await _deleteDevice(deviceType);
-                            }
-                          },
-                        ),
-                      ],
-                    );
-                  }
-                },
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          if (!context.mounted) return;
+                          Navigator.of(context).pop();
+                          await _deleteDevice(deviceType);
+                        }
+                      },
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
             ],
           ),
         );
@@ -362,7 +297,6 @@ class _AdminDeviceConfigurationPageState
     );
   }
 
-  /// Gets the next incremental deviceId like DE001, DE002, etc.
   Future<String> _getNextDeviceId() async {
     final QuerySnapshot snapshot = await _firestore
         .collection('deviceDetails')
@@ -379,8 +313,7 @@ class _AdminDeviceConfigurationPageState
       }
     }
 
-    final nextNumber = maxNumber + 1;
-    return 'DE${nextNumber.toString().padLeft(3, '0')}';
+    return 'DE${(maxNumber + 1).toString().padLeft(3, '0')}';
   }
 
   Future<void> _addDevice() async {
@@ -388,347 +321,327 @@ class _AdminDeviceConfigurationPageState
     final String description = _descriptionController.text.trim();
 
     if (deviceType.isEmpty || description.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill all fields'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final nextDeviceId = await _getNextDeviceId();
-
-      final Map<String, dynamic> deviceData = {
+      await _firestore.collection('deviceDetails').doc(deviceType).set({
         'deviceType': deviceType,
         'description': description,
         'deviceId': nextDeviceId,
-      };
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
-      // Save document with deviceType as document ID
-      await _firestore
-          .collection('deviceDetails')
-          .doc(deviceType)
-          .set(deviceData);
-
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Device "$deviceType" added with ID $nextDeviceId'),
+          content: Text('"$deviceType" added successfully'),
+          behavior: SnackBarBehavior.floating,
         ),
       );
 
       _deviceTypeController.clear();
       _descriptionController.clear();
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error adding device: $e')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _clearFields() {
-    _deviceTypeController.clear();
-    _descriptionController.clear();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: primaryColor,
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text(
-          'Device Configuration',
-          style: TextStyle(color: Colors.white),
+          'Device Config',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
         ),
-        backgroundColor: primaryColor,
+        backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.white),
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool isSmallScreen = constraints.maxWidth < 600;
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 24),
+                  _buildAddDeviceCard(),
+                  const SizedBox(height: 32),
+                  const Text(
+                    'Configured Devices',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+          _buildDeviceGrid(),
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
+        ],
+      ),
+    );
+  }
 
-          return SingleChildScrollView(
-            padding: EdgeInsets.all(isSmallScreen ? 16.0 : 24.0),
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [primaryColor, primaryColor.withOpacity(0.8)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.settings_suggest, color: Colors.white, size: 40),
+          const SizedBox(width: 16),
+          Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.devices,
-                  color: Colors.white,
-                  size: isSmallScreen ? 40 : 50,
-                ),
-                SizedBox(height: isSmallScreen ? 8 : 10),
                 const Text(
-                  'Device',
+                  'Configuration Hub',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: isSmallScreen ? 16 : 25),
-                Card(
-                  elevation: 8,
+                Text(
+                  'Manage your hardware inventory and settings',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddDeviceCard() {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Add New Device',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _deviceTypeController,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.devices),
+                hintText: 'Device Name (e.g. Office PC)',
+                filled: true,
+                fillColor: Colors.grey[50],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _descriptionController,
+              maxLines: 2,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.description_outlined),
+                hintText: 'Technical description...',
+                filled: true,
+                fillColor: Colors.grey[50],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _addDevice,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  color: Theme.of(context).cardColor,
-                  child: Padding(
-                    padding: EdgeInsets.all(isSmallScreen ? 16.0 : 20.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextField(
-                          controller: _deviceTypeController,
-                          decoration: InputDecoration(
-                            labelText: 'Device Type',
-                            hintText: 'Enter device type',
-                            prefixIcon: const Icon(Icons.devices_other),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: isSmallScreen ? 12 : 20),
-                        TextField(
-                          controller: _descriptionController,
-                          maxLines: 3,
-                          decoration: InputDecoration(
-                            labelText: 'Description',
-                            hintText: 'Enter description',
-                            prefixIcon: const Icon(Icons.description),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: isSmallScreen ? 20 : 30),
-                        isSmallScreen
-                            ? Column(
-                                children: [
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton.icon(
-                                      onPressed: _isLoading ? null : _addDevice,
-                                      icon: _isLoading
-                                          ? const SizedBox(
-                                              width: 16,
-                                              height: 16,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: Colors.white,
-                                              ),
-                                            )
-                                          : const Icon(Icons.add),
-                                      label: Text(
-                                        _isLoading ? 'Adding...' : 'Add Device',
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: primaryColor,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: OutlinedButton.icon(
-                                      onPressed: _clearFields,
-                                      icon: const Icon(Icons.clear),
-                                      label: const Text('Clear'),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: primaryColor,
-                                        side: BorderSide(color: primaryColor),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  OutlinedButton.icon(
-                                    onPressed: _clearFields,
-                                    icon: const Icon(Icons.clear),
-                                    label: const Text('Clear'),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: primaryColor,
-                                      side: BorderSide(color: primaryColor),
-                                    ),
-                                  ),
-                                  ElevatedButton.icon(
-                                    onPressed: _isLoading ? null : _addDevice,
-                                    icon: _isLoading
-                                        ? const SizedBox(
-                                            width: 16,
-                                            height: 16,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : const Icon(Icons.add),
-                                    label: Text(
-                                      _isLoading ? 'Adding...' : 'Add Device',
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: primaryColor,
-                                      foregroundColor: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ],
-                    ),
-                  ),
+                  elevation: 0,
                 ),
-                SizedBox(height: isSmallScreen ? 20 : 30),
-                // Display deviceDetails collection as desktop cards
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'All Devices',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                StreamBuilder<QuerySnapshot>(
-                  stream: _firestore.collection('deviceDetails').snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
-                          ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'Register Device',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
-                      );
-                    }
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return const Text(
-                        'No devices found.',
-                        style: TextStyle(color: Colors.white70),
-                      );
-                    }
-                    final docs = snapshot.data!.docs;
-
-                    return GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: isSmallScreen
-                            ? 1
-                            : constraints.maxWidth > 900
-                            ? 4
-                            : constraints.maxWidth > 600
-                            ? 3
-                            : 2,
-                        childAspectRatio: isSmallScreen ? 1.8 : 1.5,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
                       ),
-                      itemCount: docs.length,
-                      itemBuilder: (context, index) {
-                        final data = docs[index].data() as Map<String, dynamic>;
-                        final deviceType = data['deviceType'] ?? '';
-                        final description = data['description'] ?? '';
-                        final deviceId = data['deviceId'] ?? '';
-                        return InkWell(
-                          onTap: () =>
-                              _showDeviceOptions(deviceType, description),
-                          borderRadius: BorderRadius.circular(12),
-                          child: Card(
-                            elevation: 6,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            color: Theme.of(context).cardColor,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.devices_other,
-                                        color: primaryColor,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          deviceType,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: primaryColor,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Icon(
-                                        Icons.description,
-                                        color: Theme.of(
-                                          context,
-                                        ).textTheme.bodyMedium?.color,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          description,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Theme.of(
-                                              context,
-                                            ).textTheme.bodyMedium?.color,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    deviceId,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeviceGrid() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore.collection('deviceDetails').snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SliverToBoxAdapter(
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final docs = snapshot.data!.docs;
+        if (docs.isEmpty) {
+          return const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(
+                child: Text(
+                  'No devices configured yet.',
+                  style: TextStyle(color: Colors.grey),
                 ),
-                SizedBox(height: isSmallScreen ? 16 : 24),
-              ],
+              ),
             ),
           );
-        },
-      ),
+        }
+
+        return SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 200,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 0.85,
+            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final data = docs[index].data() as Map<String, dynamic>;
+              final type = data['deviceType'] ?? 'Unknown';
+              final desc = data['description'] ?? '';
+              final id = data['deviceId'] ?? '';
+
+              return InkWell(
+                onTap: () => _showDeviceOptions(type, desc),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: primaryColor.withOpacity(0.05),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _getIconData(type),
+                          color: primaryColor,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        type,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        desc,
+                        style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const Spacer(),
+                      Text(
+                        id,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                          color: primaryColor.withOpacity(0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }, childCount: docs.length),
+          ),
+        );
+      },
     );
   }
 }

@@ -14,9 +14,10 @@ class BrandModelBackend {
     return '${cleanName}Brands';
   }
 
-  /// Generates a document ID from a brand name.
-  String generateDocumentId(String brandName) {
-    return brandName
+  /// Generates a document ID from a brand name and model.
+  String generateDocumentId(String brandName, String model) {
+    String combined = '${brandName}_$model';
+    return combined
         .toLowerCase()
         .replaceAll(RegExp(r'[^a-z0-9]'), '_')
         .replaceAll(RegExp(r'_+'), '_')
@@ -38,6 +39,24 @@ class BrandModelBackend {
     }
 
     return allDeviceTypes;
+  }
+
+  /// Saves a new device type to Firestore.
+  Future<void> saveDeviceType(String deviceType, String collectionName) async {
+    final existingSnapshot = await _firestore
+        .collection(deviceTypesCollection)
+        .where('deviceType', isEqualTo: deviceType)
+        .get();
+
+    if (existingSnapshot.docs.isEmpty) {
+      await _firestore.collection(deviceTypesCollection).add({
+        'deviceType': deviceType,
+        'collectionName': collectionName,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      throw Exception('Device type "$deviceType" already exists');
+    }
   }
 
   /// Adds or updates a device record.
@@ -78,7 +97,7 @@ class BrandModelBackend {
         });
       }
 
-      String documentId = generateDocumentId(brandName);
+      String documentId = generateDocumentId(brandName, model);
 
       final existingDoc = await _firestore
           .collection(collectionName)
@@ -86,7 +105,9 @@ class BrandModelBackend {
           .get();
 
       if (existingDoc.exists) {
-        throw Exception('A device with brand name "$brandName" already exists');
+        throw Exception(
+          'A device with brand "$brandName" and model "$model" already exists',
+        );
       }
 
       // Generate brandId (BR001, BR002, etc.)

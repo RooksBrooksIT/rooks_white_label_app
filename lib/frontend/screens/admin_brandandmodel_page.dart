@@ -1453,7 +1453,7 @@ class _AddDeviceDialogState extends State<AddDeviceDialog> {
   Color get primaryColor => Theme.of(context).primaryColor;
 
   final TextEditingController _deviceTypeController = TextEditingController();
-  final bool _isCreating = false;
+  bool _isCreating = false;
   final BrandModelBackend _backend = BrandModelBackend();
 
   @override
@@ -1476,11 +1476,31 @@ class _AddDeviceDialogState extends State<AddDeviceDialog> {
       return;
     }
 
-    final String collectionName = _backend.generateCollectionName(deviceType);
+    setState(() {
+      _isCreating = true;
+    });
 
-    Navigator.of(
-      context,
-    ).pop({'deviceType': deviceType, 'collectionName': collectionName});
+    try {
+      final String collectionName = _backend.generateCollectionName(deviceType);
+      await _backend.saveDeviceType(deviceType, collectionName);
+
+      if (!mounted) return;
+      Navigator.of(
+        context,
+      ).pop({'deviceType': deviceType, 'collectionName': collectionName});
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isCreating = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error creating device type: $e'),
+          backgroundColor: const Color(0xFFD32F2F),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
