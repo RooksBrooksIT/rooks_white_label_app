@@ -56,6 +56,15 @@ class _AMCTrackMyServiceState extends State<AMCTrackMyService> {
     }
   }
 
+  Timestamp _parseTimestamp(dynamic v) {
+    if (v is Timestamp) return v;
+    if (v is String) {
+      DateTime? dt = DateTime.tryParse(v);
+      if (dt != null) return Timestamp.fromDate(dt);
+    }
+    return Timestamp.now();
+  }
+
   // Helper method for consistent info rows with icons
   Widget _buildInfoRow(String label, String value, IconData icon) {
     return Padding(
@@ -105,7 +114,7 @@ class _AMCTrackMyServiceState extends State<AMCTrackMyService> {
     final amount = (data['amount'] != null)
         ? data['amount'].toString()
         : '0'; // fallback as string
-    final Timestamp? timestamp = data['timestamp'] as Timestamp?;
+    final Timestamp? timestamp = _parseTimestamp(data['timestamp']);
     final customerID = (data['id'] ?? '-').toString();
     final String dateString = timestamp != null
         ? DateFormat(

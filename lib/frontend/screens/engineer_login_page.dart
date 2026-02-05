@@ -46,6 +46,7 @@ class _EngineerloginState extends State<Engineerlogin> {
         _passwordController.text.trim(),
         _referralCodeController.text.trim(),
       );
+      if (!mounted) return;
       setState(() => _isLoading = false);
 
       if (result['success']) {
@@ -229,27 +230,7 @@ class _EngineerloginState extends State<Engineerlogin> {
                   width: double.infinity,
                   height: 60,
                   child: ElevatedButton(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Access Restricted'),
-                          content: const Text('Contact your admin'),
-                          actions: [
-                            TextButton(
-                              style: TextButton.styleFrom(
-                                foregroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimary,
-                                backgroundColor: Theme.of(context).primaryColor,
-                              ),
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              child: const Text('OK'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                    onPressed: _login,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,

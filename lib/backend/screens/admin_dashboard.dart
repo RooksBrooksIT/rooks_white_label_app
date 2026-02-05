@@ -1,7 +1,50 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 
 class AdminDashboardBackend {
+  static Future<Map<String, String>> getAdminProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return {'name': 'Admin', 'email': ''};
+
+    try {
+      final doc = await FirestoreService.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          'name': data['name'] ?? 'Admin',
+          'email': data['email'] ?? user.email ?? '',
+        };
+      }
+    } catch (e) {
+      print('Error fetching admin profile: $e');
+    }
+    return {'name': 'Admin', 'email': user.email ?? ''};
+  }
+
+  static Future<String> getReferralCode() async {
+    try {
+      // Using FirestoreService to fetch referral code for current tenant efficiently
+      final snapshot = await FirestoreService.instance
+          .collection('referral_codes')
+          .where('isActive', isEqualTo: true)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        final data = snapshot.docs.first.data();
+        return data['code']?.toString() ?? snapshot.docs.first.id;
+      }
+    } catch (e) {
+      print('Error fetching referral code: $e');
+    }
+    return ''; // Return empty if not found
+  }
+
   static Stream<int> getEngineerUpdateCountStream() {
     return FirestoreService.instance
         .collection('Admin_details')

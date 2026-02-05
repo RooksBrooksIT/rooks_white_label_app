@@ -41,6 +41,15 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
         });
   }
 
+  Timestamp _parseTimestamp(dynamic v) {
+    if (v is Timestamp) return v;
+    if (v is String) {
+      DateTime? dt = DateTime.tryParse(v);
+      if (dt != null) return Timestamp.fromDate(dt);
+    }
+    return Timestamp.now();
+  }
+
   @override
   Widget build(BuildContext context) {
     final adminDetailsStream = _buildAdminDetailsStream();
@@ -165,7 +174,9 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
                                 ?.toString()
                                 .trim()
                                 .toLowerCase();
-                            final timestamp = data['timestamp'] as Timestamp?;
+                            final timestamp = _parseTimestamp(
+                              data['timestamp'],
+                            );
 
                             if (selectedEngineer == null) return false;
 
@@ -310,8 +321,9 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
                                                     ?.toString()
                                                     .trim()
                                                     .toLowerCase();
-                                            final timestamp =
-                                                data['timestamp'] as Timestamp?;
+                                            final timestamp = _parseTimestamp(
+                                              data['timestamp'],
+                                            );
                                             if (selectedEngineer == null) {
                                               return false;
                                             }

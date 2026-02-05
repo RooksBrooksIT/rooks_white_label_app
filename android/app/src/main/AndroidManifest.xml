@@ -3,10 +3,11 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     
-    <!-- ADD THESE 3 LINES FOR LOCATION TRACKING -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     
     <application
         android:label="subscription_rooks_app"
@@ -45,8 +46,9 @@
         
         <!-- ADD THIS SERVICE FOR BACKGROUND LOCATION -->
         <service 
-            android:name="com.lyokone.location.LocationService"
-            android:foregroundServiceType="location" />
+            android:name="com.baseflow.geolocator.GeolocatorForegroundService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

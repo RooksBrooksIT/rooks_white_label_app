@@ -264,8 +264,9 @@ class _EngineerManagementPageState extends State<EngineerManagementPage>
               icon: Icons.alternate_email_rounded,
               keyboardType: TextInputType.emailAddress,
               validator: (value) {
-                if (value == null || value.isEmpty)
+                if (value == null || value.isEmpty) {
                   return 'Please enter an email';
+                }
                 if (!RegExp(
                   r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                 ).hasMatch(value)) {
@@ -283,8 +284,9 @@ class _EngineerManagementPageState extends State<EngineerManagementPage>
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               maxLength: 10,
               validator: (value) {
-                if (value == null || value.isEmpty)
+                if (value == null || value.isEmpty) {
                   return 'Please enter a phone number';
+                }
                 if (value.length != 10) return 'Phone number must be 10 digits';
                 return null;
               },

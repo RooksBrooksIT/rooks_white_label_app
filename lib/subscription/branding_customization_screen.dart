@@ -9,7 +9,6 @@ import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/storage_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
-import 'package:subscription_rooks_app/frontend/screens/app_main_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class BrandingCustomizationScreen extends StatefulWidget {

@@ -117,7 +117,7 @@ class _GlobalRegistrationScreenState extends State<GlobalRegistrationScreen> {
                     border: Border.all(color: Colors.grey[200]!),
                   ),
                   child: DropdownButtonFormField<String>(
-                    value: _selectedRole,
+                    initialValue: _selectedRole,
                     decoration: const InputDecoration(
                       labelText: 'I am a:',
                       border: InputBorder.none,

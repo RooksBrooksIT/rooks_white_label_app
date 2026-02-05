@@ -14,32 +14,27 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:firebase_database/firebase_database.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:subscription_rooks_app/services/location_service.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
-// Professional Color Scheme - Dynamic
 class ProfessionalTheme {
-  // Primary Colors - Dynamic from context
   static Color primary(BuildContext context) => Theme.of(context).primaryColor;
   static Color primaryDark(BuildContext context) =>
-      Theme.of(context).primaryColor; // Or darken
+      Theme.of(context).primaryColor;
   static Color primaryLight(BuildContext context) =>
       Theme.of(context).primaryColor.withOpacity(0.8);
   static Color primaryExtraLight(BuildContext context) =>
       Theme.of(context).primaryColor.withOpacity(0.1);
 
-  // Neutral Colors - Clean and professional
   static Color background(BuildContext context) =>
       Theme.of(context).scaffoldBackgroundColor;
   static Color surface(BuildContext context) => Theme.of(context).cardColor;
   static Color surfaceElevated(BuildContext context) =>
       Theme.of(context).cardColor;
 
-  // Semantic Colors
   static const Color success = Color(0xFF10B981);
   static const Color successLight = Color(0xFFD1FAE5);
   static const Color warning = Color(0xFFF59E0B);
@@ -49,7 +44,6 @@ class ProfessionalTheme {
   static Color info(BuildContext context) => Theme.of(context).primaryColor;
   static const Color infoLight = Color(0xFFCFFAFE);
 
-  // Text Colors
   static Color textPrimary(BuildContext context) =>
       Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF0F172A);
   static Color textSecondary(BuildContext context) =>
@@ -59,18 +53,16 @@ class ProfessionalTheme {
   static Color textInverse(BuildContext context) =>
       Theme.of(context).colorScheme.onPrimary;
 
-  // Border Colors
   static Color borderLight(BuildContext context) =>
       Theme.of(context).dividerColor.withOpacity(0.5);
   static Color borderMedium(BuildContext context) =>
       Theme.of(context).dividerColor;
 
-  // Shadows - Subtle and professional
   static List<BoxShadow> cardShadow = [
     BoxShadow(
       color: Color(0x0A000000),
-      blurRadius: 8,
-      offset: Offset(0, 1),
+      blurRadius: 10,
+      offset: Offset(0, 4),
       spreadRadius: 0,
     ),
   ];
@@ -92,6 +84,22 @@ class ProfessionalTheme {
       spreadRadius: 0,
     ),
   ];
+
+  // Utility for section headers
+  static TextStyle sectionHeader(BuildContext context) => TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: textSecondary(context),
+    letterSpacing: 0.5,
+  );
+
+  // Utility for card decoration
+  static BoxDecoration cardDecoration(BuildContext context) => BoxDecoration(
+    color: surface(context),
+    borderRadius: BorderRadius.circular(16),
+    boxShadow: cardShadow,
+    border: Border.all(color: borderLight(context)),
+  );
 }
 
 // Professional Animations
@@ -187,7 +195,6 @@ class AdminDetails {
       id: data['id'] ?? '',
       lat: (data['lat'] as num?)?.toDouble(),
       lng: (data['lng'] as num?)?.toDouble(),
-      // AssignedTimestamp: data['AssignedTimestamp'],
     );
   }
 
@@ -976,6 +983,7 @@ class _EngineerPageState extends State<EngineerPage> {
   }
 
   void _performLogout() async {
+    await LocationService.instance.stopTracking(widget.userName);
     Navigator.pop(context);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('engineerEmail');
@@ -1007,23 +1015,13 @@ class _EngineerPageState extends State<EngineerPage> {
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
             SliverAppBar(
-              iconTheme: IconThemeData(
-                color:
-                    Theme.of(context).appBarTheme.foregroundColor ??
-                    Colors.white,
-              ),
-              expandedHeight: 120,
+              iconTheme: const IconThemeData(color: Colors.white),
+              expandedHeight: 140,
               collapsedHeight: 64,
               floating: true,
               pinned: true,
-              backgroundColor: ProfessionalTheme.surface(context),
+              backgroundColor: ProfessionalTheme.primary(context),
               elevation: 0,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-              ),
               flexibleSpace: FlexibleSpaceBar(
                 title: AnimatedOpacity(
                   duration: ProfessionalAnimations.quick,
@@ -1032,63 +1030,148 @@ class _EngineerPageState extends State<EngineerPage> {
                     _currentSection == 'completed'
                         ? 'Completed Tickets'
                         : 'Engineer Dashboard',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: ProfessionalTheme.textPrimary(context),
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
                     ),
                   ),
                 ),
-                background: Container(
-                  decoration: BoxDecoration(
-                    color: ProfessionalTheme.primary(context),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(16),
-                      bottomRight: Radius.circular(16),
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            ProfessionalTheme.primary(context),
+                            ProfessionalTheme.primaryDark(context),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 24, bottom: 16),
-                    child: Align(
-                      alignment: Alignment.bottomLeft,
+                    // Optional: Add a subtle pattern or overlay
+                    Opacity(
+                      opacity: 0.1,
+                      child: Icon(
+                        Icons.engineering,
+                        size: 200,
+                        color: Colors.white.withOpacity(0.2),
+                      ),
+                    ),
+                    Positioned(
+                      left: 20,
+                      bottom: 24,
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            'Welcome back,',
+                            'OVERVIEW',
                             style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 16,
-                              color: ProfessionalTheme.textInverse(
-                                context,
-                              ).withOpacity(0.9),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white.withOpacity(0.7),
+                              letterSpacing: 2.0,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             widget.userName,
-                            style: TextStyle(
-                              fontSize: 22,
-                              color: ProfessionalTheme.textInverse(context),
-                              fontWeight: FontWeight.w700,
+                            style: const TextStyle(
+                              fontSize: 28,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1.0,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
               actions: [
-                IconButton(
-                  icon: Icon(
-                    Icons.menu,
-                    color: innerBoxIsScrolled
-                        ? ProfessionalTheme.textPrimary(context)
-                        : ProfessionalTheme.textInverse(context),
+                // Live Location Toggle
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.bug_report_outlined,
+                        color: Colors.white70,
+                        size: 18,
+                      ),
+                      tooltip: 'Test Connection',
+                      onPressed: () {
+                        LocationService.instance.testConnection(
+                          widget.userName,
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Connection test triggered. Check your logs.',
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    Text(
+                      LocationService.instance.isTracking
+                          ? 'ONLINE'
+                          : 'OFFLINE',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Switch(
+                      value: LocationService.instance.isTracking,
+                      onChanged: (value) async {
+                        if (value) {
+                          bool success = await LocationService.instance
+                              .startTracking(widget.userName);
+                          if (!success && mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Please enable location permissions to go online',
+                                ),
+                              ),
+                            );
+                          }
+                        } else {
+                          await LocationService.instance.stopTracking(
+                            widget.userName,
+                          );
+                        }
+                        setState(() {});
+                      },
+                      activeColor: ProfessionalTheme.success,
+                      activeTrackColor: ProfessionalTheme.success.withOpacity(
+                        0.5,
+                      ),
+                      inactiveThumbColor: Colors.grey[400],
+                      inactiveTrackColor: Colors.white.withOpacity(0.2),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    shape: BoxShape.circle,
                   ),
-                  onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+                  child: IconButton(
+                    icon: const Icon(Icons.menu_rounded, color: Colors.white),
+                    onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+                  ),
                 ),
               ],
             ),
@@ -1337,31 +1420,53 @@ class _EngineerPageState extends State<EngineerPage> {
   }
 
   Widget _buildSearchField() {
-    return TextField(
-      controller: _searchController,
-      onChanged: _onSearchChanged,
-      decoration: InputDecoration(
-        hintText: 'Search by Booking ID or Customer Name...',
-        prefixIcon: Icon(
-          Icons.search,
-          color: ProfessionalTheme.textTertiary(context),
+    return Container(
+      decoration: BoxDecoration(
+        color: ProfessionalTheme.surface(context),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: _onSearchChanged,
+        style: TextStyle(
+          color: ProfessionalTheme.textPrimary(context),
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
         ),
-        suffixIcon: _searchQuery.isNotEmpty
-            ? IconButton(
-                icon: Icon(
-                  Icons.clear,
-                  color: ProfessionalTheme.textTertiary(context),
-                ),
-                onPressed: _clearSearch,
-              )
-            : null,
-        filled: true,
-        fillColor: ProfessionalTheme.surface(context),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+        decoration: InputDecoration(
+          hintText: 'Search by Booking ID or Customer...',
+          hintStyle: TextStyle(
+            color: ProfessionalTheme.textTertiary(context),
+            fontWeight: FontWeight.w500,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: ProfessionalTheme.primary(context),
+            size: 22,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(
+                    Icons.cancel_rounded,
+                    color: ProfessionalTheme.textTertiary(context),
+                    size: 20,
+                  ),
+                  onPressed: _clearSearch,
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       ),
     );
   }
@@ -1535,183 +1640,27 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
   double? _capturedLat;
   double? _capturedLng;
 
-  // Location Tracking
-  StreamSubscription<Position>? _positionStream;
-  bool _isTracking = false;
-
-  Future<void> _requestLocationPermission() async {
-    final status = await Permission.location.request();
-    if (status.isGranted) {
-      // Also request always allow for background tracking if possible
-      await Permission.locationAlways.request();
-    }
-  }
-
   Future<void> _startLocationTracking({bool isOrderTaken = false}) async {
-    // If we are just continuing tracking (Order Received), don't reset if already tracking
-    if (_isTracking && !isOrderTaken) return;
-
-    await _stopLocationTracking(
-      disposeOnly: true,
-    ); // Clean up old stream if any
-
-    await _requestLocationPermission();
-
-    if (await Permission.location.isGranted) {
-      try {
-        // Initial update
-        final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        );
-
-        final dbRef = FirebaseDatabase.instance.ref();
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-
-        // 1. Update engineer node
-        await dbRef.child('engineers/${widget.userName}').update({
-          'name': widget.userName,
-          'status': 'ACTIVE',
-          'activeBookingId': widget.booking.bookingId,
-          'trackingStatus': 'ACTIVE',
-          'lastSeen': timestamp,
-          'location': {
-            'lat': position.latitude,
-            'lng': position.longitude,
-            'timestamp': timestamp,
-            'accuracy': position.accuracy,
-            'speed': position.speed,
-            'heading': position.heading,
-          },
-        });
-
-        // 2. Create/Update order_tracking node
-        await dbRef.child('order_tracking/${widget.booking.bookingId}').update({
-          'engineerName': widget.userName,
-          'status': isOrderTaken ? 'ORDER_TAKEN' : 'ORDER_RECEIVED',
-          'trackingStatus': 'ACTIVE',
-          'lastUpdated': timestamp,
-          'lastLocation': {
-            'lat': position.latitude,
-            'lng': position.longitude,
-            'timestamp': timestamp,
-          },
-        });
-
-        // _updateFirebaseLocation(position); // Calls duplicate update, removed
-
-        // Stream updates
-        _positionStream =
-            Geolocator.getPositionStream(
-              locationSettings: const LocationSettings(
-                accuracy: LocationAccuracy.high,
-                distanceFilter: 10, // Update every 10m
-              ),
-            ).listen((Position position) {
-              _updateFirebaseLocation(position);
-            });
-
-        setState(() {
-          _isTracking = true;
-        });
-
-        // Show snackbar
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Live location tracking started'),
-              backgroundColor: ProfessionalTheme.success,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      } catch (e) {
-        debugPrint('Error starting location tracking: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to start tracking: $e'),
-              backgroundColor: ProfessionalTheme.error,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Location permission is required for tracking'),
-            backgroundColor: ProfessionalTheme.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+    bool success = await LocationService.instance.startTracking(
+      widget.userName,
+      bookingId: widget.booking.bookingId,
+    );
+    if (success && mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Live location tracking started'),
+          backgroundColor: ProfessionalTheme.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
-  Future<void> _stopLocationTracking({bool disposeOnly = false}) async {
-    await _positionStream?.cancel();
-    _positionStream = null;
-
-    if (!disposeOnly) {
-      final dbRef = FirebaseDatabase.instance.ref();
-      try {
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        // Update order_tracking to STOPPED
-        await dbRef.child('order_tracking/${widget.booking.bookingId}').update({
-          'trackingStatus': 'STOPPED',
-          'lastUpdated': timestamp,
-        });
-
-        // Optional: Clear active booking on engineer node?
-        // Requirement didn't explicitly ask to clear activeBookingId, but implies tracking stops.
-        // keeping minimal changes as requested.
-      } catch (e) {
-        debugPrint('Error stopping tracking in firebase: $e');
-      }
-    }
-
+  Future<void> _stopLocationTracking() async {
+    await LocationService.instance.stopTracking(widget.userName);
     if (mounted) {
-      setState(() {
-        _isTracking = false;
-      });
-    }
-  }
-
-  Future<void> _updateFirebaseLocation(Position position) async {
-    final dbRef = FirebaseDatabase.instance.ref();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    try {
-      // 1. Update Engineers Node
-      await dbRef.child('engineers/${widget.userName}').update({
-        'name': widget.userName,
-        // 'status': 'on_the_way', // Don't overwrite status here if possible, or keep as is?
-        // Requirement says "Continue updating engineers/{engineerName}"
-        // 'status': 'ACTIVE', // Enforce active?
-        'lastSeen': timestamp,
-        'location': {
-          'lat': position.latitude,
-          'lng': position.longitude,
-          'timestamp': timestamp,
-          'accuracy': position.accuracy,
-          'speed': position.speed,
-          'heading': position.heading,
-        },
-      });
-
-      // 2. Mirror to order_tracking
-      await dbRef.child('order_tracking/${widget.booking.bookingId}').update({
-        'lastLocation': {
-          'lat': position.latitude,
-          'lng': position.longitude,
-          'timestamp': timestamp,
-          'heading': position.heading,
-          'speed': position.speed,
-        },
-        'lastUpdated': timestamp,
-      });
-    } catch (e) {
-      debugPrint('Error updating Firebase location: $e');
+      setState(() {});
     }
   }
 
@@ -2130,193 +2079,215 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: ProfessionalTheme.primary(context),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${widget.index + 1}',
-                      style: TextStyle(
-                        color: ProfessionalTheme.textInverse(context),
-                        fontWeight: FontWeight.w600,
+    return AnimatedContainer(
+      duration: ProfessionalAnimations.medium,
+      curve: ProfessionalAnimations.easeInOut,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: ProfessionalTheme.cardDecoration(context),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: _toggleExpanded,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Index Badge
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          ProfessionalTheme.primary(context),
+                          ProfessionalTheme.primaryDark(context),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: ProfessionalTheme.primary(
+                            context,
+                          ).withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${widget.index + 1}',
+                        style: TextStyle(
+                          color: ProfessionalTheme.textInverse(context),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: ProfessionalTheme.surfaceElevated(context),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: ProfessionalTheme.borderLight(context),
-                              ),
-                            ),
-                            child: Text(
+                  const SizedBox(width: 12),
+                  // Info Area
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
                               widget.booking.bookingId,
                               style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: ProfessionalTheme.textSecondary(context),
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          _buildStatusChip(_currentStatus),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              widget.booking.customerName,
-                              style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
-                                color: ProfessionalTheme.textPrimary(context),
+                                color: ProfessionalTheme.textSecondary(context),
+                                letterSpacing: 0.5,
                               ),
                             ),
+                            const Spacer(),
+                            _buildStatusChip(_currentStatus),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          widget.booking.customerName,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: ProfessionalTheme.textPrimary(context),
+                            letterSpacing: -0.2,
                           ),
-                          Text(
-                            widget.booking.id,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: ProfessionalTheme.textPrimary(context),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.devices_other,
+                              size: 14,
+                              color: ProfessionalTheme.textTertiary(context),
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${widget.booking.deviceBrand} • ${widget.booking.deviceType}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: ProfessionalTheme.textSecondary(context),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        _buildDaysInfo(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
 
-                      // const SizedBox(height: 8),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${widget.booking.deviceBrand} • ${widget.booking.deviceType}',
-                        style: TextStyle(
-                          color: ProfessionalTheme.textSecondary(context),
+              if (widget.booking.isCanceled) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: ProfessionalTheme.errorLight,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: ProfessionalTheme.error.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.cancel,
+                        size: 16,
+                        color: ProfessionalTheme.error,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          widget.booking.cancellationMessage,
+                          style: TextStyle(
+                            color: ProfessionalTheme.error,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      // Days information - Added here
-                      _buildDaysInfo(),
                     ],
                   ),
                 ),
               ],
-            ),
 
-            if (widget.booking.isCanceled) ...[
+              // Expandable Content
+              if (_isExpanded) ...[
+                const SizedBox(height: 20),
+                const Divider(height: 1),
+                const SizedBox(height: 20),
+                _buildSectionHeader('Job Details', Icons.info_outline),
+                const SizedBox(height: 12),
+                _buildDetailsSection(),
+                const SizedBox(height: 24),
+                _buildSectionHeader(
+                  'Status Management',
+                  Icons.assignment_outlined,
+                ),
+                const SizedBox(height: 12),
+                _buildStatusSection(),
+                const SizedBox(height: 24),
+                _buildSectionHeader(
+                  'Update Description',
+                  Icons.description_outlined,
+                ),
+                const SizedBox(height: 12),
+                _buildDescriptionSection(),
+                const SizedBox(height: 24),
+                _buildSectionHeader('Payments', Icons.payments_outlined),
+                const SizedBox(height: 12),
+                _buildPaymentSection(),
+                const SizedBox(height: 24),
+                _buildSectionHeader(
+                  'Completion Photos',
+                  Icons.photo_library_outlined,
+                ),
+                const SizedBox(height: 12),
+                _buildImageSection(),
+                const SizedBox(height: 24),
+                _buildActionButtons(),
+              ],
+
+              // Expand/Collapse Label
               const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: ProfessionalTheme.errorLight,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: ProfessionalTheme.error.withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.cancel,
-                      size: 16,
-                      color: ProfessionalTheme.error,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.booking.cancellationMessage,
-                        style: TextStyle(
-                          color: ProfessionalTheme.error,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
+              Center(
+                child: Icon(
+                  _isExpanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  color: ProfessionalTheme.textTertiary(context),
+                  size: 24,
                 ),
               ),
             ],
-
-            // Expandable Content
-            if (_isExpanded) ...[
-              const SizedBox(height: 16),
-              _buildDetailsSection(),
-              const SizedBox(height: 16),
-              _buildStatusSection(),
-              const SizedBox(height: 16),
-              _buildDescriptionSection(),
-              const SizedBox(height: 16),
-              _buildPaymentSection(),
-              const SizedBox(height: 16),
-              _buildImageSection(),
-              const SizedBox(height: 16),
-              _buildActionButtons(),
-            ],
-
-            // Expand/Collapse Button
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.center,
-              child: TextButton(
-                onPressed: _toggleExpanded,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _isExpanded ? 'Show Less' : 'Show Details',
-                      style: TextStyle(
-                        color: ProfessionalTheme.primary(context),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      _isExpanded ? Icons.expand_less : Icons.expand_more,
-                      size: 16,
-                      color: ProfessionalTheme.primary(context),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: ProfessionalTheme.primary(context)),
+        const SizedBox(width: 8),
+        Text(
+          title.toUpperCase(),
+          style: ProfessionalTheme.sectionHeader(context),
+        ),
+      ],
     );
   }
 
@@ -2354,100 +2325,144 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
 
   Widget _buildStatusChip(String status) {
     final statusConfig = {
-      'Completed': {'color': ProfessionalTheme.success, 'text': 'Completed'},
+      'Completed': {
+        'color': ProfessionalTheme.success,
+        'icon': Icons.check_circle_outline,
+        'text': 'Completed',
+      },
       'Assigned': {
-        'color': Color.fromARGB(255, 10, 30, 209),
+        'color': const Color(0xFF6366F1), // Indigo
+        'icon': Icons.assignment_ind_outlined,
         'text': 'Assigned',
-      }, // Purple color
+      },
       'Pending for Approval': {
         'color': ProfessionalTheme.warning,
+        'icon': Icons.hourglass_empty_rounded,
         'text': 'Pending',
       },
-      'Pending for Spares': {'color': Color(0xFFFF7B00), 'text': 'Spares'},
+      'Pending for Spares': {
+        'color': const Color(0xFFF97316), // Orange
+        'icon': Icons.settings_input_component_outlined,
+        'text': 'Spares',
+      },
       'Under Observation': {
-        'color': ProfessionalTheme.info(context),
+        'color': const Color(0xFF0EA5E9), // Sky Blue
+        'icon': Icons.visibility_outlined,
         'text': 'Observation',
       },
       'Order Taken': {
-        'color': ProfessionalTheme.info(
-          context,
-        ), // Reusing info color (blue-ish)
+        'color': const Color(0xFF8B5CF6), // Violet
+        'icon': Icons.handshake_outlined,
         'text': 'Order Taken',
       },
       'Order Received': {
-        'color':
-            ProfessionalTheme.warning, // Reusing warning color (orange-ish)
-        'text': 'Order Received',
+        'color': const Color(0xFFEC4899), // Pink
+        'icon': Icons.inventory_2_outlined,
+        'text': 'Received',
       },
     };
 
     final config =
         statusConfig[status] ??
-        {'color': const Color.fromARGB(255, 119, 34, 98), 'text': status};
+        {
+          'color': ProfessionalTheme.textSecondary(context),
+          'icon': Icons.help_outline,
+          'text': status,
+        };
+
     final color = config['color'] as Color;
     final text = config['text'] as String;
+    final icon = config['icon'] as IconData;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.2), width: 1.5),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 12,
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildDetailsSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: ProfessionalTheme.surfaceElevated(context),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: ProfessionalTheme.borderLight(context)),
+        color: ProfessionalTheme.surface(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: ProfessionalTheme.borderLight(context).withOpacity(0.5),
+        ),
       ),
       child: Column(
         children: [
-          _buildDetailRow('Device Condition', widget.booking.deviceCondition),
-          const SizedBox(height: 12),
-          _buildDetailRow('Address', widget.booking.address),
-          const SizedBox(height: 12),
-          _buildDetailRow('Mobile', widget.booking.mobileNumber),
-          const SizedBox(height: 12),
-          // _buildDetailRow(
-          //   'Assigned date',
-          //   widget.booking.assignedTimestamp != null
-          //       ? '${widget.booking.assignedTimestamp!.toDate().day}/${widget.booking.assignedTimestamp!.toDate().month}/${widget.booking.assignedTimestamp!.toDate().year}'
-          //       : 'Not assigned',
-          // ),
-          _buildDetailRow(
-            'Assigned Date & Time',
-            widget.booking.assignedDateTimeFormatted,
+          _buildEnhancedDetailRow(
+            label: 'Address',
+            value: widget.booking.address,
+            icon: Icons.location_on_outlined,
+            onCopy: () {
+              Clipboard.setData(ClipboardData(text: widget.booking.address));
+              _showSnackBar(
+                'Address copied to clipboard',
+                ProfessionalTheme.info(context),
+              );
+            },
           ),
-          // Show completion message if job is completed
+          Divider(height: 1, color: ProfessionalTheme.borderLight(context)),
+          _buildEnhancedDetailRow(
+            label: 'Mobile',
+            value: widget.booking.mobileNumber,
+            icon: Icons.phone_android_outlined,
+            onCopy: () {
+              Clipboard.setData(
+                ClipboardData(text: widget.booking.mobileNumber),
+              );
+              _showSnackBar(
+                'Phone number copied',
+                ProfessionalTheme.info(context),
+              );
+            },
+          ),
+          Divider(height: 1, color: ProfessionalTheme.borderLight(context)),
+          _buildEnhancedDetailRow(
+            label: 'Condition',
+            value: widget.booking.deviceCondition,
+            icon: Icons.build_circle_outlined,
+          ),
+          Divider(height: 1, color: ProfessionalTheme.borderLight(context)),
+          _buildEnhancedDetailRow(
+            label: 'Assigned',
+            value: widget.booking.assignedDateTimeFormatted,
+            icon: Icons.event_available_outlined,
+          ),
           if (widget.booking.selectedStatus.toLowerCase() == 'completed' &&
               widget.booking.completionMessage.isNotEmpty) ...[
-            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: ProfessionalTheme.successLight,
+                color: ProfessionalTheme.success.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: ProfessionalTheme.success.withOpacity(0.3),
-                ),
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.check_circle,
+                  const Icon(
+                    Icons.verified,
                     size: 16,
                     color: ProfessionalTheme.success,
                   ),
@@ -2455,10 +2470,10 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
                   Expanded(
                     child: Text(
                       widget.booking.completionMessage,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: ProfessionalTheme.success,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -2471,33 +2486,70 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 120,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: ProfessionalTheme.textSecondary(context),
+  Widget _buildEnhancedDetailRow({
+    required String label,
+    required String value,
+    required IconData icon,
+    VoidCallback? onCopy,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: ProfessionalTheme.primary(context).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              size: 16,
+              color: ProfessionalTheme.primary(context),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              color: ProfessionalTheme.textPrimary(context),
-              height: 1.4,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: ProfessionalTheme.textSecondary(context),
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: ProfessionalTheme.textPrimary(context),
+                    height: 1.3,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+          if (onCopy != null)
+            IconButton(
+              onPressed: onCopy,
+              icon: Icon(
+                Icons.copy_rounded,
+                size: 16,
+                color: ProfessionalTheme.textTertiary(context),
+              ),
+              tooltip: 'Copy',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+        ],
+      ),
     );
   }
 
@@ -2519,31 +2571,29 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(
-              'Status',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: ProfessionalTheme.textPrimary(context),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text('*', style: TextStyle(color: ProfessionalTheme.error)),
-          ],
-        ),
-        const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            color: ProfessionalTheme.surface(context),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: ProfessionalTheme.borderLight(context)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: DropdownButtonFormField<String>(
-            initialValue: dropdownValue,
+            value: dropdownValue,
             decoration: InputDecoration(
+              prefixIcon: Icon(
+                Icons.swap_horiz_rounded,
+                color: ProfessionalTheme.primary(context),
+                size: 20,
+              ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
               contentPadding: const EdgeInsets.symmetric(
@@ -2551,31 +2601,16 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
                 vertical: 12,
               ),
               filled: true,
-              fillColor: ProfessionalTheme.surface(context),
+              fillColor: Colors.transparent,
             ),
             dropdownColor: ProfessionalTheme.surface(context),
             style: TextStyle(
               fontSize: 14,
               color: ProfessionalTheme.textPrimary(context),
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w700,
             ),
             items: allowedStatuses.map((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: value.toLowerCase() == 'completed' && _isReadOnly
-                        ? ProfessionalTheme.success
-                        : ProfessionalTheme.textPrimary(context),
-                    fontWeight:
-                        value.toLowerCase() == 'completed' && _isReadOnly
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                  ),
-                ),
-              );
+              return DropdownMenuItem<String>(value: value, child: Text(value));
             }).toList(),
             onChanged: _isReadOnly || widget.booking.isCanceled
                 ? null
@@ -2597,10 +2632,6 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
                       }
                     }
                   },
-            icon: Icon(
-              Icons.arrow_drop_down,
-              color: ProfessionalTheme.textTertiary(context),
-            ),
           ),
         ),
         if (widget.booking.isCanceled) ...[
@@ -2616,40 +2647,43 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
         ],
 
         // Manual Location Log Button
-        const SizedBox(height: 16),
-        Container(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _isLoadingLocation ? null : _logManualLocation,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              side: BorderSide(color: ProfessionalTheme.primary(context)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+        if (_currentStatus == 'Order Taken' ||
+            _currentStatus == 'Order Received') ...[
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _isLoadingLocation ? null : _logManualLocation,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                side: BorderSide(color: ProfessionalTheme.primary(context)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-            ),
-            icon: _isLoadingLocation
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
+              icon: _isLoadingLocation
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: ProfessionalTheme.primary(context),
+                      ),
+                    )
+                  : Icon(
+                      Icons.my_location,
                       color: ProfessionalTheme.primary(context),
                     ),
-                  )
-                : Icon(
-                    Icons.my_location,
-                    color: ProfessionalTheme.primary(context),
-                  ),
-            label: Text(
-              _isLoadingLocation ? 'Logging...' : 'Log Current Location',
-              style: TextStyle(
-                color: ProfessionalTheme.primary(context),
-                fontWeight: FontWeight.w600,
+              label: Text(
+                _isLoadingLocation ? 'Logging...' : 'Log Current Location',
+                style: TextStyle(
+                  color: ProfessionalTheme.primary(context),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
-        ),
+        ],
 
         // Display Captured Location
         if (_capturedLat != null && _capturedLng != null) ...[
@@ -2808,14 +2842,32 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
 
       // 5. Send to Firebase (Firestore)
       // Switch to Firestore to avoid RTDB strict schema/permission issues
-      await FirebaseFirestore.instance.collection('manual_location_logs').add({
-        "orderId": orderId,
-        "lat": position.latitude,
-        "lng": position.longitude,
-        "timestamp": DateTime.now().toIso8601String(),
-        "engineerName": widget.userName,
-        "createdAt": FieldValue.serverTimestamp(),
-      });
+      // await FirestoreService.instance.collection('manual_location_logs').add({
+      //   "orderId": orderId,
+      //   "lat": position.latitude,
+      //   "lng": position.longitude,
+      //   "timestamp": DateTime.now().toIso8601String(),
+      //   "engineerName": widget.userName,
+      //   "createdAt": FieldValue.serverTimestamp(),
+      // });
+
+      // 7. Sync to Firestore (Admin_details) immediately
+      try {
+        await FirestoreService.instance
+            .collection('Admin_details')
+            .doc(widget.booking.bookingId)
+            .update({
+              'lat': position.latitude,
+              'lng': position.longitude,
+              'lastUpdated': FieldValue.serverTimestamp(),
+              "orderId": orderId,
+              "timestamp": DateTime.now().toIso8601String(),
+              "engineerName": widget.userName,
+              "createdAt": FieldValue.serverTimestamp(),
+            });
+      } catch (e) {
+        debugPrint('Error syncing to Firestore Admin_details: $e');
+      }
 
       _showSnackBar(
         'Location logged to Firebase successfully!',
@@ -2830,48 +2882,13 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
         });
       }
 
-      // 7. Sync to Firestore (Admin_details) immediately
-      try {
-        var query = await FirebaseFirestore.instance
-            .collection('Admin_details')
-            .where('bookingId', isEqualTo: widget.booking.bookingId)
-            .get();
-
-        for (var doc in query.docs) {
-          await doc.reference.update({
-            'lat': position.latitude,
-            'lng': position.longitude,
-            'lastUpdated': FieldValue.serverTimestamp(),
-          });
-        }
-      } catch (e) {
-        debugPrint('Error syncing to Firestore Admin_details: $e');
-      }
-
       // 8. Sync to RTDB for live tracking
       try {
-        final dbRef = FirebaseDatabase.instance.ref();
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-
-        // Update Engineers Node
-        await dbRef.child('engineers/${widget.userName}').update({
-          'location': {
-            'lat': position.latitude,
-            'lng': position.longitude,
-            'timestamp': timestamp,
-          },
-          'lastSeen': timestamp,
-        });
-
-        // Update Order Tracking Node
-        await dbRef.child('order_tracking/${widget.booking.bookingId}').update({
-          'lastLocation': {
-            'lat': position.latitude,
-            'lng': position.longitude,
-            'timestamp': timestamp,
-          },
-          'lastUpdated': timestamp,
-        });
+        await LocationService.instance.updateDatabase(
+          widget.userName,
+          position,
+          bookingId: widget.booking.bookingId,
+        );
       } catch (e) {
         debugPrint('Error syncing to RTDB: $e');
       }
@@ -3334,139 +3351,182 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Upload Images',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: ProfessionalTheme.textPrimary(context),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '(Max 3)',
-              style: TextStyle(
-                fontSize: 12,
-                color: ProfessionalTheme.textTertiary(context),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        OutlinedButton(
-          onPressed: _isPickingImages || _isReadOnly ? null : _pickImages,
-          style: OutlinedButton.styleFrom(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            side: BorderSide(color: ProfessionalTheme.borderMedium(context)),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.cloud_upload,
-                size: 20,
-                color: ProfessionalTheme.primary(context),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Select Images',
-                style: TextStyle(color: ProfessionalTheme.primary(context)),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (_imageFiles != null && _imageFiles!.isNotEmpty)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _imageFiles!.map((image) {
-              return Stack(
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: ProfessionalTheme.borderMedium(context),
-                      ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        File(image.path),
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  if (!_isReadOnly)
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _imageFiles!.remove(image);
-                          });
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: ProfessionalTheme.error,
-                            shape: BoxShape.circle,
-                          ),
-                          padding: const EdgeInsets.all(2),
-                          child: Icon(
-                            Icons.close,
-                            color: ProfessionalTheme.textInverse(context),
-                            size: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            }).toList(),
-          )
-        else
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: ProfessionalTheme.surfaceElevated(context),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: ProfessionalTheme.borderLight(context)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.photo_library,
-                  color: ProfessionalTheme.textTertiary(context),
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
                 Text(
-                  'No images selected',
+                  'PHOTOS',
                   style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: ProfessionalTheme.textSecondary(context),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Max 3 images required',
+                  style: TextStyle(
+                    fontSize: 11,
                     color: ProfessionalTheme.textTertiary(context),
-                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
                   ),
                 ),
               ],
             ),
+            if (!_isReadOnly && (_imageFiles?.length ?? 0) < 3)
+              TextButton.icon(
+                onPressed: _isPickingImages ? null : _pickImages,
+                icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                label: const Text('Add Photo'),
+                style: TextButton.styleFrom(
+                  foregroundColor: ProfessionalTheme.primary(context),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_imageFiles != null && _imageFiles!.isNotEmpty)
+          Container(
+            height: 100,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _imageFiles!.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final image = _imageFiles![index];
+                return Stack(
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        image: DecorationImage(
+                          image: FileImage(File(image.path)),
+                          fit: BoxFit.cover,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (!_isReadOnly)
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () =>
+                              setState(() => _imageFiles!.removeAt(index)),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(color: Colors.black12, blurRadius: 4),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.close,
+                              size: 14,
+                              color: ProfessionalTheme.error,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          )
+        else if (_isReadOnly && widget.booking.imageUrls.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: ProfessionalTheme.surface(context),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: ProfessionalTheme.borderLight(context).withOpacity(0.3),
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.no_photography_outlined,
+                  color: ProfessionalTheme.textTertiary(context),
+                  size: 32,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'No photos uploaded',
+                  style: TextStyle(
+                    color: ProfessionalTheme.textTertiary(context),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (!_isReadOnly)
+          GestureDetector(
+            onTap: _isPickingImages ? null : _pickImages,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: ProfessionalTheme.primary(context).withOpacity(0.04),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: ProfessionalTheme.primary(context).withOpacity(0.2),
+                  style: BorderStyle.solid,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.add_a_photo_rounded,
+                    color: ProfessionalTheme.primary(context),
+                    size: 40,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Tap to capture or upload photos',
+                    style: TextStyle(
+                      color: ProfessionalTheme.primary(context),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Upload up to 3 high-quality job photos',
+                    style: TextStyle(
+                      color: ProfessionalTheme.textSecondary(context),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
+
+        // Existing Uploaded Images Section
         if (widget.booking.imageUrls.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
-            'Uploaded Images',
+            'UPLOADED JOB PHOTOS',
             style: TextStyle(
-              fontSize: 14,
               fontWeight: FontWeight.w600,
               color: ProfessionalTheme.textPrimary(context),
             ),
