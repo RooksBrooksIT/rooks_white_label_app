@@ -1,6 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 
@@ -30,11 +28,9 @@ class AdminDashboardBackend {
 
   static Future<String> getReferralCode() async {
     try {
-      final databaseName = ThemeService.instance.databaseName;
-      // Using collectionGroup to find referral code across all app-specific documents
-      final snapshot = await FirebaseFirestore.instance
-          .collectionGroup('referral_codes')
-          .where('tenantId', isEqualTo: databaseName)
+      // Using FirestoreService to fetch referral code for current tenant efficiently
+      final snapshot = await FirestoreService.instance
+          .collection('referral_codes')
           .where('isActive', isEqualTo: true)
           .limit(1)
           .get();
@@ -43,7 +39,6 @@ class AdminDashboardBackend {
         final data = snapshot.docs.first.data();
         return data['code']?.toString() ?? snapshot.docs.first.id;
       }
-      print('No active referral code found for tenant: $databaseName');
     } catch (e) {
       print('Error fetching referral code: $e');
     }

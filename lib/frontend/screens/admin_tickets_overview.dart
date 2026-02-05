@@ -4,6 +4,7 @@ import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
 import 'package:subscription_rooks_app/frontend/screens/admin_assign_engineer_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_geo_location_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/customer_var_data_screen.dart'
     as customer_var;
 
@@ -250,6 +251,15 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
     return defaultValue;
   }
 
+  Timestamp parseTimestamp(dynamic v) {
+    if (v is Timestamp) return v;
+    if (v is String) {
+      DateTime? dt = DateTime.tryParse(v);
+      if (dt != null) return Timestamp.fromDate(dt);
+    }
+    return Timestamp.now();
+  }
+
   void _showFilterDialog() {
     showGeneralDialog(
       context: context,
@@ -464,7 +474,7 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
               deviceBrand: getField(data, ['deviceBrand']),
               deviceCondition: getField(data, ['deviceCondition']),
               message: getField(data, ['message', 'Message']),
-              timestamp: (data['timestamp'] as Timestamp?) ?? Timestamp.now(),
+              timestamp: parseTimestamp(data['timestamp']),
               address: getField(data, ['address', 'Address']),
               mobileNumber: getField(data, ['mobileNumber', 'MobileNumber']),
               jobType: getField(data, ['jobType', 'JobType']),
@@ -1330,16 +1340,61 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
                                         ),
                                       ),
                                       Expanded(
-                                        child: Text(
-                                          assignedEmployee,
-                                          style: TextStyle(
-                                            color: Theme.of(
-                                              context,
-                                            ).textTheme.bodyMedium?.color,
-                                            fontSize: getProportionalSize(14),
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                assignedEmployee,
+                                                style: TextStyle(
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).textTheme.bodyMedium?.color,
+                                                  fontSize: getProportionalSize(
+                                                    14,
+                                                  ),
+                                                  fontWeight: FontWeight.w400,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            if (assignedEmployee.isNotEmpty &&
+                                                assignedEmployee !=
+                                                    'Unassigned')
+                                              TextButton.icon(
+                                                onPressed: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          AdminGeoLocationScreen(
+                                                            engineerId:
+                                                                assignedEmployee,
+                                                            engineerName:
+                                                                assignedEmployee,
+                                                            bookingDocId: docId,
+                                                          ),
+                                                    ),
+                                                  );
+                                                },
+                                                icon: const Icon(
+                                                  Icons.map_outlined,
+                                                  size: 16,
+                                                ),
+                                                label: const Text(
+                                                  'Live Track',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                                style: TextButton.styleFrom(
+                                                  padding: EdgeInsets.zero,
+                                                  minimumSize: Size.zero,
+                                                  tapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                ),
+                                              ),
+                                          ],
                                         ),
                                       ),
                                     ],

@@ -96,6 +96,15 @@ class _AdminAttendanceReportsPageState
     });
   }
 
+  Timestamp _parseTimestamp(dynamic v) {
+    if (v is Timestamp) return v;
+    if (v is String) {
+      DateTime? dt = DateTime.tryParse(v);
+      if (dt != null) return Timestamp.fromDate(dt);
+    }
+    return Timestamp.now();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -285,7 +294,7 @@ class _AdminAttendanceReportsPageState
           if (start != null && end != null) {
             docs = docs.where((doc) {
               final data = doc.data() as Map<String, dynamic>;
-              final date = (data['date'] as Timestamp).toDate();
+              final date = _parseTimestamp(data['date']).toDate();
               return (date.isAfter(start!.subtract(const Duration(days: 1))) ||
                       date.isAtSameMomentAs(start)) &&
                   (date.isBefore(end!.add(const Duration(days: 1))) ||
@@ -499,7 +508,7 @@ class _AdminAttendanceReportsPageState
   }
 
   Widget _buildReportItem(Map<String, dynamic> data) {
-    final date = (data['date'] as Timestamp).toDate();
+    final date = _parseTimestamp(data['date']).toDate();
     final status = data['status'] as String;
     final username = data['engineerUsername'] as String;
     final remarks = data['remarks'] ?? '';
@@ -738,7 +747,7 @@ class _AdminAttendanceReportsPageState
                     if (d['date'] != null && d['date'] is Timestamp) {
                       dateStr = DateFormat(
                         'dd/MM/yyyy',
-                      ).format((d['date'] as Timestamp).toDate());
+                      ).format(_parseTimestamp(d['date']).toDate());
                     }
 
                     return [

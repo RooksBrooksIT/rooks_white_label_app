@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_geo_location_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_login_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/customer_login_pages.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_login_page.dart';
@@ -194,9 +195,12 @@ class AppMainPage extends StatelessWidget {
             textColor: Colors.white,
             cardWidth: width * 0.22,
             onTap: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => AdminLogin()));
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      AdminGeoLocationScreen(engineerId: '', engineerName: ''),
+                ),
+              );
             },
           ),
           SizedBox(width: 20),

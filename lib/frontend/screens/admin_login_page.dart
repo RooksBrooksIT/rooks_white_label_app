@@ -47,6 +47,7 @@ class _AdminLoginState extends State<AdminLogin> {
 
     final result = await AdminLoginBackend.login(email, password);
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (result['success']) {

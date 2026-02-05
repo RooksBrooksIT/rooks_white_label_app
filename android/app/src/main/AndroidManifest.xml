@@ -2,6 +2,13 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.CAMERA"/>
+    
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    
     <application
         android:label="subscription_rooks_app"
         android:name="${applicationName}"
@@ -33,6 +40,15 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        
+        <!-- REMOVE OR COMMENT THIS GOOGLE MAPS LINE -->
+        <!-- <meta-data android:name="com.google.android.geo.API_KEY" android:value="YOUR_API_KEY_HERE" /> -->
+        
+        <!-- ADD THIS SERVICE FOR BACKGROUND LOCATION -->
+        <service 
+            android:name="com.baseflow.geolocator.GeolocatorForegroundService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

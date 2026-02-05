@@ -11,6 +11,7 @@ import 'package:subscription_rooks_app/frontend/screens/admin_create_engineer.da
 import 'package:subscription_rooks_app/frontend/screens/admin_customer_report_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_deliverytickets_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_device_config_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_geo_location_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_view_barcode_details.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_view_engineer_updates.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_tickets_overview.dart';
@@ -308,6 +309,21 @@ class _admindashboardState extends State<admindashboard> {
                           ),
                         ),
                       ),
+                      _buildMenuCard(
+                        title: 'Engineer Location',
+                        subtitle: 'Comprehensive asset info',
+                        icon: Icons.location_pin,
+                        color: const Color(0xFF483785),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AdminGeoLocationScreen(
+                              engineerId: '',
+                              engineerName: '',
+                            ),
+                          ),
+                        ),
+                      ),
                     ]),
                     const SizedBox(height: 48),
                   ],
@@ -386,7 +402,7 @@ class _admindashboardState extends State<admindashboard> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            'Welcome back,',
+                            'Welcome backs,',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.8),
                               fontSize: 14,

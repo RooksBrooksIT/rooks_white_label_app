@@ -126,12 +126,17 @@ class _EngineerUpdatesState extends State<EngineerUpdates> {
 
         // Date Range filter
         if (startDate != null) {
-          final timestamp = data['timestamp'] as Timestamp?;
-          if (timestamp != null) {
-            final date = timestamp.toDate();
-            final filterEndDate = endDate ?? startDate!;
+          final rawTimestamp = data['timestamp'];
+          DateTime? date;
 
-            // Set time to start and end of day for accurate comparison
+          if (rawTimestamp is Timestamp) {
+            date = rawTimestamp.toDate();
+          } else if (rawTimestamp is String) {
+            date = DateTime.tryParse(rawTimestamp);
+          }
+
+          if (date != null) {
+            final filterEndDate = endDate ?? startDate!;
             final startOfDay = DateTime(
               startDate!.year,
               startDate!.month,
@@ -1031,11 +1036,21 @@ class _EngineerUpdateCardState extends State<EngineerUpdateCard> {
     super.dispose();
   }
 
-  String _formatTimestamp(Timestamp? timestamp) {
+  String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return 'N/A';
 
-    final date = timestamp.toDate();
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    try {
+      if (timestamp is Timestamp) {
+        final date = timestamp.toDate();
+        return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+      } else if (timestamp is String) {
+        final date = DateTime.parse(timestamp);
+        return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+      }
+    } catch (e) {
+      debugPrint('Error formatting timestamp: $e');
+    }
+    return 'N/A';
   }
 
   Future<void> updateFirestore(String action) async {
@@ -1684,7 +1699,7 @@ class _EngineerUpdateCardState extends State<EngineerUpdateCard> {
     final bookingId = data['bookingId'] ?? 'N/A';
     final deviceBrand = data['deviceBrand'] ?? 'N/A';
     final deviceCondition = data['deviceCondition'] ?? 'No condition specified';
-    final timestamp = data['timestamp'] as Timestamp?;
+    final timestamp = data['timestamp'];
 
     // Determine status display for color
     String statusForColor = '';

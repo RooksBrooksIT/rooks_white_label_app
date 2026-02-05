@@ -118,9 +118,18 @@ class Customer {
       deviceName: data?['DeviceName'] ?? '',
       problem: data?['Problem'] ?? '',
       assignedEngineer: data?['AssignedEngineer'] ?? '',
-      timestamp: data?['timestamp'] ?? Timestamp.now(),
+      timestamp: _parseTimestamp(data?['timestamp']),
       customerid: data?['id'] ?? '',
     );
+  }
+
+  static Timestamp _parseTimestamp(dynamic v) {
+    if (v is Timestamp) return v;
+    if (v is String) {
+      DateTime? dt = DateTime.tryParse(v);
+      if (dt != null) return Timestamp.fromDate(dt);
+    }
+    return Timestamp.now();
   }
 
   String? get id => null;

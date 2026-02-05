@@ -46,6 +46,7 @@ class _EngineerloginState extends State<Engineerlogin> {
         _passwordController.text.trim(),
         _referralCodeController.text.trim(),
       );
+      if (!mounted) return;
       setState(() => _isLoading = false);
 
       if (result['success']) {
@@ -64,106 +65,22 @@ class _EngineerloginState extends State<Engineerlogin> {
   }
 
   void _showForgotPasswordDialog() {
-    final usernameController = TextEditingController();
-    final phoneController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    bool obscureNewPassword = true;
     showDialog(
       context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Reset Password'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: usernameController,
-                      decoration: const InputDecoration(labelText: 'Username'),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone Number',
-                      ),
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: newPasswordController,
-                      obscureText: obscureNewPassword,
-                      decoration: InputDecoration(
-                        labelText: 'New Password',
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscureNewPassword
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              obscureNewPassword = !obscureNewPassword;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.red,
-                  ),
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  ),
-                  onPressed: () async {
-                    final username = usernameController.text.trim();
-                    final phone = phoneController.text.trim();
-                    final newPass = newPasswordController.text.trim();
-                    final referralCode = _referralCodeController.text.trim();
-
-                    if (username.isEmpty ||
-                        phone.isEmpty ||
-                        newPass.isEmpty ||
-                        referralCode.isEmpty) {
-                      _showErrorDialog(
-                        'All fields (including referral code) are required.',
-                      );
-                      return;
-                    }
-                    final result = await EngineerLoginBackend.resetPassword(
-                      username,
-                      phone,
-                      newPass,
-                      referralCode,
-                    );
-                    if (result['success']) {
-                      if (!mounted) return;
-                      Navigator.of(ctx).pop();
-                      _showErrorDialog(result['message']);
-                    } else {
-                      _showErrorDialog(result['message']);
-                    }
-                  },
-                  child: const Text('Update'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (ctx) => AlertDialog(
+        title: const Text('Forgot Password'),
+        content: const Text('Contact Admin to change the password'),
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              backgroundColor: Theme.of(context).primaryColor,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -313,7 +230,7 @@ class _EngineerloginState extends State<Engineerlogin> {
                   width: double.infinity,
                   height: 60,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _login,
+                    onPressed: _login,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
@@ -322,15 +239,13 @@ class _EngineerloginState extends State<Engineerlogin> {
                       ),
                       elevation: 0,
                     ),
-                    child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(
-                            'Log In',
-                            style: GoogleFonts.inter(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                    child: Text(
+                      'Log In',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 40),
