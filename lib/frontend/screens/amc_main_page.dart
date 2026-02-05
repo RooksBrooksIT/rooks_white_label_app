@@ -4,11 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
-import 'package:subscription_rooks_app/frontend/screens/amc_home_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/amc_customerlogin_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/frontend/screens/customer_createtickets_devicetype.dart';
 import 'package:flutter/services.dart';
 
 class AMCTrackMyService extends StatefulWidget {
@@ -41,13 +41,13 @@ class _AMCTrackMyServiceState extends State<AMCTrackMyService> {
           color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
         ),
         title: Text(
-          'Track My Services',
+          ThemeService.instance.appName,
           style: TextStyle(
             fontSize: 22,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.6,
+            fontWeight: FontWeight.w600,
             color:
                 Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
+            letterSpacing: 0.5,
           ),
         ),
         leading: IconButton(
@@ -1103,12 +1103,21 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final email = prefs.getString('email');
+      final tenantIdFromPrefs =
+          prefs.getString('tenantId') ?? prefs.getString('databaseName');
+
       setState(() {
         userEmail = email;
       });
+
+      // Sync branding even if user data is still loading or if email is null
+      if (tenantIdFromPrefs != null) {
+        await FirestoreService.instance.syncBranding(tenantIdFromPrefs);
+      }
+
       if (email != null) {
         final query = await FirestoreService.instance
-            .collection('AMC_user')
+            .collection('AMC_user', tenantId: tenantIdFromPrefs)
             .where('email', isEqualTo: email)
             .limit(1)
             .get();
@@ -1118,7 +1127,10 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
           setState(() {
             userName = userData['name'] ?? 'Guest';
             customerId = userData['Id'] ?? '';
-            phoneNumber = userData['phonenumber']?.toString() ?? '';
+            phoneNumber =
+                (userData['Phone Number'] ?? userData['phonenumber'])
+                    ?.toString() ??
+                '';
           });
         }
       }
@@ -1404,9 +1416,11 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => AmcCustomerHomePage(
+                          builder: (context) => CustomerDeviceType(
+                            name: userName,
+                            loggedInName: userName,
+                            phoneNumber: phoneNumber,
                             customerId: customerId,
-                            customerName: userName,
                           ),
                         ),
                       );

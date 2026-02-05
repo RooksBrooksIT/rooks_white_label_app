@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:lottie/lottie.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:flutter/services.dart';
 
 class AmcCustomerHomePage extends StatefulWidget {
@@ -470,7 +471,7 @@ class _AmcCustomerHomePageState extends State<AmcCustomerHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Service Request',
+          ThemeService.instance.appName,
           style: TextStyle(
             color:
                 Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,

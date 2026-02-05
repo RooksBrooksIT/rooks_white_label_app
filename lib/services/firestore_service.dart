@@ -171,6 +171,18 @@ class FirestoreService {
     ).set({...brandingData, 'updatedAt': FieldValue.serverTimestamp()});
   }
 
+  // Fetch and apply branding configuration for a tenant
+  Future<void> syncBranding(String tenantId, {String? appId}) async {
+    try {
+      final doc = await brandingDoc(tenantId: tenantId, appId: appId).get();
+      if (doc.exists && doc.data() != null) {
+        ThemeService.instance.loadFromMap(doc.data()!);
+      }
+    } catch (e) {
+      // debugPrint('Error syncing branding: $e');
+    }
+  }
+
   // --- Referral Code Logic ---
 
   // Check if a referral code matches any active subscription/app

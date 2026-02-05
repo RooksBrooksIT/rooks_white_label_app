@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:subscription_rooks_app/frontend/screens/amc_customerlogin_page.dart';
-import 'package:subscription_rooks_app/frontend/screens/phone_number_page.dart';
 
 class CustomerTypePage extends StatefulWidget {
   const CustomerTypePage({super.key});
@@ -251,7 +250,7 @@ class _CustomerTypePageState extends State<CustomerTypePage> {
         onPressed: _selectedCustomerType != null
             ? () {
                 // Handle navigation based on selected customer type
-                _handleCustomerTypeSelection();
+                // _handleCustomerTypeSelection();
               }
             : null,
         style: ElevatedButton.styleFrom(
@@ -268,34 +267,4 @@ class _CustomerTypePageState extends State<CustomerTypePage> {
     );
   }
 
-  void _handleCustomerTypeSelection() {
-    if (_selectedCustomerType == "normal") {
-      // Navigate to normal customer flow
-      print("Normal customer selected");
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => PhoneNumberPage()),
-      );
-    } else if (_selectedCustomerType == "amc") {
-      // Navigate to AMC customer flow
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => AMCLoginPage()),
-      );
-      // Navigator.push(context, MaterialPageRoute(builder: (context) => AMCCustomerPage()));
-    }
-
-    // Show success feedback
-    // ScaffoldMessenger.of(context).showSnackBar(
-    //   SnackBar(
-    //     content: Text(
-    //       "${_selectedCustomerType == 'normal' ? 'Normal' : 'AMC'} customer selected",
-    //       style: TextStyle(fontWeight: FontWeight.w500),
-    //     ),
-    //     backgroundColor: Colors.white,
-    //     behavior: SnackBarBehavior.floating,
-    //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    //   ),
-    // );
-  }
 }

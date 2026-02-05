@@ -96,7 +96,12 @@ class ThemeService extends ChangeNotifier {
     _isDarkMode = prefs.getBool('isDarkMode') ?? false;
     _fontFamily = prefs.getString('fontFamily') ?? 'Roboto';
     _appName = prefs.getString('appName') ?? 'ServicePro';
-    _databaseName = prefs.getString('databaseName') ?? 'default_db';
+
+    // Support both 'tenantId' and 'databaseName' keys for backward compatibility and consistency
+    final storedTenantId = prefs.getString('tenantId');
+    final storedDatabaseName = prefs.getString('databaseName');
+    _databaseName = storedTenantId ?? storedDatabaseName ?? 'default_db';
+
     _logoUrl = prefs.getString('logoUrl');
     notifyListeners();
   }
@@ -110,6 +115,7 @@ class ThemeService extends ChangeNotifier {
     await prefs.setString('fontFamily', _fontFamily);
     await prefs.setString('appName', _appName);
     await prefs.setString('databaseName', _databaseName);
+    await prefs.setString('tenantId', _databaseName); // Keep synchronized
     if (_logoUrl != null) {
       await prefs.setString('logoUrl', _logoUrl!);
     } else {

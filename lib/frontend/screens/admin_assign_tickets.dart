@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:subscription_rooks_app/backend/brand_model_backend.dart';
 import 'package:lottie/lottie.dart';
 import 'package:flutter/services.dart';
 
@@ -54,6 +55,7 @@ class _CreateTicketsState extends State<CreateTickets> {
   bool _isSubmitting = false;
   bool _isGeneratingCustomerId = false;
   bool _isCheckingMobileNumber = false;
+  final BrandModelBackend _brandBackend = BrandModelBackend();
 
   late FocusNode _customerIdFocusNode;
   late FocusNode _mobileNumberFocusNode;
@@ -92,6 +94,7 @@ class _CreateTicketsState extends State<CreateTickets> {
     });
 
     _fetchDeviceTypes();
+    _fetchGlobalDeviceBrands();
     deviceType = '';
 
     // Only fetch by name if we have a customer name and it's existing customer
@@ -592,63 +595,20 @@ class _CreateTicketsState extends State<CreateTickets> {
     }
   }
 
-  Future<void> _fetchDeviceBrands(String deviceType) async {
+  Future<void> _fetchGlobalDeviceBrands() async {
     setState(() {
       _isDeviceBrandsLoading = true;
-      deviceBrands = [];
     });
-
     try {
-      String? collectionName;
-      switch (deviceType.toLowerCase()) {
-        case 'desktop':
-          collectionName = 'desktopBrands';
-          break;
-        case 'laptop':
-          collectionName = 'laptopBrands';
-          break;
-        case 'cctv':
-          collectionName = 'cctvBrands';
-          break;
-        case 'projector':
-          collectionName = 'projectorBrands';
-          break;
-        case 'printer':
-          collectionName = 'printerBrands';
-          break;
-        default:
-          collectionName = null;
-      }
-      if (collectionName != null) {
-        final snapshot = await FirestoreService.instance
-            .collection(collectionName)
-            .get();
-        final brands =
-            snapshot.docs
-                .map((doc) {
-                  return doc['brandName']?.toString() ??
-                      doc['name']?.toString() ??
-                      doc['brand']?.toString() ??
-                      '';
-                })
-                .where((b) => b.isNotEmpty)
-                .toSet()
-                .toList()
-              ..sort();
-
-        if (!brands.contains('Others')) {
-          brands.add('Others');
+      final brands = await _brandBackend.fetchAllDeviceBrands();
+      setState(() {
+        deviceBrands = brands;
+        if (!deviceBrands.contains('Others')) {
+          deviceBrands.add('Others');
         }
-
-        setState(() {
-          deviceBrands = brands;
-        });
-      } else {
-        setState(() {
-          deviceBrands = ['DELL', 'HP', 'MAC', 'LENOVO', 'ASUS', 'Others'];
-        });
-      }
+      });
     } catch (e) {
+      print('Error fetching global device brands: $e');
       setState(() {
         deviceBrands = ['DELL', 'HP', 'MAC', 'LENOVO', 'ASUS', 'Others'];
       });
@@ -658,6 +618,10 @@ class _CreateTicketsState extends State<CreateTickets> {
       });
     }
   }
+
+  /* Future<void> _fetchDeviceBrands(String deviceType) async {
+    // This method is kept for reference but we are now using _fetchGlobalDeviceBrands
+  } */
 
   List<String> get currentDeviceConditions {
     if (deviceType.toLowerCase() == 'cctv') {
@@ -1137,7 +1101,7 @@ class _CreateTicketsState extends State<CreateTickets> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          initialValue: value,
+          value: value,
           decoration: InputDecoration(
             filled: true,
             fillColor: Theme.of(context).cardColor,
@@ -1287,18 +1251,9 @@ class _CreateTicketsState extends State<CreateTickets> {
                             _customDeviceBrandController.clear();
                           });
                           if (value != null && value != 'Others') {
-                            await _fetchDeviceBrands(value);
+                            // Brands are now fetched globally in initState
                           } else {
-                            setState(() {
-                              deviceBrands = [
-                                'DELL',
-                                'HP',
-                                'MAC',
-                                'LENOVO',
-                                'ASUS',
-                                'Others',
-                              ];
-                            });
+                            // Keep global brands even if 'Others' is selected
                           }
                         },
                         value: deviceType.isNotEmpty ? deviceType : null,

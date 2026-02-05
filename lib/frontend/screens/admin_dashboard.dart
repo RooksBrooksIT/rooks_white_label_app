@@ -37,6 +37,7 @@ class _admindashboardState extends State<admindashboard> {
   String adminName = 'Loading...';
   String adminEmail = '';
   String referralCode = '';
+  DateTime? _lastBackPressed;
 
   // Dynamic Color Palette from ThemeService
   late Color primaryColor;
@@ -89,10 +90,26 @@ class _admindashboardState extends State<admindashboard> {
     secondaryColor = ThemeService.instance.secondaryColor;
     backgroundColor = ThemeService.instance.backgroundColor;
 
-    return WillPopScope(
-      onWillPop: () async {
-        bool? shouldLeave = await _showBackConfirmDialog(context);
-        return shouldLeave ?? false;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+
+        final now = DateTime.now();
+        if (_lastBackPressed == null ||
+            now.difference(_lastBackPressed!) > const Duration(seconds: 2)) {
+          _lastBackPressed = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Press back again to exit'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+
+        SystemNavigator.pop();
       },
       child: Scaffold(
         key: _scaffoldKey,
@@ -310,23 +327,7 @@ class _admindashboardState extends State<admindashboard> {
       pinned: true,
       elevation: 0,
       backgroundColor: primaryColor,
-      leading: IconButton(
-        icon: const Icon(
-          Icons.arrow_back_ios_new_rounded,
-          color: Colors.white,
-          size: 20,
-        ),
-        onPressed: () async {
-          if (await _showBackConfirmDialog(context) == true) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                builder: (context) => const UnifiedLoginScreen(),
-              ),
-              (route) => false,
-            );
-          }
-        },
-      ),
+      automaticallyImplyLeading: false,
       actions: [
         IconButton(
           icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
@@ -943,70 +944,6 @@ class _admindashboardState extends State<admindashboard> {
                       ),
                       child: const Text(
                         'Logout',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<bool?> _showBackConfirmDialog(BuildContext context) async {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.arrow_back_rounded, color: primaryColor, size: 48),
-              const SizedBox(height: 16),
-              const Text(
-                'Confirm',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Go back to the main page?',
-                style: TextStyle(color: textLightColor),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: Text(
-                        'No',
-                        style: TextStyle(
-                          color: textLightColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Yes',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
