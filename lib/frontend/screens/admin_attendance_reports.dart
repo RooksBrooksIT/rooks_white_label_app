@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
 
 class AdminAttendanceReportsPage extends StatefulWidget {
   const AdminAttendanceReportsPage({super.key});
@@ -43,6 +44,7 @@ class _AdminAttendanceReportsPageState
   void initState() {
     super.initState();
     _loadEngineers();
+    AuthStateService.instance.saveLastAdminPage('attendance_reports');
   }
 
   Future<void> _loadEngineers() async {

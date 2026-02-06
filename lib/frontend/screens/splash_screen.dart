@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
-import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_dashboard.dart';
-import 'package:subscription_rooks_app/backend/screens/admin_login_page.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -42,18 +40,13 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateToNext() async {
-    final bool isAdminLoggedIn = await AdminLoginBackend.checkLoginStatus();
+    // 1. Determine target screen based on auth state
+    final Widget target = await AuthStateService.instance.getInitialScreen();
 
+    // 2. Ensuring the splash is visible for at least 3 seconds
     await Future.delayed(const Duration(seconds: 3));
 
     if (mounted) {
-      Widget target;
-      if (isAdminLoggedIn) {
-        target = const admindashboard();
-      } else {
-        target = const RoleSelectionScreen();
-      }
-
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) => target,

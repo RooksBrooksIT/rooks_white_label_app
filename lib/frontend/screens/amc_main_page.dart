@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
-import 'package:subscription_rooks_app/frontend/screens/amc_customerlogin_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
+import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:subscription_rooks_app/frontend/screens/customer_createtickets_devicetype.dart';
 import 'package:flutter/services.dart';
 
@@ -1250,12 +1250,10 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
 
     if (confirmLogout == true) {
       try {
-        await FirebaseAuth.instance.signOut();
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
+        await AuthStateService.instance.logout();
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (ctx) => const AMCLoginPage()),
+          MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
           (route) => false,
         );
       } catch (e) {

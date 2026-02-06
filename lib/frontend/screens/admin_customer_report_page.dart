@@ -7,6 +7,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
 // import 'package:open_file/open_file';
 
 class CustomerReportGenerator extends StatefulWidget {
@@ -23,6 +24,12 @@ class _CustomerReportGeneratorState extends State<CustomerReportGenerator> {
   List<Map<String, dynamic>>? multipleResults;
   bool _loading = false;
   String _debugInfo = '';
+
+  @override
+  void initState() {
+    super.initState();
+    AuthStateService.instance.saveLastAdminPage('service_reports');
+  }
 
   // Track selected rows for multiple results
   final Map<int, bool> _selectedRows = {};

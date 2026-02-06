@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
 
 class AMCCreatePage extends StatefulWidget {
   const AMCCreatePage({super.key});
@@ -54,6 +55,7 @@ class _AMCCreatePageState extends State<AMCCreatePage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _fetchCustomers();
+    AuthStateService.instance.saveLastAdminPage('create_amc');
   }
 
   @override

@@ -16,7 +16,8 @@ import 'package:subscription_rooks_app/frontend/screens/admin_view_barcode_detai
 import 'package:subscription_rooks_app/frontend/screens/admin_view_engineer_updates.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_tickets_overview.dart';
 import 'package:subscription_rooks_app/frontend/screens/barcode_identifier.dart';
-import 'package:subscription_rooks_app/frontend/screens/unified_login_screen.dart';
+import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:flutter/services.dart';
 
@@ -55,6 +56,7 @@ class _admindashboardState extends State<admindashboard> {
     super.initState();
     _initStreams();
     _loadAdminData();
+    AuthStateService.instance.saveLastAdminPage('dashboard');
   }
 
   void _initStreams() {
@@ -91,11 +93,8 @@ class _admindashboardState extends State<admindashboard> {
     secondaryColor = ThemeService.instance.secondaryColor;
     backgroundColor = ThemeService.instance.backgroundColor;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-
+    return WillPopScope(
+      onWillPop: () async {
         final now = DateTime.now();
         if (_lastBackPressed == null ||
             now.difference(_lastBackPressed!) > const Duration(seconds: 2)) {
@@ -107,10 +106,10 @@ class _admindashboardState extends State<admindashboard> {
               behavior: SnackBarBehavior.floating,
             ),
           );
-          return;
+          return false;
         }
-
-        SystemNavigator.pop();
+        SystemNavigator.pop(); // Exit the app
+        return true; // This line will not be reached if SystemNavigator.pop() is called
       },
       child: Scaffold(
         key: _scaffoldKey,
@@ -137,13 +136,18 @@ class _admindashboardState extends State<admindashboard> {
                         subtitle: 'Manage support requests',
                         icon: Icons.confirmation_number_rounded,
                         color: const Color(0xFF0984E3),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                AdminPage_CusDetails(statusFilter: ""),
-                          ),
-                        ),
+                        onTap: () {
+                          AuthStateService.instance.saveLastAdminPage(
+                            'service_tickets',
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AdminPage_CusDetails(statusFilter: ""),
+                            ),
+                          );
+                        },
                       ),
                       _buildMenuCard(
                         title: 'Call Logs',
@@ -166,12 +170,17 @@ class _admindashboardState extends State<admindashboard> {
                         badge: engineerUpdateCount > 0
                             ? engineerUpdateCount.toString()
                             : null,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EngineerUpdates(),
-                          ),
-                        ),
+                        onTap: () {
+                          AuthStateService.instance.saveLastAdminPage(
+                            'engineer_updates',
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EngineerUpdates(),
+                            ),
+                          );
+                        },
                       ),
                     ]),
                     const SizedBox(height: 24),
@@ -181,37 +190,52 @@ class _admindashboardState extends State<admindashboard> {
                         subtitle: 'Team management',
                         icon: Icons.people_alt_rounded,
                         color: const Color(0xFF6C5CE7),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EngineerManagementPage(),
-                          ),
-                        ),
+                        onTap: () {
+                          AuthStateService.instance.saveLastAdminPage(
+                            'create_engineer',
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EngineerManagementPage(),
+                            ),
+                          );
+                        },
                       ),
                       _buildMenuCard(
                         title: 'Attendance',
                         subtitle: 'Check-in history',
                         icon: Icons.how_to_reg_rounded,
                         color: const Color(0xFFF0932B),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AdminAttendancePage(),
-                          ),
-                        ),
+                        onTap: () {
+                          AuthStateService.instance.saveLastAdminPage(
+                            'attendance',
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AdminAttendancePage(),
+                            ),
+                          );
+                        },
                       ),
                       _buildMenuCard(
                         title: 'Attendance Reports',
                         subtitle: 'Analytics and logs',
                         icon: Icons.analytics_rounded,
                         color: const Color(0xFF3949AB),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const AdminAttendanceReportsPage(),
-                          ),
-                        ),
+                        onTap: () {
+                          AuthStateService.instance.saveLastAdminPage(
+                            'attendance_reports',
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const AdminAttendanceReportsPage(),
+                            ),
+                          );
+                        },
                       ),
                     ]),
                     const SizedBox(height: 24),
@@ -221,24 +245,34 @@ class _admindashboardState extends State<admindashboard> {
                         subtitle: 'New service contract',
                         icon: Icons.assignment_ind_rounded,
                         color: const Color(0xFF2E7D32),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AMCCreatePage(),
-                          ),
-                        ),
+                        onTap: () {
+                          AuthStateService.instance.saveLastAdminPage(
+                            'create_amc',
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AMCCreatePage(),
+                            ),
+                          );
+                        },
                       ),
                       _buildMenuCard(
                         title: 'Service Reports',
                         subtitle: 'Generate customer reports',
                         icon: Icons.assessment_rounded,
                         color: const Color(0xFF7D2E76),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CustomerReportGenerator(),
-                          ),
-                        ),
+                        onTap: () {
+                          AuthStateService.instance.saveLastAdminPage(
+                            'service_reports',
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CustomerReportGenerator(),
+                            ),
+                          );
+                        },
                       ),
                     ]),
                     const SizedBox(height: 24),
@@ -248,25 +282,35 @@ class _admindashboardState extends State<admindashboard> {
                         subtitle: 'Catalog management',
                         icon: Icons.branding_watermark_rounded,
                         color: const Color(0xFFD63031),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BrandModelPage(),
-                          ),
-                        ),
+                        onTap: () {
+                          AuthStateService.instance.saveLastAdminPage(
+                            'brand_and_model',
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => BrandModelPage(),
+                            ),
+                          );
+                        },
                       ),
                       _buildMenuCard(
                         title: 'Configuration',
                         subtitle: 'Device parameters',
                         icon: Icons.settings_input_component_rounded,
                         color: const Color(0xFF2D3436),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                AdminDeviceConfigurationPage(),
-                          ),
-                        ),
+                        onTap: () {
+                          AuthStateService.instance.saveLastAdminPage(
+                            'device_config',
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AdminDeviceConfigurationPage(),
+                            ),
+                          );
+                        },
                       ),
                     ]),
                     const SizedBox(height: 24),
@@ -276,53 +320,74 @@ class _admindashboardState extends State<admindashboard> {
                         subtitle: 'Scanner and verification',
                         icon: Icons.qr_code_scanner_rounded,
                         color: const Color(0xFF1E3799),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AdminBarcodeScanner(),
-                          ),
-                        ),
+                        onTap: () {
+                          AuthStateService.instance.saveLastAdminPage(
+                            'barcode_hub',
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AdminBarcodeScanner(),
+                            ),
+                          );
+                        },
                       ),
                       _buildMenuCard(
                         title: 'Identity',
                         subtitle: 'Asset verification',
                         icon: Icons.fact_check_rounded,
                         color: const Color(0xFF38ADA9),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                BarcodeIdentifierScreen(scannedBarcode: ""),
-                          ),
-                        ),
+                        onTap: () {
+                          AuthStateService.instance.saveLastAdminPage(
+                            'identity',
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  BarcodeIdentifierScreen(scannedBarcode: ""),
+                            ),
+                          );
+                        },
                       ),
                       _buildMenuCard(
                         title: 'Barcode Details',
                         subtitle: 'Comprehensive asset info',
                         icon: Icons.inventory_2_rounded,
                         color: const Color(0xFF483785),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const AdminViewBarcodeDetails(),
-                          ),
-                        ),
+                        onTap: () {
+                          AuthStateService.instance.saveLastAdminPage(
+                            'barcode_details',
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const AdminViewBarcodeDetails(),
+                            ),
+                          );
+                        },
                       ),
                       _buildMenuCard(
                         title: 'Engineer Location',
                         subtitle: 'Comprehensive asset info',
                         icon: Icons.location_pin,
                         color: const Color(0xFF483785),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AdminGeoLocationScreen(
-                              engineerId: '',
-                              engineerName: '',
+                        onTap: () {
+                          AuthStateService.instance.saveLastAdminPage(
+                            'geo_location',
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const AdminGeoLocationScreen(
+                                    engineerId: '',
+                                    engineerName: '',
+                                  ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                     ]),
                     const SizedBox(height: 48),
@@ -944,13 +1009,15 @@ class _admindashboardState extends State<admindashboard> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
-                        await AdminDashboardBackend.logout();
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                            builder: (context) => const UnifiedLoginScreen(),
-                          ),
-                          (route) => false,
-                        );
+                        await AuthStateService.instance.logout();
+                        if (context.mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (context) => const RoleSelectionScreen(),
+                            ),
+                            (route) => false,
+                          );
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: errorColor,

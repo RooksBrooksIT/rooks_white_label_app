@@ -5,6 +5,27 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_dashboard.dart';
+import 'package:subscription_rooks_app/frontend/screens/engineer_dashboard_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/amc_main_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_login_page.dart';
+import 'package:subscription_rooks_app/backend/screens/admin_login_page.dart';
+import 'package:subscription_rooks_app/backend/screens/engineer_login_page.dart';
+import 'package:subscription_rooks_app/backend/screens/amc_customerlogin_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_tickets_overview.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_brandandmodel_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_Engineer_reports.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_barcode_scanner.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_attendance_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_attendance_reports.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_create_amc_customer.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_create_engineer.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_customer_report_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_device_config_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/barcode_identifier.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_view_barcode_details.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_geo_location_screen.dart';
 
 class AuthStateService extends ChangeNotifier {
   AuthStateService._();
@@ -12,6 +33,8 @@ class AuthStateService extends ChangeNotifier {
 
   static const String _kIsRegistered = 'app_is_registered';
   static const String _kUserRole = 'user_role';
+  static const String _kLastAdminPage = 'last_admin_page';
+  static const String _kLastAdminPageArgs = 'last_admin_page_args';
 
   FirebaseAuth? _auth;
   FirebaseAuth get auth {
@@ -37,11 +60,26 @@ class AuthStateService extends ChangeNotifier {
       _auth = FirebaseAuth.instance;
       // Also check if user is logged in via Firebase
       if (_auth?.currentUser != null) {
+        // If Firebase user exists, we consider it a registered session
         _isRegistered = true;
         await prefs.setBool(_kIsRegistered, true);
       }
     } catch (e) {
       debugPrint('Firebase not fully ready during AuthStateService.init: $e');
+    }
+  }
+
+  /// Saves the last accessed admin page for session restoration
+  Future<void> saveLastAdminPage(
+    String pageName, {
+    Map<String, dynamic>? args,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kLastAdminPage, pageName);
+    if (args != null) {
+      // Simple JSON-like storage for args if needed, or just specific keys
+      // For now, focusing on page names as per requirements
+      debugPrint('AuthStateService: Saving last admin page: $pageName');
     }
   }
 
@@ -117,6 +155,11 @@ class AuthStateService extends ChangeNotifier {
       _isRegistered = true;
 
       if (role == 'admin') {
+        await prefs.setBool('admin_isLoggedIn', true);
+        await prefs.setString('admin_email', email);
+        await prefs.setString('admin_org_collection', targetScope);
+        await prefs.setString('last_role', 'admin');
+
         ThemeService.instance.updateTheme(
           primary: ThemeService.instance.primaryColor,
           secondary: ThemeService.instance.secondaryColor,
@@ -218,7 +261,117 @@ class AuthStateService extends ChangeNotifier {
 
   Future<void> logout() async {
     await auth.signOut();
-    // We don't necessarily clear _kIsRegistered because the app *is* registered on this device.
-    // The user just needs to log in again.
+
+    final prefs = await SharedPreferences.getInstance();
+
+    // Clear Admin session
+    await prefs.remove('admin_isLoggedIn');
+    await prefs.remove('admin_email');
+    await prefs.remove('admin_org_collection');
+    await prefs.remove(_kLastAdminPage);
+    await prefs.remove(_kLastAdminPageArgs);
+
+    // Clear Engineer session
+    await prefs.remove('engineerName');
+    await prefs.remove('engineerEmail');
+    await prefs.remove('tenantId');
+
+    // Clear Customer session
+    await prefs.remove('email');
+    await prefs.remove('databaseName');
+
+    // Clear unified session flags
+    await prefs.remove(_kIsRegistered);
+    await prefs.remove(_kUserRole);
+
+    _isRegistered = false;
+    notifyListeners();
+  }
+
+  /// Determines the initial screen based on persisted login state
+  Future<Widget> getInitialScreen() async {
+    try {
+      debugPrint('AuthStateService: Determining initial screen...');
+      final prefs = await SharedPreferences.getInstance();
+
+      // 1. Check Admin
+      final bool isAdminLoggedIn = await AdminLoginBackend.checkLoginStatus();
+      debugPrint('AuthStateService: Admin logged in: $isAdminLoggedIn');
+      if (isAdminLoggedIn) {
+        final lastPage = prefs.getString(_kLastAdminPage);
+        debugPrint('AuthStateService: Last admin page: $lastPage');
+        if (lastPage != null) {
+          return _getAdminPageWidget(lastPage);
+        }
+        return const admindashboard();
+      }
+
+      // 2. Check Engineer
+      final String? engineerName =
+          await EngineerLoginBackend.checkLoginStatus();
+      debugPrint('AuthStateService: Engineer logged in: $engineerName');
+      if (engineerName != null) {
+        return EngineerPage(userEmail: '', userName: engineerName);
+      }
+
+      // 3. Check Customer
+      final String? customerEmail = await AMCLoginBackend.checkLoginStatus();
+      debugPrint('AuthStateService: Customer logged in: $customerEmail');
+      if (customerEmail != null) {
+        return const AMCCustomerMainPage();
+      }
+
+      debugPrint(
+        'AuthStateService: No session found, checking for last used role',
+      );
+      final lastRole = prefs.getString('last_role');
+      if (lastRole == 'admin') {
+        return const AdminLogin();
+      }
+
+      return const RoleSelectionScreen();
+    } catch (e) {
+      debugPrint('AuthStateService: Error determining initial screen: $e');
+      // Default to role selection on error
+      return const RoleSelectionScreen();
+    }
+  }
+
+  /// Maps page names back to Widgets
+  Widget _getAdminPageWidget(String pageName) {
+    switch (pageName) {
+      case 'dashboard':
+        return const admindashboard();
+      case 'service_tickets':
+        return const AdminPage_CusDetails(statusFilter: "");
+      case 'brand_and_model':
+        return const BrandModelPage();
+      case 'engineer_reports':
+        return const AdminEngineerReports();
+      case 'barcode_scanner':
+        return const AdminBarcodeScanner();
+      case 'attendance':
+        return const AdminAttendancePage();
+      case 'attendance_reports':
+        return const AdminAttendanceReportsPage();
+      case 'create_amc':
+        return const AMCCreatePage();
+      case 'create_engineer':
+        return const EngineerManagementPage();
+      case 'service_reports':
+        return CustomerReportGenerator();
+      case 'device_config':
+        return const AdminDeviceConfigurationPage();
+      case 'barcode_hub':
+        return const AdminBarcodeScanner();
+      case 'identity':
+        return const BarcodeIdentifierScreen(scannedBarcode: "");
+      case 'barcode_details':
+        return const AdminViewBarcodeDetails();
+      case 'geo_location':
+        return const AdminGeoLocationScreen(engineerId: '', engineerName: '');
+      default:
+        return const admindashboard();
+    }
   }
 }

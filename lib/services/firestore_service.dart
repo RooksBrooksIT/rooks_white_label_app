@@ -240,4 +240,23 @@ class FirestoreService {
     }
     return null;
   }
+
+  /// Get the referral code for a specific admin
+  Future<String?> getReferralCodeForAdmin(String adminUid) async {
+    try {
+      final snapshot = await _db
+          .collectionGroup('referral_codes')
+          .where('adminUid', isEqualTo: adminUid)
+          .where('isActive', isEqualTo: true)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.first.get('code') as String?;
+      }
+    } catch (e) {
+      // debugPrint('Error fetching admin referral code: $e');
+    }
+    return null;
+  }
 }

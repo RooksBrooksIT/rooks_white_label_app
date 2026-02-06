@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/frontend/screens/auth_selection_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_login_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/amc_customerlogin_page.dart';
@@ -23,7 +22,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   void _onContinue() {
     if (_selectedRole == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a role to continue.')),
+        const SnackBar(
+          content: Text('Please select a role to continue.'),
+          backgroundColor: Colors.black,
+        ),
       );
       return;
     }
@@ -48,13 +50,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = ThemeService.instance;
-    final primaryColor = theme.primaryColor;
-    final backgroundColor = theme.backgroundColor;
-    final isDarkBackground = backgroundColor.computeLuminance() < 0.5;
-
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.white,
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
@@ -62,92 +59,71 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Main Card
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: isDarkBackground ? Colors.grey[900] : Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
+                // Header section
+                const Icon(
+                  Icons.account_circle_outlined,
+                  size: 80,
+                  color: Colors.black87,
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  "Select Your Role",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                    letterSpacing: -0.5,
                   ),
-                  child: Column(
-                    children: [
-                      Text(
-                        "Please select your role",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: isDarkBackground
-                              ? Colors.white
-                              : Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        "Welcome to ${theme.appName}. Please choose how you would like to use the platform today.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isDarkBackground
-                              ? Colors.grey[400]
-                              : Colors.grey[500],
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                      // Horizontal Role Icons
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: _roles.map((role) {
-                          final isSelected = _selectedRole == role['id'];
-                          return _RoleItem(
-                            label: role['label'],
-                            icon: role['icon'],
-                            isSelected: isSelected,
-                            onTap: () {
-                              setState(() {
-                                _selectedRole = role['id'];
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 48),
-                      // Continue Button
-                      SizedBox(
-                        width: 200,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: _onContinue,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            "Continue",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Choose how you would like to proceed with the platform.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 15, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 48),
 
-                      // Progress Dots
-                    ],
+                // Role Items
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: _roles.map((role) {
+                    final isSelected = _selectedRole == role['id'];
+                    return _RoleItem(
+                      label: role['label'],
+                      icon: role['icon'],
+                      isSelected: isSelected,
+                      onTap: () {
+                        setState(() {
+                          _selectedRole = role['id'];
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 60),
+
+                // Continue Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _onContinue,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      "Continue",
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -174,46 +150,34 @@ class _RoleItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = ThemeService.instance.primaryColor;
-    final isDarkBackground =
-        ThemeService.instance.backgroundColor.computeLuminance() < 0.5;
-
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
-          Container(
-            width: 90,
-            height: 90,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 85,
+            height: 85,
             decoration: BoxDecoration(
-              color: isSelected
-                  ? primaryColor.withOpacity(0.1)
-                  : (isDarkBackground ? Colors.grey[850] : Colors.white),
-              borderRadius: BorderRadius.circular(12),
+              color: isSelected ? Colors.black : Colors.white,
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected
-                    ? primaryColor
-                    : (isDarkBackground
-                          ? Colors.grey[800]!
-                          : Colors.grey[100]!),
-                width: 2,
+                color: isSelected ? Colors.black : Colors.grey[300]!,
+                width: 1.5,
               ),
-              boxShadow: isSelected
-                  ? null
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+              boxShadow: [
+                if (isSelected)
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+              ],
             ),
             child: Icon(
               icon,
-              size: 40,
-              color: isSelected
-                  ? primaryColor
-                  : (isDarkBackground ? Colors.grey[600] : Colors.grey[300]),
+              size: 36,
+              color: isSelected ? Colors.white : Colors.black54,
             ),
           ),
           const SizedBox(height: 12),
@@ -222,12 +186,7 @@ class _RoleItem extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected
-                  ? primaryColor
-                  : (isDarkBackground
-                        ? Colors.grey[400]
-                        : Colors
-                              .grey[400]), // grey[400] is usually okay on grey[900]
+              color: isSelected ? Colors.black : Colors.grey[600],
             ),
           ),
         ],

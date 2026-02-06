@@ -7,11 +7,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:intl/intl.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_barcode_identifier.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_barcode_scanner_page.dart';
-import 'package:subscription_rooks_app/frontend/screens/engineer_login_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
@@ -984,13 +984,13 @@ class _EngineerPageState extends State<EngineerPage> {
 
   void _performLogout() async {
     await LocationService.instance.stopTracking(widget.userName);
-    Navigator.pop(context);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('engineerEmail');
-    await prefs.remove('engineerName');
+    if (mounted) {
+      Navigator.pop(context);
+    }
+    await AuthStateService.instance.logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => Engineerlogin()),
+      MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
       (Route<dynamic> route) => false,
     );
   }

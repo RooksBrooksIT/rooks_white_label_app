@@ -4,6 +4,7 @@ import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
 
 class AdminEngineerReports extends StatefulWidget {
   const AdminEngineerReports({super.key});
@@ -19,6 +20,12 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
   DateTime? fromDate;
   DateTime? toDate;
   bool isDateRangeMode = false; // false = single date, true = date range
+
+  @override
+  void initState() {
+    super.initState();
+    AuthStateService.instance.saveLastAdminPage('engineer_reports');
+  }
 
   // This map holds counts of admin statuses per engineer dynamically
   Map<String, Map<String, int>> engineerStatusCounts = {};
@@ -58,19 +65,37 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Theme.of(context).primaryColor,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).primaryColor,
+                Theme.of(context).primaryColor.withOpacity(0.8),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
-          'Engineer\'s Progress Report',
+          'Engineers Performance',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
           ),
         ),
+        centerTitle: true,
       ),
       body: SafeArea(
         child: Column(
@@ -152,17 +177,33 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
                               selectedCounts.isEmpty) {
                             return Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.all(20),
+                              height: 200,
+                              alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).cardColor.withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(12),
+                                color: Theme.of(context).cardColor,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: Colors.grey.withOpacity(0.1),
+                                ),
                               ),
-                              child: const Text(
-                                "No data found for selected engineer",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 16),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.analytics_outlined,
+                                    size: 48,
+                                    color: Colors.grey.withOpacity(0.5),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    "No data found for this engineer",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             );
                           }
@@ -177,9 +218,7 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
                             final timestamp = _parseTimestamp(
                               data['timestamp'],
                             );
-
                             if (selectedEngineer == null) return false;
-
                             bool matchesEngineer =
                                 assignedEmployee ==
                                 selectedEngineer!.toLowerCase();
@@ -188,217 +227,297 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
                           }).length;
 
                           return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Total tickets card
+                              // Hero Card for Total Tickets
                               Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.all(16),
+                                padding: const EdgeInsets.all(24),
                                 decoration: BoxDecoration(
-                                  color: Theme.of(
-                                    context,
-                                  ).cardColor.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.3),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Theme.of(context).primaryColor,
+                                      Theme.of(
+                                        context,
+                                      ).primaryColor.withOpacity(0.7),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   ),
+                                  borderRadius: BorderRadius.circular(24),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Theme.of(
+                                        context,
+                                      ).primaryColor.withOpacity(0.3),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
                                 ),
-                                child: Text(
-                                  'Total Tickets: $totalTickets',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                  textAlign: TextAlign.center,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: const Icon(
+                                        Icons.confirmation_number_outlined,
+                                        color: Colors.white,
+                                        size: 32,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 20),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Total Tasks Managed',
+                                            style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            '$totalTickets',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 32,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: 32),
+
+                              Text(
+                                'Status Breakdown',
+                                style: TextStyle(
+                                  color: Theme.of(context).primaryColor,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
 
                               const SizedBox(height: 16),
 
-                              // Status counts card
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(
-                                    context,
-                                  ).cardColor.withOpacity(0.9),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
+                              GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 2,
+                                      crossAxisSpacing: 16,
+                                      mainAxisSpacing: 16,
+                                      childAspectRatio: 1.1,
                                     ),
-                                  ],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "${selectedEngineer != null && selectedEngineer!.isNotEmpty ? selectedEngineer![0].toUpperCase() + selectedEngineer!.substring(1) : 'Engineer'}'s Ticket Counts",
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w700,
-                                        color: Theme.of(context).primaryColor,
+                                itemCount: selectedCounts.length,
+                                itemBuilder: (context, index) {
+                                  final entry = selectedCounts.entries
+                                      .elementAt(index);
+                                  final status = entry.key;
+                                  final count = entry.value;
+                                  final color = _getStatusColor(status);
+                                  final icon = _getStatusIcon(status);
+
+                                  return Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: color.withOpacity(0.05),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: color.withOpacity(0.1),
                                       ),
                                     ),
-                                    const SizedBox(height: 16),
-                                    Divider(
-                                      height: 1,
-                                      color: Theme.of(context).dividerColor,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    ..._buildDynamicStatusCountRows(
-                                      selectedCounts,
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              // Action buttons
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  OutlinedButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        selectedEngineer = null;
-                                      });
-                                    },
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 24,
-                                        vertical: 12,
-                                      ),
-                                      side: BorderSide(
-                                        color: Theme.of(context).primaryColor,
-                                        width: 1.5,
-                                      ),
-                                      foregroundColor: Theme.of(
-                                        context,
-                                      ).primaryColor,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    child: const Text('CLEAR'),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  ElevatedButton(
-                                    onPressed: () async {
-                                      if (selectedEngineer == null ||
-                                          (isDateFilterEnabled &&
-                                              ((!isDateRangeMode &&
-                                                      selectedDate == null) ||
-                                                  (isDateRangeMode &&
-                                                      (fromDate == null ||
-                                                          toDate == null))))) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Please select an engineer and date(s) if needed',
-                                            ),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                        return;
-                                      }
-
-                                      final filteredTickets = docs
-                                          .map(
-                                            (doc) =>
-                                                doc.data()
-                                                    as Map<String, dynamic>,
-                                          )
-                                          .where((data) {
-                                            final assignedEmployee =
-                                                data['assignedEmployee']
-                                                    ?.toString()
-                                                    .trim()
-                                                    .toLowerCase();
-                                            final timestamp = _parseTimestamp(
-                                              data['timestamp'],
-                                            );
-                                            if (selectedEngineer == null) {
-                                              return false;
-                                            }
-                                            bool matchesEngineer =
-                                                assignedEmployee ==
-                                                selectedEngineer!.toLowerCase();
-                                            bool matchesDate =
-                                                _matchesDateFilter(timestamp);
-                                            return matchesEngineer &&
-                                                matchesDate;
-                                          })
-                                          .toList();
-
-                                      // Show loading dialog
-                                      showDialog(
-                                        context: context,
-                                        barrierDismissible: false,
-                                        builder: (context) => const AlertDialog(
-                                          content: Row(
-                                            children: [
-                                              CircularProgressIndicator(),
-                                              SizedBox(width: 20),
-                                              Text('Generating PDF...'),
-                                            ],
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(icon, color: color, size: 28),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          count.toString(),
+                                          style: TextStyle(
+                                            color: color,
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.w800,
                                           ),
                                         ),
-                                      );
-
-                                      try {
-                                        final pdf = await _generatePdf(
-                                          selectedEngineer!,
-                                          filteredTickets,
-                                        );
-
-                                        Navigator.of(
-                                          context,
-                                        ).pop(); // Remove loading dialog
-
-                                        await Printing.layoutPdf(
-                                          onLayout:
-                                              (PdfPageFormat format) async =>
-                                                  pdf.save(),
-                                          name:
-                                              'Engineer_Report_${selectedEngineer}_${DateTime.now().millisecondsSinceEpoch}',
-                                        );
-                                      } catch (e) {
-                                        Navigator.of(
-                                          context,
-                                        ).pop(); // Remove loading dialog
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              'Error generating PDF: $e',
-                                            ),
-                                            backgroundColor: Colors.red,
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          status.toUpperCase(),
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: color.withOpacity(0.8),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 0.5,
                                           ),
-                                        );
-                                      }
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Theme.of(
-                                        context,
-                                      ).primaryColor,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 24,
-                                        vertical: 12,
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+
+                              const SizedBox(height: 32),
+
+                              // Action Buttons
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {
+                                        setState(() {
+                                          selectedEngineer = null;
+                                        });
+                                      },
+                                      icon: const Icon(
+                                        Icons.refresh_rounded,
+                                        size: 20,
                                       ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                                      label: const Text('RESET'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.grey.shade200,
+                                        foregroundColor: Colors.grey.shade700,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                        ),
+                                        elevation: 0,
                                       ),
                                     ),
-                                    child: const Text('GENERATE PDF'),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    flex: 2,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () async {
+                                        if (selectedEngineer == null ||
+                                            (isDateFilterEnabled &&
+                                                ((!isDateRangeMode &&
+                                                        selectedDate == null) ||
+                                                    (isDateRangeMode &&
+                                                        (fromDate == null ||
+                                                            toDate ==
+                                                                null))))) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Please select required filters',
+                                              ),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        final filteredTickets = docs
+                                            .map(
+                                              (doc) =>
+                                                  doc.data()
+                                                      as Map<String, dynamic>,
+                                            )
+                                            .where((data) {
+                                              final assignedEmployee =
+                                                  data['assignedEmployee']
+                                                      ?.toString()
+                                                      .trim()
+                                                      .toLowerCase();
+                                              final timestamp = _parseTimestamp(
+                                                data['timestamp'],
+                                              );
+                                              if (selectedEngineer == null)
+                                                return false;
+                                              return assignedEmployee ==
+                                                      selectedEngineer!
+                                                          .toLowerCase() &&
+                                                  _matchesDateFilter(timestamp);
+                                            })
+                                            .toList();
+
+                                        showDialog(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (context) =>
+                                              const AlertDialog(
+                                                content: Row(
+                                                  children: [
+                                                    CircularProgressIndicator(),
+                                                    SizedBox(width: 20),
+                                                    Text(
+                                                      'Generating Report...',
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                        );
+
+                                        try {
+                                          final pdf = await _generatePdf(
+                                            selectedEngineer!,
+                                            filteredTickets,
+                                          );
+                                          Navigator.of(context).pop();
+                                          await Printing.layoutPdf(
+                                            onLayout:
+                                                (PdfPageFormat format) async =>
+                                                    pdf.save(),
+                                            name:
+                                                'Engineer_Report_${selectedEngineer}_${DateTime.now().millisecondsSinceEpoch}',
+                                          );
+                                        } catch (e) {
+                                          Navigator.of(context).pop();
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Error: $e'),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      icon: const Icon(
+                                        Icons.picture_as_pdf_rounded,
+                                        size: 20,
+                                      ),
+                                      label: const Text('EXPORT PDF'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).primaryColor,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                        ),
+                                        elevation: 4,
+                                        shadowColor: Theme.of(
+                                          context,
+                                        ).primaryColor.withOpacity(0.4),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -406,30 +525,37 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
                           );
                         } else {
                           return Container(
-                            padding: const EdgeInsets.all(20),
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(32),
                             decoration: BoxDecoration(
                               color: Theme.of(context).cardColor,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(24),
                               border: Border.all(
                                 color: Theme.of(
                                   context,
-                                ).primaryColor.withOpacity(0.3),
+                                ).primaryColor.withOpacity(0.05),
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 5),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.person_search_rounded,
+                                  size: 64,
+                                  color: Theme.of(
+                                    context,
+                                  ).primaryColor.withOpacity(0.2),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Select an engineer above to see their performance overview',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ],
-                            ),
-                            child: Text(
-                              'Select an engineer to view their progress report',
-                              style: TextStyle(
-                                color: Theme.of(context).primaryColor,
-                                fontSize: 16,
-                              ),
-                              textAlign: TextAlign.center,
                             ),
                           );
                         }
@@ -456,38 +582,62 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).primaryColor.withOpacity(0.3),
-        ),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Filters',
-            style: TextStyle(
-              color: Theme.of(context).primaryColor,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Filter Performance',
+                style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Icon(Icons.tune, color: Theme.of(context).primaryColor, size: 20),
+            ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
-          // Date filter toggle
-          Row(
-            children: [
-              Transform.scale(
-                scale: 0.9,
-                child: Switch(
+          // Date filter toggle inside a styled row
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_today_outlined,
+                  color: isDateFilterEnabled
+                      ? Theme.of(context).primaryColor
+                      : Colors.grey,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Filter by Date',
+                    style: TextStyle(
+                      color: _getContrastColor(Theme.of(context).cardColor),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Switch.adaptive(
                   value: isDateFilterEnabled,
                   onChanged: (bool? newValue) {
                     setState(() {
@@ -500,128 +650,100 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
                       }
                     });
                   },
-                  activeThumbColor: Colors.white,
-                  activeTrackColor: Theme.of(
-                    context,
-                  ).primaryColor.withOpacity(0.5),
+                  activeColor: Theme.of(context).primaryColor,
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Filter by Date',
-                style: TextStyle(color: Theme.of(context).primaryColor),
-              ),
-            ],
+              ],
+            ),
           ),
 
-          const SizedBox(height: 12),
-
-          // Date mode toggle (Single Date vs Date Range)
-          if (isDateFilterEnabled)
-            Column(
+          if (isDateFilterEnabled) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Row(
-                  children: [
-                    Transform.scale(
-                      scale: 0.8,
-                      child: Switch(
-                        value: isDateRangeMode,
-                        onChanged: (bool? newValue) {
-                          setState(() {
-                            isDateRangeMode = newValue ?? false;
-                            selectedDate = null;
-                            fromDate = null;
-                            toDate = null;
-                            selectedEngineer = null;
-                          });
-                        },
-                        activeThumbColor: Colors.white,
-                        activeTrackColor: Theme.of(
-                          context,
-                        ).primaryColor.withOpacity(0.5),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isDateRangeMode ? 'Date Range' : 'Single Date',
-                      style: TextStyle(
-                        color: Theme.of(context).primaryColor,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
-            ),
-
-          // Date picker based on mode
-          if (isDateFilterEnabled)
-            Column(
-              children: [
-                if (!isDateRangeMode)
-                  _buildDatePicker('Select Date', selectedDate, (pickedDate) {
-                    setState(() {
-                      selectedDate = pickedDate;
-                      selectedEngineer = null;
-                    });
-                  })
-                else
-                  Column(
-                    children: [
-                      _buildDatePicker('From Date', fromDate, (pickedDate) {
-                        setState(() {
-                          fromDate = pickedDate;
-                          // Reset toDate if it's before fromDate
-                          if (toDate != null && toDate!.isBefore(pickedDate)) {
-                            toDate = null;
-                          }
-                          selectedEngineer = null;
-                        });
-                      }),
-                      const SizedBox(height: 12),
-                      _buildDatePicker('To Date', toDate, (pickedDate) {
-                        if (fromDate != null &&
-                            pickedDate.isBefore(fromDate!)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'To date cannot be before from date',
-                              ),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                          return;
-                        }
-                        setState(() {
-                          toDate = pickedDate;
-                          selectedEngineer = null;
-                        });
-                      }, minDate: fromDate),
-                      if (fromDate != null && toDate != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            'Selected range: ${fromDate!.toLocal().toString().split(' ')[0]} to ${toDate!.toLocal().toString().split(' ')[0]}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ),
-                    ],
+                Text(
+                  isDateRangeMode ? 'Date Range' : 'Single Date',
+                  style: TextStyle(
+                    color: _getContrastColor(
+                      Theme.of(context).cardColor,
+                    ).withOpacity(0.6),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
-                const SizedBox(height: 16),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 30,
+                  child: Switch.adaptive(
+                    value: isDateRangeMode,
+                    onChanged: (bool? newValue) {
+                      setState(() {
+                        isDateRangeMode = newValue ?? false;
+                        selectedDate = null;
+                        fromDate = null;
+                        toDate = null;
+                        selectedEngineer = null;
+                      });
+                    },
+                    activeColor: Theme.of(context).primaryColor,
+                  ),
+                ),
               ],
             ),
+            const SizedBox(height: 12),
+            if (!isDateRangeMode)
+              _buildDatePicker('Select Date', selectedDate, (pickedDate) {
+                setState(() {
+                  selectedDate = pickedDate;
+                  selectedEngineer = null;
+                });
+              })
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDatePicker('From', fromDate, (pickedDate) {
+                      setState(() {
+                        fromDate = pickedDate;
+                        if (toDate != null && toDate!.isBefore(pickedDate)) {
+                          toDate = null;
+                        }
+                        selectedEngineer = null;
+                      });
+                    }),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildDatePicker('To', toDate, (pickedDate) {
+                      if (fromDate != null && pickedDate.isBefore(fromDate!)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Invalid range'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+                      setState(() {
+                        toDate = pickedDate;
+                        selectedEngineer = null;
+                      });
+                    }, minDate: fromDate),
+                  ),
+                ],
+              ),
+          ],
 
-          // Engineer dropdown
+          const SizedBox(height: 20),
+
           Text(
-            'Select Engineer',
+            'Engineer',
             style: TextStyle(
-              color: Theme.of(context).textTheme.bodyLarge?.color,
-              fontSize: 16,
+              color: _getContrastColor(
+                Theme.of(context).cardColor,
+              ).withOpacity(0.7),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
 
@@ -631,54 +753,10 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
             stream: getEngineerUsernames(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white.withOpacity(0.3)),
-                  ),
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  ),
-                );
-              }
-
-              if (snapshot.hasError) {
-                return Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.withOpacity(0.5)),
-                  ),
-                  child: Text(
-                    'Error: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                );
+                return const Center(child: LinearProgressIndicator());
               }
 
               final engineers = snapshot.data ?? [];
-
-              // Reset selectedEngineer if no longer exists
-              if (selectedEngineer != null &&
-                  !engineers.contains(selectedEngineer!.toLowerCase())) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    setState(() {
-                      selectedEngineer = null;
-                    });
-                  }
-                });
-              }
-
               final items = engineers
                   .map(
                     (eng) => DropdownMenuItem<String>(
@@ -686,52 +764,50 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
                       child: Text(
                         eng[0].toUpperCase() +
                             (eng.length > 1 ? eng.substring(1) : ''),
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(
+                          color: _getContrastColor(Theme.of(context).cardColor),
+                        ),
                       ),
                     ),
                   )
                   .toList();
 
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(
-                    isDropdownDisabled ? 0.05 : 0.1,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
+                  color: Theme.of(context).primaryColor.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: Colors.white.withOpacity(
-                      isDropdownDisabled ? 0.2 : 0.5,
-                    ),
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
                   ),
                 ),
-                child: DropdownButton<String>(
-                  dropdownColor: Theme.of(context).primaryColor,
-                  value: selectedEngineer?.toLowerCase(),
-                  hint: Text(
-                    isDropdownDisabled
-                        ? 'Select date(s) first'
-                        : 'Choose an engineer',
-                    style: TextStyle(
-                      color: isDropdownDisabled
-                          ? Colors.white54
-                          : Colors.white70,
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    dropdownColor: Theme.of(context).cardColor,
+                    value: selectedEngineer?.toLowerCase(),
+                    hint: Text(
+                      isDropdownDisabled
+                          ? 'Select date first'
+                          : 'Select Engineer',
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 14,
+                      ),
                     ),
+                    items: items,
+                    isExpanded: true,
+                    icon: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    onChanged: isDropdownDisabled
+                        ? null
+                        : (newValue) {
+                            setState(() {
+                              selectedEngineer = newValue;
+                            });
+                          },
                   ),
-                  items: items,
-                  isExpanded: true,
-                  underline: const SizedBox.shrink(),
-                  icon: Icon(
-                    Icons.arrow_drop_down,
-                    color: isDropdownDisabled ? Colors.white54 : Colors.white,
-                  ),
-                  onChanged: isDropdownDisabled
-                      ? null
-                      : (newValue) {
-                          setState(() {
-                            selectedEngineer = newValue;
-                          });
-                        },
                 ),
               );
             },
@@ -753,7 +829,7 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
         Text(
           label,
           style: TextStyle(
-            color: Theme.of(context).textTheme.bodyLarge?.color,
+            color: _getContrastColor(Theme.of(context).cardColor),
             fontSize: 16,
           ),
         ),
@@ -776,9 +852,13 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
                     data: Theme.of(context).copyWith(
                       colorScheme: ColorScheme.light(
                         primary: Theme.of(context).primaryColor,
-                        onPrimary: Colors.white,
-                        surface: Theme.of(context).primaryColor,
-                        onSurface: Colors.white,
+                        onPrimary: _getContrastColor(
+                          Theme.of(context).primaryColor,
+                        ),
+                        surface: Theme.of(context).cardColor,
+                        onSurface: _getContrastColor(
+                          Theme.of(context).cardColor,
+                        ),
                       ),
                     ),
                     child: child!,
@@ -794,7 +874,7 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
                   ? 'Select $label'
                   : '$label: ${currentDate.toLocal().toString().split(' ')[0]}',
               style: TextStyle(
-                color: Theme.of(context).primaryColor,
+                color: _getContrastColor(Theme.of(context).cardColor),
                 fontSize: 14,
               ),
             ),
@@ -868,71 +948,6 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
     }
 
     return false;
-  }
-
-  List<Widget> _buildDynamicStatusCountRows(Map<String, int> counts) {
-    Color getColor(String status) {
-      final lower = status.toLowerCase();
-      if (lower.contains("complete")) {
-        return const Color.fromARGB(255, 34, 189, 29);
-      }
-      if (lower.contains("progress")) return Colors.blueAccent;
-      if (lower.contains("spares") || lower.contains("spa")) {
-        return Colors.orange;
-      }
-      if (lower.contains("approval") || lower.contains("spc")) {
-        return Colors.redAccent;
-      }
-      if (lower.contains("hold")) return Colors.grey;
-      return Colors.black;
-    }
-
-    return counts.entries.map((entry) {
-      final status = entry.key;
-      final count = entry.value;
-      return _statusRow(status, count, getColor(status));
-    }).toList();
-  }
-
-  Widget _statusRow(String label, int count, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                color: color,
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              count.toString(),
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: color,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   String _normalizeStatusKey(String status) {
@@ -1557,6 +1572,30 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
     );
   }
 
+  IconData _getStatusIcon(String status) {
+    final lower = status.toLowerCase();
+    if (lower.contains("complete")) return Icons.check_circle_outline;
+    if (lower.contains("progress")) return Icons.pending_outlined;
+    if (lower.contains("spares") || lower.contains("spa"))
+      return Icons.build_outlined;
+    if (lower.contains("approval") || lower.contains("spc"))
+      return Icons.gavel_outlined;
+    if (lower.contains("hold")) return Icons.pause_circle_outline;
+    return Icons.report_problem_outlined;
+  }
+
+  Color _getStatusColor(String status) {
+    final lower = status.toLowerCase();
+    if (lower.contains("complete")) return const Color(0xFF4CAF50);
+    if (lower.contains("progress")) return const Color(0xFF2196F3);
+    if (lower.contains("spares") || lower.contains("spa"))
+      return const Color(0xFFFF9800);
+    if (lower.contains("approval") || lower.contains("spc"))
+      return const Color(0xFFF44336);
+    if (lower.contains("hold")) return const Color(0xFF9E9E9E);
+    return Colors.blueGrey;
+  }
+
   String _getStatusAbbr(String status) {
     final lower = status.toLowerCase();
     if (lower.contains("complete")) return "COMP";
@@ -1566,5 +1605,11 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
     if (lower.contains("hold")) return "HOLD";
     if (status.length <= 8) return status;
     return status.substring(0, 8);
+  }
+
+  Color _getContrastColor(Color backgroundColor) {
+    return backgroundColor.computeLuminance() > 0.5
+        ? Colors.black87
+        : Colors.white;
   }
 }
