@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_rooks_app/frontend/screens/amc_customerlogin_page.dart';
 
 class CustomerTypePage extends StatefulWidget {
   const CustomerTypePage({super.key});

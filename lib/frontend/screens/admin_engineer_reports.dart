@@ -443,8 +443,9 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
                                               final timestamp = _parseTimestamp(
                                                 data['timestamp'],
                                               );
-                                              if (selectedEngineer == null)
+                                              if (selectedEngineer == null) {
                                                 return false;
+                                              }
                                               return assignedEmployee ==
                                                       selectedEngineer!
                                                           .toLowerCase() &&
@@ -1576,10 +1577,12 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
     final lower = status.toLowerCase();
     if (lower.contains("complete")) return Icons.check_circle_outline;
     if (lower.contains("progress")) return Icons.pending_outlined;
-    if (lower.contains("spares") || lower.contains("spa"))
+    if (lower.contains("spares") || lower.contains("spa")) {
       return Icons.build_outlined;
-    if (lower.contains("approval") || lower.contains("spc"))
+    }
+    if (lower.contains("approval") || lower.contains("spc")) {
       return Icons.gavel_outlined;
+    }
     if (lower.contains("hold")) return Icons.pause_circle_outline;
     return Icons.report_problem_outlined;
   }
@@ -1588,10 +1591,12 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
     final lower = status.toLowerCase();
     if (lower.contains("complete")) return const Color(0xFF4CAF50);
     if (lower.contains("progress")) return const Color(0xFF2196F3);
-    if (lower.contains("spares") || lower.contains("spa"))
+    if (lower.contains("spares") || lower.contains("spa")) {
       return const Color(0xFFFF9800);
-    if (lower.contains("approval") || lower.contains("spc"))
+    }
+    if (lower.contains("approval") || lower.contains("spc")) {
       return const Color(0xFFF44336);
+    }
     if (lower.contains("hold")) return const Color(0xFF9E9E9E);
     return Colors.blueGrey;
   }

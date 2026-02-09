@@ -250,21 +250,27 @@ class _AdminAttendanceReportsPageState
     );
   }
 
+  DateTime _parseDateKey(String key) {
+    try {
+      final parts = key.split('/');
+      if (parts.length == 3) {
+        return DateTime(
+          int.parse(parts[2]),
+          int.parse(parts[1]),
+          int.parse(parts[0]),
+        );
+      }
+    } catch (e) {
+      print('Error parsing date key $key: $e');
+    }
+    return DateTime.now();
+  }
+
   Widget _buildAttendanceList() {
     Stream<QuerySnapshot> stream;
     if (_selectedEngineer != null) {
-      DateTime? from, to;
-      if (_selectedMonth != null) {
-        from = DateTime(_selectedMonth!.year, _selectedMonth!.month, 1);
-        to = DateTime(_selectedMonth!.year, _selectedMonth!.month + 1, 0);
-      } else {
-        from = _selectedDateRange?.start;
-        to = _selectedDateRange?.end;
-      }
       stream = AttendanceBackend.getEngineerAttendanceHistory(
         _selectedEngineer!,
-        fromDate: from,
-        toDate: to,
       );
     } else {
       stream = AttendanceBackend.getAllAttendanceHistory();
@@ -280,32 +286,63 @@ class _AdminAttendanceReportsPageState
           return Center(child: Text('Error: ${snapshot.error}'));
         }
 
-        var docs = snapshot.data?.docs ?? [];
+        final docs = snapshot.data?.docs ?? [];
+        List<Map<String, dynamic>> entries = [];
 
-        // Manual filter for date if engineer is "All" or if using month filter for all
-        if (_selectedEngineer == null) {
-          DateTime? start, end;
-          if (_selectedMonth != null) {
-            start = DateTime(_selectedMonth!.year, _selectedMonth!.month, 1);
-            end = DateTime(_selectedMonth!.year, _selectedMonth!.month + 1, 0);
-          } else if (_selectedDateRange != null) {
-            start = _selectedDateRange!.start;
-            end = _selectedDateRange!.end;
-          }
+        for (var doc in docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final docUsername = data['engineerUsername'] as String?;
 
-          if (start != null && end != null) {
-            docs = docs.where((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              final date = _parseTimestamp(data['date']).toDate();
-              return (date.isAfter(start!.subtract(const Duration(days: 1))) ||
-                      date.isAtSameMomentAs(start)) &&
-                  (date.isBefore(end!.add(const Duration(days: 1))) ||
-                      date.isAtSameMomentAs(end));
-            }).toList();
-          }
+          data.forEach((key, value) {
+            if (value is Map<String, dynamic> && value.containsKey('status')) {
+              final entry = Map<String, dynamic>.from(value);
+              final date = _parseDateKey(key);
+              entry['date'] = Timestamp.fromDate(date);
+
+              // Apply Filters
+              bool matchesEngineer =
+                  _selectedEngineer == null ||
+                  docUsername == _selectedEngineer!.toLowerCase();
+
+              DateTime? start, end;
+              if (_selectedMonth != null) {
+                start = DateTime(
+                  _selectedMonth!.year,
+                  _selectedMonth!.month,
+                  1,
+                );
+                end = DateTime(
+                  _selectedMonth!.year,
+                  _selectedMonth!.month + 1,
+                  0,
+                );
+              } else if (_selectedDateRange != null) {
+                start = _selectedDateRange!.start;
+                end = _selectedDateRange!.end;
+              }
+
+              bool matchesDate = true;
+              if (start != null && end != null) {
+                matchesDate =
+                    (date.isAfter(start.subtract(const Duration(days: 1))) ||
+                        date.isAtSameMomentAs(start)) &&
+                    (date.isBefore(end.add(const Duration(days: 1))) ||
+                        date.isAtSameMomentAs(end));
+              }
+
+              if (matchesEngineer && matchesDate) {
+                entries.add(entry);
+              }
+            }
+          });
         }
 
-        if (docs.isEmpty) {
+        // Sort by date descending
+        entries.sort(
+          (a, b) => (b['date'] as Timestamp).compareTo(a['date'] as Timestamp),
+        );
+
+        if (entries.isEmpty) {
           return const Center(child: Text('No attendance records found.'));
         }
 
@@ -313,17 +350,18 @@ class _AdminAttendanceReportsPageState
         int presentCount = 0;
         int absentCount = 0;
         int leaveCount = 0;
-        for (var doc in docs) {
-          final status = (doc.data() as Map<String, dynamic>)['status'];
+        for (var entry in entries) {
+          final status = entry['status'];
           if (status == 'Present') {
             presentCount++;
-          } else if (status == 'Absent')
+          } else if (status == 'Absent') {
             absentCount++;
-          else if (status == 'Leave')
+          } else if (status == 'Leave') {
             leaveCount++;
+          }
         }
 
-        int totalDays = docs.length;
+        int totalDays = entries.length;
         double attendancePercentage = totalDays > 0
             ? (presentCount / totalDays) * 100
             : 0.0;
@@ -345,16 +383,13 @@ class _AdminAttendanceReportsPageState
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  const Text(
                     'Details',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                   ElevatedButton.icon(
                     onPressed: () => _generateProfessionalPDF(
-                      docs,
+                      entries,
                       presentCount,
                       absentCount,
                       leaveCount,
@@ -377,9 +412,9 @@ class _AdminAttendanceReportsPageState
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.only(bottom: 20),
-                itemCount: docs.length,
+                itemCount: entries.length,
                 itemBuilder: (context, index) {
-                  final data = docs[index].data() as Map<String, dynamic>;
+                  final data = entries[index];
                   return _buildReportItem(data);
                 },
               ),
@@ -603,7 +638,7 @@ class _AdminAttendanceReportsPageState
   }
 
   Future<void> _generateProfessionalPDF(
-    List<dynamic> docs,
+    List<Map<String, dynamic>> entries,
     int present,
     int absent,
     int leave,
@@ -738,9 +773,9 @@ class _AdminAttendanceReportsPageState
                   3: pw.Alignment.centerLeft,
                 },
                 headers: ['Engineer Name', 'Date', 'Status', 'Remarks'],
-                data: docs.map((doc) {
+                data: entries.map((entry) {
                   try {
-                    final d = doc.data() as Map<String, dynamic>;
+                    final d = entry;
                     final username =
                         d['engineerUsername']?.toString().toUpperCase() ??
                         'N/A';
@@ -749,7 +784,7 @@ class _AdminAttendanceReportsPageState
                     if (d['date'] != null && d['date'] is Timestamp) {
                       dateStr = DateFormat(
                         'dd/MM/yyyy',
-                      ).format(_parseTimestamp(d['date']).toDate());
+                      ).format((d['date'] as Timestamp).toDate());
                     }
 
                     return [

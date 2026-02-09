@@ -294,7 +294,59 @@ class AuthStateService extends ChangeNotifier {
       debugPrint('AuthStateService: Determining initial screen...');
       final prefs = await SharedPreferences.getInstance();
 
-      // 1. Check Admin
+      // 1. Check for active Firebase Session (Recovery path)
+      final user = auth.currentUser;
+      if (user != null && !user.isAnonymous) {
+        debugPrint(
+          'AuthStateService: Firebase session found for ${user.email}',
+        );
+        final metadata = await FirestoreService.instance.getUserMetadata(
+          user.uid,
+        );
+        if (metadata != null) {
+          final role = metadata['role'] as String?;
+          final tenantId = metadata['tenantId'] as String?;
+          debugPrint(
+            'AuthStateService: Recovered metadata - role: $role, tenant: $tenantId',
+          );
+
+          // Restore SharedPreferences flags to maintain consistency
+          await prefs.setBool(_kIsRegistered, true);
+          await prefs.setString(_kUserRole, role ?? 'user');
+
+          if (tenantId != null) {
+            await prefs.setString('tenantId', tenantId);
+            await prefs.setString('databaseName', tenantId);
+            // Initialize branding for the recovered tenant
+            await FirestoreService.instance.syncBranding(tenantId);
+          }
+
+          if (role == 'admin') {
+            await prefs.setBool('admin_isLoggedIn', true);
+            await prefs.setString('admin_email', user.email ?? '');
+            if (tenantId != null) {
+              await prefs.setString('admin_org_collection', tenantId);
+            }
+            if (metadata.containsKey('name')) {
+              await prefs.setString('appName', metadata['name'] ?? '');
+            }
+
+            final lastPage = prefs.getString(_kLastAdminPage);
+            if (lastPage != null) return _getAdminPageWidget(lastPage);
+            return const admindashboard();
+          } else if (role == 'engineer') {
+            final name = metadata['name'] ?? metadata['Username'] ?? '';
+            await prefs.setString('engineerName', name);
+            return EngineerPage(userEmail: user.email ?? '', userName: name);
+          } else if (role == 'customer') {
+            await prefs.setString('email', user.email ?? '');
+            return const AMCCustomerMainPage();
+          }
+        }
+      }
+
+      // 2. Fallback to existing logic if no Firebase user or metadata not found
+      // Check Admin
       final bool isAdminLoggedIn = await AdminLoginBackend.checkLoginStatus();
       debugPrint('AuthStateService: Admin logged in: $isAdminLoggedIn');
       if (isAdminLoggedIn) {
@@ -306,7 +358,7 @@ class AuthStateService extends ChangeNotifier {
         return const admindashboard();
       }
 
-      // 2. Check Engineer
+      // Check Engineer
       final String? engineerName =
           await EngineerLoginBackend.checkLoginStatus();
       debugPrint('AuthStateService: Engineer logged in: $engineerName');
@@ -314,7 +366,7 @@ class AuthStateService extends ChangeNotifier {
         return EngineerPage(userEmail: '', userName: engineerName);
       }
 
-      // 3. Check Customer
+      // Check Customer
       final String? customerEmail = await AMCLoginBackend.checkLoginStatus();
       debugPrint('AuthStateService: Customer logged in: $customerEmail');
       if (customerEmail != null) {

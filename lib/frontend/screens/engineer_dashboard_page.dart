@@ -1152,7 +1152,7 @@ class _EngineerPageState extends State<EngineerPage> {
                         }
                         setState(() {});
                       },
-                      activeColor: ProfessionalTheme.success,
+                      activeThumbColor: ProfessionalTheme.success,
                       activeTrackColor: ProfessionalTheme.success.withOpacity(
                         0.5,
                       ),
@@ -2585,7 +2585,7 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
             ],
           ),
           child: DropdownButtonFormField<String>(
-            value: dropdownValue,
+            initialValue: dropdownValue,
             decoration: InputDecoration(
               prefixIcon: Icon(
                 Icons.swap_horiz_rounded,
@@ -2650,7 +2650,7 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
         if (_currentStatus == 'Order Taken' ||
             _currentStatus == 'Order Received') ...[
           const SizedBox(height: 16),
-          Container(
+          SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: _isLoadingLocation ? null : _logManualLocation,
@@ -3390,7 +3390,7 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
         ),
         const SizedBox(height: 12),
         if (_imageFiles != null && _imageFiles!.isNotEmpty)
-          Container(
+          SizedBox(
             height: 100,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
