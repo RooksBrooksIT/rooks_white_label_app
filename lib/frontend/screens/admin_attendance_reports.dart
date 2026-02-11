@@ -7,7 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
-import 'package:subscription_rooks_app/services/auth_state_service.dart';
+import 'package:subscription_rooks_app/utils/pdf_utils.dart';
 
 class AdminAttendanceReportsPage extends StatefulWidget {
   const AdminAttendanceReportsPage({super.key});
@@ -44,7 +44,6 @@ class _AdminAttendanceReportsPageState
   void initState() {
     super.initState();
     _loadEngineers();
-    AuthStateService.instance.saveLastAdminPage('attendance_reports');
   }
 
   Future<void> _loadEngineers() async {
@@ -658,11 +657,9 @@ class _AdminAttendanceReportsPageState
 
       // Load logo
       pw.MemoryImage? logoImage;
-      try {
-        final ByteData bytes = await rootBundle.load('assets/images/logo.png');
-        logoImage = pw.MemoryImage(bytes.buffer.asUint8List());
-      } catch (e) {
-        debugPrint('Could not load logo: $e');
+      final logoUrl = ThemeService.instance.logoUrl;
+      if (logoUrl != null && logoUrl.isNotEmpty) {
+        logoImage = await PdfUtils.fetchNetworkImage(logoUrl);
       }
 
       pdf.addPage(

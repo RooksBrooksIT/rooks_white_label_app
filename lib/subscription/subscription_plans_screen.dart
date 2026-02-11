@@ -31,10 +31,10 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     },
     {
       'name': 'Gold Plan',
-      'monthlyPrice': 799,
-      'monthlyOriginalPrice': 999,
-      'yearlyPrice': 7990,
-      'yearlyOriginalPrice': 9990,
+      'monthlyPrice': 399,
+      'monthlyOriginalPrice': 499,
+      'yearlyPrice': 3990,
+      'yearlyOriginalPrice': 4990,
       'subtitle': 'Ideal for growing businesses',
       'features': [
         '0-100 Customers',
@@ -47,10 +47,10 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     },
     {
       'name': 'Platinum Plan',
-      'monthlyPrice': 1999,
-      'monthlyOriginalPrice': 2999,
-      'yearlyPrice': 19990,
-      'yearlyOriginalPrice': 29990,
+      'monthlyPrice': 999,
+      'monthlyOriginalPrice': 1499,
+      'yearlyPrice': 9990,
+      'yearlyOriginalPrice': 14990,
       'subtitle': 'Best for enterprises & unlimited usage',
       'features': [
         'Unlimited Customers',

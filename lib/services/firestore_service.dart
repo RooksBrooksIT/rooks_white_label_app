@@ -48,6 +48,7 @@ class FirestoreService {
     required String uid,
     required String tenantId,
     required String role,
+    String? appName,
   }) async {
     // 1. Local tenant mapping (for tenant-specific user management)
     await collection('users', tenantId: tenantId).doc(uid).set({
@@ -59,6 +60,7 @@ class FirestoreService {
     // 2. Global lookup (for routing during login)
     await _db.collection('global_user_directory').doc(uid).set({
       'tenantId': tenantId,
+      'appName': appName,
       'role': role,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));

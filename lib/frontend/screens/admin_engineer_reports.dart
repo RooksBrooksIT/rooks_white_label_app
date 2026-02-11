@@ -4,7 +4,8 @@ import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:subscription_rooks_app/services/auth_state_service.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/utils/pdf_utils.dart';
 
 class AdminEngineerReports extends StatefulWidget {
   const AdminEngineerReports({super.key});
@@ -24,7 +25,6 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
   @override
   void initState() {
     super.initState();
-    AuthStateService.instance.saveLastAdminPage('engineer_reports');
   }
 
   // This map holds counts of admin statuses per engineer dynamically
@@ -988,6 +988,13 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
   ) async {
     final pdf = pw.Document();
 
+    // Load logo
+    pw.MemoryImage? logoImage;
+    final logoUrl = ThemeService.instance.logoUrl;
+    if (logoUrl != null && logoUrl.isNotEmpty) {
+      logoImage = await PdfUtils.fetchNetworkImage(logoUrl);
+    }
+
     // Helper functions
     String formatTimestamp(Timestamp? timestamp) {
       if (timestamp == null) return 'N/A';
@@ -1045,27 +1052,37 @@ class _AdminEngineerReportsState extends State<AdminEngineerReports> {
             margin: const pw.EdgeInsets.only(bottom: 20),
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'ENGINEER PERFORMANCE REPORT',
-                      style: pw.TextStyle(
-                        fontSize: 16,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blue800,
+                if (logoImage != null)
+                  pw.Container(
+                    width: 60,
+                    height: 60,
+                    margin: const pw.EdgeInsets.only(right: 20),
+                    child: pw.Image(logoImage),
+                  ),
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'ENGINEER PERFORMANCE REPORT',
+                        style: pw.TextStyle(
+                          fontSize: 16,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.blue800,
+                        ),
                       ),
-                    ),
-                    pw.SizedBox(height: 4),
-                    pw.Text(
-                      'Generated on ${DateTime.now().toLocal().toString().split(' ')[0]}',
-                      style: const pw.TextStyle(
-                        fontSize: 9,
-                        color: PdfColors.grey600,
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'Generated on ${DateTime.now().toLocal().toString().split(' ')[0]}',
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.grey600,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 pw.Container(
                   padding: const pw.EdgeInsets.all(8),

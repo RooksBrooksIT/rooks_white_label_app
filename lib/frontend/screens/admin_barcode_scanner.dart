@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
-import 'package:subscription_rooks_app/services/auth_state_service.dart';
 
 class AdminBarcodeScanner extends StatefulWidget {
   const AdminBarcodeScanner({super.key});
@@ -42,7 +41,6 @@ class _AdminBarcodeScannerState extends State<AdminBarcodeScanner> {
     _initializeDates();
     _scannerController = MobileScannerController();
     _initializeFirestore();
-    AuthStateService.instance.saveLastAdminPage('barcode_scanner');
   }
 
   void _initializeFirestore() {

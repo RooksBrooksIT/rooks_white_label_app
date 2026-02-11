@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:subscription_rooks_app/backend/attendance_backend.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_attendance_reports.dart';
-import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:intl/intl.dart';
 
 class AdminAttendancePage extends StatefulWidget {
@@ -32,7 +31,6 @@ class _AdminAttendancePageState extends State<AdminAttendancePage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadData();
-    AuthStateService.instance.saveLastAdminPage('attendance');
   }
 
   @override

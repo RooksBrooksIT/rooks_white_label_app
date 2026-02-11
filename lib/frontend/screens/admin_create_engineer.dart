@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'admin_dashboard.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
-import 'package:subscription_rooks_app/services/auth_state_service.dart';
 
 class EngineerManagementPage extends StatefulWidget {
   static Route route() =>
@@ -65,7 +64,6 @@ class _EngineerManagementPageState extends State<EngineerManagementPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _fetchEngineers();
-    AuthStateService.instance.saveLastAdminPage('create_engineer');
   }
 
   void _loadForEdit(Map<String, dynamic> engineer) {

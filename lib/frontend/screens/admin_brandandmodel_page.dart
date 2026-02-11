@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../backend/brand_model_backend.dart';
-import 'package:subscription_rooks_app/services/auth_state_service.dart';
 
 class BrandModelPage extends StatefulWidget {
   const BrandModelPage({super.key});
@@ -48,7 +47,6 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
   void initState() {
     super.initState();
     _loaddevicesbrands();
-    AuthStateService.instance.saveLastAdminPage('brand_and_model');
   }
 
   @override

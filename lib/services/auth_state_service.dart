@@ -13,19 +13,6 @@ import 'package:subscription_rooks_app/frontend/screens/admin_login_page.dart';
 import 'package:subscription_rooks_app/backend/screens/admin_login_page.dart';
 import 'package:subscription_rooks_app/backend/screens/engineer_login_page.dart';
 import 'package:subscription_rooks_app/backend/screens/amc_customerlogin_page.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_tickets_overview.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_brandandmodel_page.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_Engineer_reports.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_barcode_scanner.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_attendance_page.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_attendance_reports.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_create_amc_customer.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_create_engineer.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_customer_report_page.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_device_config_page.dart';
-import 'package:subscription_rooks_app/frontend/screens/barcode_identifier.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_view_barcode_details.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_geo_location_screen.dart';
 
 class AuthStateService extends ChangeNotifier {
   AuthStateService._();
@@ -33,8 +20,6 @@ class AuthStateService extends ChangeNotifier {
 
   static const String _kIsRegistered = 'app_is_registered';
   static const String _kUserRole = 'user_role';
-  static const String _kLastAdminPage = 'last_admin_page';
-  static const String _kLastAdminPageArgs = 'last_admin_page_args';
 
   FirebaseAuth? _auth;
   FirebaseAuth get auth {
@@ -66,20 +51,6 @@ class AuthStateService extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Firebase not fully ready during AuthStateService.init: $e');
-    }
-  }
-
-  /// Saves the last accessed admin page for session restoration
-  Future<void> saveLastAdminPage(
-    String pageName, {
-    Map<String, dynamic>? args,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kLastAdminPage, pageName);
-    if (args != null) {
-      // Simple JSON-like storage for args if needed, or just specific keys
-      // For now, focusing on page names as per requirements
-      debugPrint('AuthStateService: Saving last admin page: $pageName');
     }
   }
 
@@ -145,6 +116,7 @@ class AuthStateService extends ChangeNotifier {
       await FirestoreService.instance.saveUserDirectory(
         uid: uid,
         tenantId: targetScope,
+        appName: role == 'admin' ? name : null,
         role: role,
       );
 
@@ -154,11 +126,11 @@ class AuthStateService extends ChangeNotifier {
       await prefs.setString(_kUserRole, role);
       _isRegistered = true;
 
-      if (role == 'admin') {
+      if (role == 'admin' || role == 'Owner') {
         await prefs.setBool('admin_isLoggedIn', true);
         await prefs.setString('admin_email', email);
         await prefs.setString('admin_org_collection', targetScope);
-        await prefs.setString('last_role', 'admin');
+        await prefs.setString('last_role', role);
 
         ThemeService.instance.updateTheme(
           primary: ThemeService.instance.primaryColor,
@@ -166,7 +138,7 @@ class AuthStateService extends ChangeNotifier {
           backgroundColor: ThemeService.instance.backgroundColor,
           isDarkMode: ThemeService.instance.isDarkMode,
           fontFamily: ThemeService.instance.fontFamily,
-          appName: targetScope,
+          appName: name,
           databaseName: targetScope,
         );
       }
@@ -195,12 +167,11 @@ class AuthStateService extends ChangeNotifier {
       final uid = userCredential.user!.uid;
 
       // 1. Check Global Directory for Tenant Association
-      final associatedTenant = await FirestoreService.instance
-          .getUserTenantAssociation(uid);
+      final metadata = await FirestoreService.instance.getUserMetadata(uid);
       String scope = ThemeService.instance.appName;
 
-      if (associatedTenant != null) {
-        scope = associatedTenant;
+      if (metadata != null) {
+        scope = metadata['tenantId'] ?? scope;
         // Update Local Theme Context immediately so subsequent calls use correct DB
         // Fetch actual branding from 'branding/config' under the tenant
         final brandingDoc = await FirestoreService.instance
@@ -211,6 +182,8 @@ class AuthStateService extends ChangeNotifier {
         if (brandingDoc.exists) {
           brandingData = brandingDoc.data();
         }
+
+        final appName = brandingData?['appName'] ?? metadata['appName'];
 
         ThemeService.instance.updateTheme(
           primary: brandingData?['primaryColor'] != null
@@ -226,7 +199,7 @@ class AuthStateService extends ChangeNotifier {
               brandingData?['useDarkMode'] ?? ThemeService.instance.isDarkMode,
           fontFamily:
               brandingData?['fontFamily'] ?? ThemeService.instance.fontFamily,
-          appName: brandingData?['appName'] ?? scope,
+          appName: appName ?? scope,
           databaseName: scope,
           logoUrl: brandingData?['logoUrl'],
         );
@@ -245,9 +218,16 @@ class AuthStateService extends ChangeNotifier {
       }
 
       final userData = doc.data() as Map<String, dynamic>;
+      final role = userData['role'] ?? 'user';
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_kIsRegistered, true); // Ensure this is set
-      await prefs.setString(_kUserRole, userData['role'] ?? 'user');
+      await prefs.setString(_kUserRole, role);
+
+      if (role == 'admin' || role == 'Owner') {
+        await prefs.setBool('admin_isLoggedIn', true);
+        await prefs.setString('last_role', role);
+      }
+
       _isRegistered = true;
       notifyListeners();
 
@@ -268,8 +248,6 @@ class AuthStateService extends ChangeNotifier {
     await prefs.remove('admin_isLoggedIn');
     await prefs.remove('admin_email');
     await prefs.remove('admin_org_collection');
-    await prefs.remove(_kLastAdminPage);
-    await prefs.remove(_kLastAdminPageArgs);
 
     // Clear Engineer session
     await prefs.remove('engineerName');
@@ -283,6 +261,7 @@ class AuthStateService extends ChangeNotifier {
     // Clear unified session flags
     await prefs.remove(_kIsRegistered);
     await prefs.remove(_kUserRole);
+    await prefs.remove('last_role');
 
     _isRegistered = false;
     notifyListeners();
@@ -317,22 +296,29 @@ class AuthStateService extends ChangeNotifier {
           if (tenantId != null) {
             await prefs.setString('tenantId', tenantId);
             await prefs.setString('databaseName', tenantId);
+            final appName = metadata['appName'] as String?;
+            if (appName != null) {
+              await prefs.setString('appName', appName);
+            }
             // Initialize branding for the recovered tenant
-            await FirestoreService.instance.syncBranding(tenantId);
+            await FirestoreService.instance.syncBranding(
+              tenantId,
+              appId: appName,
+            );
           }
 
-          if (role == 'admin') {
+          if (role == 'admin' || role == 'Owner') {
             await prefs.setBool('admin_isLoggedIn', true);
             await prefs.setString('admin_email', user.email ?? '');
             if (tenantId != null) {
               await prefs.setString('admin_org_collection', tenantId);
             }
-            if (metadata.containsKey('name')) {
+            if (metadata.containsKey('appName')) {
+              await prefs.setString('appName', metadata['appName'] ?? '');
+            } else if (metadata.containsKey('name')) {
               await prefs.setString('appName', metadata['name'] ?? '');
             }
 
-            final lastPage = prefs.getString(_kLastAdminPage);
-            if (lastPage != null) return _getAdminPageWidget(lastPage);
             return const admindashboard();
           } else if (role == 'engineer') {
             final name = metadata['name'] ?? metadata['Username'] ?? '';
@@ -350,11 +336,6 @@ class AuthStateService extends ChangeNotifier {
       final bool isAdminLoggedIn = await AdminLoginBackend.checkLoginStatus();
       debugPrint('AuthStateService: Admin logged in: $isAdminLoggedIn');
       if (isAdminLoggedIn) {
-        final lastPage = prefs.getString(_kLastAdminPage);
-        debugPrint('AuthStateService: Last admin page: $lastPage');
-        if (lastPage != null) {
-          return _getAdminPageWidget(lastPage);
-        }
         return const admindashboard();
       }
 
@@ -377,7 +358,7 @@ class AuthStateService extends ChangeNotifier {
         'AuthStateService: No session found, checking for last used role',
       );
       final lastRole = prefs.getString('last_role');
-      if (lastRole == 'admin') {
+      if (lastRole == 'admin' || lastRole == 'Owner') {
         return const AdminLogin();
       }
 
@@ -386,44 +367,6 @@ class AuthStateService extends ChangeNotifier {
       debugPrint('AuthStateService: Error determining initial screen: $e');
       // Default to role selection on error
       return const RoleSelectionScreen();
-    }
-  }
-
-  /// Maps page names back to Widgets
-  Widget _getAdminPageWidget(String pageName) {
-    switch (pageName) {
-      case 'dashboard':
-        return const admindashboard();
-      case 'service_tickets':
-        return const AdminPage_CusDetails(statusFilter: "");
-      case 'brand_and_model':
-        return const BrandModelPage();
-      case 'engineer_reports':
-        return const AdminEngineerReports();
-      case 'barcode_scanner':
-        return const AdminBarcodeScanner();
-      case 'attendance':
-        return const AdminAttendancePage();
-      case 'attendance_reports':
-        return const AdminAttendanceReportsPage();
-      case 'create_amc':
-        return const AMCCreatePage();
-      case 'create_engineer':
-        return const EngineerManagementPage();
-      case 'service_reports':
-        return CustomerReportGenerator();
-      case 'device_config':
-        return const AdminDeviceConfigurationPage();
-      case 'barcode_hub':
-        return const AdminBarcodeScanner();
-      case 'identity':
-        return const BarcodeIdentifierScreen(scannedBarcode: "");
-      case 'barcode_details':
-        return const AdminViewBarcodeDetails();
-      case 'geo_location':
-        return const AdminGeoLocationScreen(engineerId: '', engineerName: '');
-      default:
-        return const admindashboard();
     }
   }
 }

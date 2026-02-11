@@ -46,6 +46,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
       Widget nextScreen;
       switch (role) {
         case 'admin':
+        case 'Owner':
           nextScreen = const admindashboard();
           break;
         case 'engineer':

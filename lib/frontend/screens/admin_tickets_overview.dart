@@ -7,7 +7,6 @@ import 'package:subscription_rooks_app/frontend/screens/admin_assign_engineer_pa
 import 'package:subscription_rooks_app/frontend/screens/admin_geo_location_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/customer_var_data_screen.dart'
     as customer_var;
-import 'package:subscription_rooks_app/services/auth_state_service.dart';
 
 class AdminPage_CusDetails extends StatefulWidget {
   final customer_var.Customer? newCustomer;
@@ -29,7 +28,6 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
   @override
   void initState() {
     super.initState();
-    AuthStateService.instance.saveLastAdminPage('service_tickets');
   }
 
   // Calculate working days between two dates (excludes Sat/Sun)

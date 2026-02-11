@@ -56,7 +56,6 @@ class _admindashboardState extends State<admindashboard> {
     super.initState();
     _initStreams();
     _loadAdminData();
-    AuthStateService.instance.saveLastAdminPage('dashboard');
   }
 
   void _initStreams() {
@@ -137,9 +136,6 @@ class _admindashboardState extends State<admindashboard> {
                         icon: Icons.confirmation_number_rounded,
                         color: const Color(0xFF0984E3),
                         onTap: () {
-                          AuthStateService.instance.saveLastAdminPage(
-                            'service_tickets',
-                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -171,9 +167,6 @@ class _admindashboardState extends State<admindashboard> {
                             ? engineerUpdateCount.toString()
                             : null,
                         onTap: () {
-                          AuthStateService.instance.saveLastAdminPage(
-                            'engineer_updates',
-                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -191,9 +184,6 @@ class _admindashboardState extends State<admindashboard> {
                         icon: Icons.people_alt_rounded,
                         color: const Color(0xFF6C5CE7),
                         onTap: () {
-                          AuthStateService.instance.saveLastAdminPage(
-                            'create_engineer',
-                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -208,9 +198,6 @@ class _admindashboardState extends State<admindashboard> {
                         icon: Icons.how_to_reg_rounded,
                         color: const Color(0xFFF0932B),
                         onTap: () {
-                          AuthStateService.instance.saveLastAdminPage(
-                            'attendance',
-                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -225,9 +212,6 @@ class _admindashboardState extends State<admindashboard> {
                         icon: Icons.analytics_rounded,
                         color: const Color(0xFF3949AB),
                         onTap: () {
-                          AuthStateService.instance.saveLastAdminPage(
-                            'attendance_reports',
-                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -246,9 +230,6 @@ class _admindashboardState extends State<admindashboard> {
                         icon: Icons.assignment_ind_rounded,
                         color: const Color(0xFF2E7D32),
                         onTap: () {
-                          AuthStateService.instance.saveLastAdminPage(
-                            'create_amc',
-                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -263,9 +244,6 @@ class _admindashboardState extends State<admindashboard> {
                         icon: Icons.assessment_rounded,
                         color: const Color(0xFF7D2E76),
                         onTap: () {
-                          AuthStateService.instance.saveLastAdminPage(
-                            'service_reports',
-                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -283,9 +261,6 @@ class _admindashboardState extends State<admindashboard> {
                         icon: Icons.branding_watermark_rounded,
                         color: const Color(0xFFD63031),
                         onTap: () {
-                          AuthStateService.instance.saveLastAdminPage(
-                            'brand_and_model',
-                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -300,9 +275,6 @@ class _admindashboardState extends State<admindashboard> {
                         icon: Icons.settings_input_component_rounded,
                         color: const Color(0xFF2D3436),
                         onTap: () {
-                          AuthStateService.instance.saveLastAdminPage(
-                            'device_config',
-                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -321,9 +293,6 @@ class _admindashboardState extends State<admindashboard> {
                         icon: Icons.qr_code_scanner_rounded,
                         color: const Color(0xFF1E3799),
                         onTap: () {
-                          AuthStateService.instance.saveLastAdminPage(
-                            'barcode_hub',
-                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -338,9 +307,6 @@ class _admindashboardState extends State<admindashboard> {
                         icon: Icons.fact_check_rounded,
                         color: const Color(0xFF38ADA9),
                         onTap: () {
-                          AuthStateService.instance.saveLastAdminPage(
-                            'identity',
-                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -356,9 +322,6 @@ class _admindashboardState extends State<admindashboard> {
                         icon: Icons.inventory_2_rounded,
                         color: const Color(0xFF483785),
                         onTap: () {
-                          AuthStateService.instance.saveLastAdminPage(
-                            'barcode_details',
-                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -374,9 +337,6 @@ class _admindashboardState extends State<admindashboard> {
                         icon: Icons.location_pin,
                         color: const Color(0xFF483785),
                         onTap: () {
-                          AuthStateService.instance.saveLastAdminPage(
-                            'geo_location',
-                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
