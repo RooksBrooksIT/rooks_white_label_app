@@ -24,6 +24,11 @@ class FirestoreService {
         .collection(collectionName);
   }
 
+  /// Exposes collectionGroup query
+  Query<Map<String, dynamic>> collectionGroup(String collectionPath) {
+    return _db.collectionGroup(collectionPath);
+  }
+
   /// Tenant-specific reference for subscriptions
   CollectionReference<Map<String, dynamic>> subscriptionsRef({
     required String tenantId,
