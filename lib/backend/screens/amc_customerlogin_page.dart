@@ -10,10 +10,19 @@ class AMCLoginBackend {
   static Future<Map<String, dynamic>> login(
     String email,
     String password,
+    String referralCode,
   ) async {
     try {
+      // 1. Identify Tenant via Referral Code
+      final tenantId = await FirestoreService.instance
+          .validateGlobalReferralCode(referralCode);
+      if (tenantId == null) {
+        return {'success': false, 'message': 'Invalid Referral Code.'};
+      }
+
+      // 2. Query User within the specific Organization
       final querySnapshot = await FirestoreService.instance
-          .collection('AMC_user')
+          .collection('AMC_user', tenantId: tenantId)
           .where('email', isEqualTo: email)
           .where('password', isEqualTo: password)
           .get();
@@ -21,9 +30,13 @@ class AMCLoginBackend {
       if (querySnapshot.docs.isNotEmpty) {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('email', email);
+        await prefs.setString('tenantId', tenantId); // Store tenant association
         return {'success': true};
       } else {
-        return {'success': false, 'message': 'Invalid email or password.'};
+        return {
+          'success': false,
+          'message': 'Invalid email or password for this organization.',
+        };
       }
     } catch (e) {
       return {'success': false, 'message': 'An error occurred: $e'};

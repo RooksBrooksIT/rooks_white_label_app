@@ -54,13 +54,27 @@ class AdminLoginBackend {
         };
       }
 
-      // Using name as the document ID to match {username} in the spec
-      await FirestoreService.instance.collection('admin').doc(name).set({
-        'email': email,
-        'password': password,
-        'name': name,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      // Format organization name: OrganizationName_YYYYMMDD
+      final now = DateTime.now();
+      final dateStr =
+          "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
+      final orgCollectionName = "${name.replaceAll(' ', '')}_$dateStr";
+
+      // Store in the organizational root collection
+      await FirestoreService.instance
+          .collection('admin', tenantId: orgCollectionName)
+          .doc(name)
+          .set({
+            'email': email,
+            'password': password,
+            'name': name,
+            'tenantId': orgCollectionName,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+      // Also mark in global directory if needed or just use SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('admin_org_collection', orgCollectionName);
 
       return {'success': true};
     } catch (e) {

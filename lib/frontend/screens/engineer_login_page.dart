@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/backend/screens/engineer_login_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_dashboard_page.dart';
 
@@ -13,6 +15,7 @@ class _EngineerloginState extends State<Engineerlogin> {
   final _formKey = GlobalKey<FormState>();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
+  final _referralCodeController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
 
@@ -41,6 +44,7 @@ class _EngineerloginState extends State<Engineerlogin> {
       final result = await EngineerLoginBackend.login(
         _nameController.text.trim(),
         _passwordController.text.trim(),
+        _referralCodeController.text.trim(),
       );
       setState(() => _isLoading = false);
 
@@ -128,14 +132,22 @@ class _EngineerloginState extends State<Engineerlogin> {
                     final username = usernameController.text.trim();
                     final phone = phoneController.text.trim();
                     final newPass = newPasswordController.text.trim();
-                    if (username.isEmpty || phone.isEmpty || newPass.isEmpty) {
-                      _showErrorDialog('All fields are required.');
+                    final referralCode = _referralCodeController.text.trim();
+
+                    if (username.isEmpty ||
+                        phone.isEmpty ||
+                        newPass.isEmpty ||
+                        referralCode.isEmpty) {
+                      _showErrorDialog(
+                        'All fields (including referral code) are required.',
+                      );
                       return;
                     }
                     final result = await EngineerLoginBackend.resetPassword(
                       username,
                       phone,
                       newPass,
+                      referralCode,
                     );
                     if (result['success']) {
                       if (!mounted) return;
@@ -179,180 +191,149 @@ class _EngineerloginState extends State<Engineerlogin> {
   void dispose() {
     _passwordController.dispose();
     _nameController.dispose();
+    _referralCodeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color: Theme.of(context).iconTheme.color,
-          ),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: SingleChildScrollView(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Form(
+            key: _formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                // Logo with Animation
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.easeInOut,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    border: Border.all(
-                      color: Theme.of(context).dividerColor.withOpacity(0.2),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Icon(
-                      Icons.engineering,
-                      size: 80,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                  ),
-                ),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 const SizedBox(height: 20),
+                // Logo/Branding
+                Center(
+                  child: ThemeService.instance.logoUrl != null
+                      ? Image.network(
+                          ThemeService.instance.logoUrl!,
+                          height: 100,
+                          fit: BoxFit.contain,
+                        )
+                      : Container(
+                          height: 100,
+                          width: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.engineering_rounded,
+                            size: 50,
+                            color: Colors.black54,
+                          ),
+                        ),
+                ),
+                const SizedBox(height: 48),
+                Text(
+                  'Engineer Portal',
+                  style: GoogleFonts.outfit(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                    letterSpacing: -1.0,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Access your work dashboard for ${ThemeService.instance.appName}',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 48),
 
-                // Title with Fade Animation
-                FadeIn(
-                  child: Text(
-                    'Engineer Portal',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).textTheme.headlineMedium?.color,
-                      letterSpacing: 1.2,
+                // Login Form
+                _buildTextField(
+                  label: 'Referral Code',
+                  controller: _referralCodeController,
+                  icon: Icons.vpn_key_outlined,
+                  validator: (v) => v!.isEmpty ? 'Enter referral code' : null,
+                ),
+                const SizedBox(height: 24),
+                _buildTextField(
+                  label: 'Username',
+                  controller: _nameController,
+                  icon: Icons.person_outline,
+                  validator: (v) => v!.isEmpty ? 'Enter your username' : null,
+                ),
+                const SizedBox(height: 24),
+                _buildTextField(
+                  label: 'Password',
+                  controller: _passwordController,
+                  icon: Icons.lock_outline,
+                  obscureText: _obscurePassword,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                  validator: (v) =>
+                      (v?.length ?? 0) < 6 ? 'Password too short' : null,
+                ),
+
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _showForgotPasswordDialog,
+                    child: Text(
+                      'Forgot Password?',
+                      style: GoogleFonts.inter(
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  'Access your work dashboard',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Theme.of(context).textTheme.bodyMedium?.color,
+
+                const SizedBox(height: 48),
+
+                // Login Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _login,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(
+                            'Log In',
+                            style: GoogleFonts.inter(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 40),
-
-                // Login Card
-                Card(
-                  elevation: 10,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(30.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        children: <Widget>[
-                          // Name Field
-                          TextFormField(
-                            controller: _nameController,
-                            decoration: _buildInputDecoration(
-                              label: 'Username',
-                              hint: 'Enter your Username',
-                              icon: Icons.person,
-                            ),
-                            validator: (value) => value?.isEmpty ?? true
-                                ? 'Please enter your name'
-                                : null,
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Password Field
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: _obscurePassword,
-                            decoration: _buildInputDecoration(
-                              label: 'Password',
-                              hint: 'Enter your password',
-                              icon: Icons.lock,
-                              isPassword: true,
-                              onToggleVisibility: () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
-                            ),
-                            validator: (value) => (value?.length ?? 0) < 6
-                                ? 'Password must be at least 6 characters'
-                                : null,
-                          ),
-                          const SizedBox(height: 30),
-
-                          // Login Button
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _login,
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                backgroundColor: Theme.of(context).primaryColor,
-                                foregroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimary,
-                              ),
-                              child: _isLoading
-                                  ? CircularProgressIndicator(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onPrimary,
-                                    )
-                                  : const Text(
-                                      'LOGIN',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          // Forgot Password Link
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: _showForgotPasswordDialog,
-                              child: Text(
-                                'Forgot password?',
-                                style: TextStyle(
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -361,78 +342,53 @@ class _EngineerloginState extends State<Engineerlogin> {
     );
   }
 
-  InputDecoration _buildInputDecoration({
+  Widget _buildTextField({
     required String label,
-    required String hint,
+    required TextEditingController controller,
     required IconData icon,
-    bool isPassword = false,
-    VoidCallback? onToggleVisibility,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
   }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      prefixIcon: Icon(icon, color: Theme.of(context).hintColor),
-      suffixIcon: isPassword
-          ? IconButton(
-              icon: Icon(
-                _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                color: Theme.of(context).hintColor,
-              ),
-              onPressed: onToggleVisibility,
-            )
-          : null,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Theme.of(context).dividerColor),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Theme.of(context).dividerColor),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-      ),
-      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          validator: validator,
+          style: GoogleFonts.inter(),
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, color: Colors.black87),
+            suffixIcon: suffixIcon,
+            filled: true,
+            fillColor: Colors.grey[50],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: Colors.grey[200]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: Colors.grey[200]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Colors.black, width: 2),
+            ),
+          ),
+        ),
+      ],
     );
-  }
-}
-
-// Simple fade-in animation widget
-class FadeIn extends StatefulWidget {
-  final Widget child;
-  final Duration duration;
-
-  const FadeIn({
-    super.key,
-    required this.child,
-    this.duration = const Duration(milliseconds: 500),
-  });
-
-  @override
-  _FadeInState createState() => _FadeInState();
-}
-
-class _FadeInState extends State<FadeIn> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(duration: widget.duration, vsync: this);
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(opacity: _animation, child: widget.child);
   }
 }

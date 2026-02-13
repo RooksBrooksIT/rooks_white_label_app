@@ -70,7 +70,16 @@ class AuthStateService extends ChangeNotifier {
 
       // Determine proper scope (Company DB)
       String targetScope = ThemeService.instance.appName;
-      if (additionalData != null &&
+
+      if (role == 'admin') {
+        // Generate dynamic collection name: OrganizationName_YYYYMMDD
+        final now = DateTime.now();
+        final dateStr =
+            "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
+        // Clean organization name (remove spaces)
+        final cleanOrgName = name.replaceAll(' ', '');
+        targetScope = "${cleanOrgName}_$dateStr";
+      } else if (additionalData != null &&
           additionalData.containsKey('linkedAppName')) {
         targetScope = additionalData['linkedAppName'];
       }
@@ -83,36 +92,41 @@ class AuthStateService extends ChangeNotifier {
         'role': role,
         'registeredAt': FieldValue.serverTimestamp(),
         'isApproved': role == 'admin' ? true : false,
+        'tenantId': targetScope, // Store the tenant ID or scope
         ...?additionalData,
       };
 
       // Store in the specific Company's 'users' collection
       await FirestoreService.instance
-          .collection('users', scope: targetScope)
+          .collection('users', tenantId: targetScope)
           .doc(uid)
           .set(userData);
 
       // 2b. Register in Global Directory for Login Lookup
-      // For Admins, this might need to be updated later when they name their app.
-      if (role != 'admin') {
-        // Admins haven't named their app yet usually.
-        // Customers definitively belong to targetScope.
-        await FirestoreService.instance.saveUserDirectory(
-          uid: uid,
-          appName: targetScope,
-          role: role,
-        );
-      } else {
-        // Optionally track admins too, though their appName might change during setup.
-        // We'll mark them as 'pending_setup' or similar if needed,
-        // but functionally BrandingCustomizationScreen handles the final binding.
-      }
+      // Every user (including Admin) must be in the global directory to be found during login
+      await FirestoreService.instance.saveUserDirectory(
+        uid: uid,
+        tenantId: targetScope,
+        role: role,
+      );
 
       // 3. Mark as registered locally
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_kIsRegistered, true);
       await prefs.setString(_kUserRole, role);
       _isRegistered = true;
+
+      if (role == 'admin') {
+        ThemeService.instance.updateTheme(
+          primary: ThemeService.instance.primaryColor,
+          secondary: ThemeService.instance.secondaryColor,
+          backgroundColor: ThemeService.instance.backgroundColor,
+          isDarkMode: ThemeService.instance.isDarkMode,
+          fontFamily: ThemeService.instance.fontFamily,
+          appName: targetScope,
+          databaseName: targetScope,
+        );
+      }
       notifyListeners();
 
       return {'success': true, 'uid': uid};
@@ -137,31 +151,47 @@ class AuthStateService extends ChangeNotifier {
 
       final uid = userCredential.user!.uid;
 
-      // 1. Check Global Directory for App Association
-      final associatedAvailableApp = await FirestoreService.instance
-          .getUserAppAssociation(uid);
+      // 1. Check Global Directory for Tenant Association
+      final associatedTenant = await FirestoreService.instance
+          .getUserTenantAssociation(uid);
       String scope = ThemeService.instance.appName;
 
-      if (associatedAvailableApp != null) {
-        scope = associatedAvailableApp;
+      if (associatedTenant != null) {
+        scope = associatedTenant;
         // Update Local Theme Context immediately so subsequent calls use correct DB
-        // We might need to fetch the full branding here too?
-        // For now, at least set the appName so 'collection()' works.
-        // Ideally we'd fetch branding from 'main/{scope}/branding'
+        // Fetch actual branding from 'branding/config' under the tenant
+        final brandingDoc = await FirestoreService.instance
+            .brandingDoc(tenantId: scope)
+            .get();
+
+        Map<String, dynamic>? brandingData;
+        if (brandingDoc.exists) {
+          brandingData = brandingDoc.data();
+        }
+
         ThemeService.instance.updateTheme(
-          primary: ThemeService.instance.primaryColor, // Keep current or fetch?
-          secondary: ThemeService.instance.secondaryColor,
-          backgroundColor: ThemeService.instance.backgroundColor,
-          isDarkMode: ThemeService.instance.isDarkMode,
-          fontFamily: ThemeService.instance.fontFamily,
-          appName: scope,
+          primary: brandingData?['primaryColor'] != null
+              ? Color(brandingData!['primaryColor'])
+              : ThemeService.instance.primaryColor,
+          secondary: brandingData?['secondaryColor'] != null
+              ? Color(brandingData!['secondaryColor'])
+              : ThemeService.instance.secondaryColor,
+          backgroundColor: brandingData?['backgroundColor'] != null
+              ? Color(brandingData!['backgroundColor'])
+              : ThemeService.instance.backgroundColor,
+          isDarkMode:
+              brandingData?['useDarkMode'] ?? ThemeService.instance.isDarkMode,
+          fontFamily:
+              brandingData?['fontFamily'] ?? ThemeService.instance.fontFamily,
+          appName: brandingData?['appName'] ?? scope,
+          databaseName: scope,
+          logoUrl: brandingData?['logoUrl'],
         );
-        // Note: Real app should fetch actual theme colors from Firestore here.
       }
 
       // Fetch user data from the specific Company DB
       final doc = await FirestoreService.instance
-          .collection('users', scope: scope)
+          .collection('users', tenantId: scope)
           .doc(uid)
           .get();
 

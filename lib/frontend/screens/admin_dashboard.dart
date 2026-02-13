@@ -14,6 +14,7 @@ import 'package:subscription_rooks_app/frontend/screens/admin_tickets_overview.d
 import 'package:subscription_rooks_app/frontend/screens/admin_view_barcode_details.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_view_engineer_updates.dart';
 import 'package:subscription_rooks_app/frontend/screens/app_main_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/unified_login_screen.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/frontend/screens/barcode_identifier.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_attendance_page.dart';
@@ -82,7 +83,7 @@ class _admindashboardState extends State<admindashboard> {
               bool? shouldLeave = await _showBackConfirmDialog(context);
               if (shouldLeave == true) {
                 Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => AppMainPage()),
+                  MaterialPageRoute(builder: (context) => UnifiedLoginScreen()),
                   (Route<dynamic> route) => false,
                 );
               }
@@ -614,7 +615,9 @@ class _admindashboardState extends State<admindashboard> {
               await AdminDashboardBackend.logout();
 
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const AdminLogin()),
+                MaterialPageRoute(
+                  builder: (context) => const UnifiedLoginScreen(),
+                ),
                 (Route<dynamic> route) => false,
               );
             },

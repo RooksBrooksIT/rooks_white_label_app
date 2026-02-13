@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_dashboard.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/storage_service.dart';
@@ -39,9 +40,10 @@ class _BrandingCustomizationScreenState
   // Branding State
   Color _primaryColor = Colors.deepPurple;
   Color _secondaryColor = Colors.amber;
-  Color _backgroundColor = Colors.white;
+  Color _backgroundColor = Colors.white; // Fixed to white as per requirements
   File? _logoFile;
-  bool _useDarkMode = false;
+  final bool _useDarkMode = false; // Fixed to false as per requirements
+
   String _selectedFont = 'Roboto';
   final TextEditingController _appNameController = TextEditingController(
     text: 'My Awesome App',
@@ -454,18 +456,8 @@ class _BrandingCustomizationScreenState
             ],
           ),
         ],
-        // Background Color Selection
-        const SizedBox(height: 24),
-        const Text(
-          'Background Color',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 12),
-        _buildManualColorButton(
-          'Background',
-          _backgroundColor,
-          () => _showColorPicker('background'),
-        ),
+
+        // Background Color Selection Removed
       ],
     );
   }
@@ -613,37 +605,7 @@ class _BrandingCustomizationScreenState
           ),
           child: Column(
             children: [
-              // Dark Mode Toggle
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.dark_mode_outlined,
-                        color: Colors.grey.shade700,
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Default to Dark Mode',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Switch(
-                    value: _useDarkMode,
-                    onChanged: (val) {
-                      setState(() {
-                        _useDarkMode = val;
-                      });
-                    },
-                    activeThumbColor: _primaryColor,
-                  ),
-                ],
-              ),
+              // Dark Mode Toggle Removed
               const Divider(height: 32),
               // Font Selection
               Row(
@@ -720,7 +682,8 @@ class _BrandingCustomizationScreenState
             width: 250,
             height: 450,
             decoration: BoxDecoration(
-              color: _useDarkMode ? const Color(0xFF1E1E1E) : _backgroundColor,
+              color: _backgroundColor,
+
               borderRadius: BorderRadius.circular(25),
               border: Border.all(color: Colors.grey.shade300, width: 8),
               boxShadow: [
@@ -762,9 +725,7 @@ class _BrandingCustomizationScreenState
                                 : _appNameController.text,
                             style: GoogleFonts.getFont(
                               _selectedFont,
-                              color:
-                                  _useDarkMode ||
-                                      _backgroundColor.computeLuminance() < 0.5
+                              color: _backgroundColor.computeLuminance() < 0.5
                                   ? Colors.white
                                   : Colors.black,
                               fontWeight: FontWeight.bold,
@@ -808,10 +769,8 @@ class _BrandingCustomizationScreenState
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                     color:
-                                        _useDarkMode ||
-                                            _backgroundColor
-                                                    .computeLuminance() <
-                                                0.5
+                                        _backgroundColor.computeLuminance() <
+                                            0.5
                                         ? Colors.white
                                         : Colors.black87,
                                   ),
@@ -823,10 +782,8 @@ class _BrandingCustomizationScreenState
                                     _selectedFont,
                                     fontSize: 10,
                                     color:
-                                        _useDarkMode ||
-                                            _backgroundColor
-                                                    .computeLuminance() <
-                                                0.5
+                                        _backgroundColor.computeLuminance() <
+                                            0.5
                                         ? Colors.grey.shade400
                                         : Colors.grey.shade600,
                                   ),
@@ -935,20 +892,24 @@ class _BrandingCustomizationScreenState
 
             // 1. Save to App-Specific Collection
             await FirestoreService.instance.saveAppBranding(
-              appName: _appNameController.text,
+              tenantId: ThemeService.instance.databaseName,
+              appId: _appNameController.text,
               brandingData: brandingData,
             );
 
             // 2. Save Referral Code Mapping
             await FirestoreService.instance.saveReferralCode(
               code: referralCode,
-              appName: _appNameController.text,
+              tenantId: ThemeService.instance.databaseName,
+              appId: _appNameController.text,
               adminUid: uid,
             );
 
             // 3. Save Full Subscription with Branding (linked to user)
             await FirestoreService.instance.upsertSubscription(
               uid: uid,
+              tenantId: ThemeService.instance.databaseName,
+              appId: _appNameController.text,
               planName: widget.planName,
               isYearly: widget.isYearly,
               price: widget.price,
@@ -960,7 +921,7 @@ class _BrandingCustomizationScreenState
             // 4. Update Global User Directory (Link Admin to this App)
             await FirestoreService.instance.saveUserDirectory(
               uid: uid,
-              appName: _appNameController.text,
+              tenantId: ThemeService.instance.databaseName,
               role: 'admin',
             );
 
@@ -972,6 +933,7 @@ class _BrandingCustomizationScreenState
               isDarkMode: _useDarkMode,
               fontFamily: _selectedFont,
               appName: _appNameController.text,
+              databaseName: ThemeService.instance.databaseName,
               logoUrl: brandingData['logoUrl'] as String?,
             );
 
@@ -1032,7 +994,7 @@ class _BrandingCustomizationScreenState
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(
-                builder: (_) => const AppMainPage(),
+                builder: (_) => const admindashboard(),
               ), // Go to Home
               (route) => false,
             );
