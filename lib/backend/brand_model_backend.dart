@@ -3,20 +3,21 @@ import '../services/firestore_service.dart';
 
 class BrandModelBackend {
   final FirestoreService _firestore = FirestoreService.instance;
-  static const String deviceTypesCollection = 'deviceTypes';
+  static const String devicesbrandsCollection = 'devicesbrands';
 
   /// Generates a Firestore-safe collection name from a device type string.
-  String generateCollectionName(String deviceType) {
-    String cleanName = deviceType.toLowerCase().replaceAll(
+  String generateCollectionName(String devicesbrand) {
+    String cleanName = devicesbrand.toLowerCase().replaceAll(
       RegExp(r'[^a-z0-9]'),
       '',
     );
     return '${cleanName}Brands';
   }
 
-  /// Generates a document ID from a brand name.
-  String generateDocumentId(String brandName) {
-    return brandName
+  /// Generates a document ID from a brand name and model.
+  String generateDocumentId(String brandName, String model) {
+    String combined = '${brandName}_$model';
+    return combined
         .toLowerCase()
         .replaceAll(RegExp(r'[^a-z0-9]'), '_')
         .replaceAll(RegExp(r'_+'), '_')
@@ -24,25 +25,46 @@ class BrandModelBackend {
   }
 
   /// Loads all dynamic device types from Firestore.
-  Future<Map<String, String>> loadDeviceTypes() async {
-    Map<String, String> allDeviceTypes = {};
+  Future<Map<String, String>> loaddevicesbrands() async {
+    Map<String, String> alldevicesbrands = {};
 
     QuerySnapshot customTypesSnapshot = await _firestore
-        .collection(deviceTypesCollection)
+        .collection(devicesbrandsCollection)
         .get();
 
     for (var doc in customTypesSnapshot.docs) {
       final data = doc.data() as Map<String, dynamic>;
-      allDeviceTypes[data['deviceType'] as String] =
+      alldevicesbrands[data['devicesbrand'] as String] =
           data['collectionName'] as String;
     }
 
-    return allDeviceTypes;
+    return alldevicesbrands;
+  }
+
+  /// Saves a new device type to Firestore.
+  Future<void> savedevicesbrand(
+    String devicesbrand,
+    String collectionName,
+  ) async {
+    final existingSnapshot = await _firestore
+        .collection(devicesbrandsCollection)
+        .where('devicesbrand', isEqualTo: devicesbrand)
+        .get();
+
+    if (existingSnapshot.docs.isEmpty) {
+      await _firestore.collection(devicesbrandsCollection).add({
+        'devicesbrand': devicesbrand,
+        'collectionName': collectionName,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      throw Exception('Device type "$devicesbrand" already exists');
+    }
   }
 
   /// Adds or updates a device record.
   Future<void> saveDeviceItem({
-    required String deviceType,
+    required String devicesbrand,
     required String collectionName,
     required String brandName,
     required String model,
@@ -65,20 +87,20 @@ class BrandModelBackend {
     } else {
       // Add new
       // First ensure device type exists in the master collection
-      final deviceTypeSnapshot = await _firestore
-          .collection(deviceTypesCollection)
-          .where('deviceType', isEqualTo: deviceType)
+      final devicesbrandsnapshot = await _firestore
+          .collection(devicesbrandsCollection)
+          .where('devicesbrand', isEqualTo: devicesbrand)
           .get();
 
-      if (deviceTypeSnapshot.docs.isEmpty) {
-        await _firestore.collection(deviceTypesCollection).add({
-          'deviceType': deviceType,
+      if (devicesbrandsnapshot.docs.isEmpty) {
+        await _firestore.collection(devicesbrandsCollection).add({
+          'devicesbrand': devicesbrand,
           'collectionName': collectionName,
           'createdAt': FieldValue.serverTimestamp(),
         });
       }
 
-      String documentId = generateDocumentId(brandName);
+      String documentId = generateDocumentId(brandName, model);
 
       final existingDoc = await _firestore
           .collection(collectionName)
@@ -86,7 +108,9 @@ class BrandModelBackend {
           .get();
 
       if (existingDoc.exists) {
-        throw Exception('A device with brand name "$brandName" already exists');
+        throw Exception(
+          'A device with brand "$brandName" and model "$model" already exists',
+        );
       }
 
       // Generate brandId (BR001, BR002, etc.)
@@ -133,8 +157,8 @@ class BrandModelBackend {
   }
 
   /// Deletes a device type and all its associated device records.
-  Future<void> deleteDeviceType(
-    String deviceType,
+  Future<void> deletedevicesbrand(
+    String devicesbrand,
     String collectionName,
   ) async {
     // Delete all devices in the collection
@@ -145,12 +169,12 @@ class BrandModelBackend {
     }
 
     // Delete the device type entry
-    QuerySnapshot deviceTypeDocs = await _firestore
-        .collection(deviceTypesCollection)
-        .where('deviceType', isEqualTo: deviceType)
+    QuerySnapshot devicesbrandDocs = await _firestore
+        .collection(devicesbrandsCollection)
+        .where('devicesbrand', isEqualTo: devicesbrand)
         .get();
 
-    for (QueryDocumentSnapshot doc in deviceTypeDocs.docs) {
+    for (QueryDocumentSnapshot doc in devicesbrandDocs.docs) {
       await doc.reference.delete();
     }
   }
@@ -158,5 +182,43 @@ class BrandModelBackend {
   /// Returns a stream of devices for a given collection.
   Stream<QuerySnapshot> streamDevices(String collectionName) {
     return _firestore.collection(collectionName).snapshots();
+  }
+
+  /// Fetches all device brands from the 'devicebrands' or 'devicesbrands' collection.
+  Future<List<String>> fetchAllDeviceBrands() async {
+    try {
+      // Try 'devicebrands' as requested by user
+      var snapshot = await _firestore.collection('devicebrands').get();
+      var brands = snapshot.docs
+          .map((doc) => doc.data()['devicebrand']?.toString().trim())
+          .where((brand) => brand != null && brand.isNotEmpty)
+          .cast<String>()
+          .toSet()
+          .toList();
+
+      if (brands.isEmpty) {
+        // Fallback to 'devicesbrands' (plural s) if empty
+        snapshot = await _firestore.collection('devicesbrands').get();
+        brands = snapshot.docs
+            .map((doc) {
+              final data = doc.data();
+              return (data['devicesbrand'] ??
+                      data['devicebrand'] ??
+                      data['brand'])
+                  ?.toString()
+                  .trim();
+            })
+            .where((brand) => brand != null && brand.isNotEmpty)
+            .cast<String>()
+            .toSet()
+            .toList();
+      }
+
+      brands.sort();
+      return brands;
+    } catch (e) {
+      print('Error fetching device brands: $e');
+      return [];
+    }
   }
 }

@@ -2,12 +2,21 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 
 class EngineerLoginBackend {
   static Future<String?> checkLoginStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('engineerName');
+    final name = prefs.getString('engineerName');
+    if (name != null) {
+      try {
+        await FirebaseAuth.instance.signInAnonymously();
+      } catch (e) {
+        debugPrint('Anonymous Auth failed (checkLoginStatus): $e');
+      }
+    }
+    return name;
   }
 
   static Future<void> registerFcmToken(String engineerName) async {
@@ -55,10 +64,20 @@ class EngineerLoginBackend {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
+        try {
+          await FirebaseAuth.instance.signInAnonymously();
+        } catch (e) {
+          debugPrint('Anonymous Auth failed (login): $e');
+        }
+
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('engineerName', username);
         await prefs.setString('tenantId', tenantId); // Store tenant association
         await registerFcmToken(username);
+
+        // Sync branding configuration immediately
+        await FirestoreService.instance.syncBranding(tenantId);
+
         return {'success': true, 'username': username};
       } else {
         return {

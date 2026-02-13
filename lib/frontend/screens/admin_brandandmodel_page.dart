@@ -24,16 +24,16 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
   final RouteObserver<ModalRoute<void>> _routeObserver =
       RouteObserver<ModalRoute<void>>();
   final _formKey = GlobalKey<FormState>();
-  String? _selectedDeviceType;
+  String? _selecteddevicesbrand;
   final TextEditingController _brandController = TextEditingController();
   final TextEditingController _modelController = TextEditingController();
   final TextEditingController _specificationController =
       TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
-  Map<String, String> deviceTypeCollections = {};
+  Map<String, String> devicesbrandCollections = {};
 
-  List<String> deviceTypes = [];
+  List<String> devicesbrands = [];
   bool isLoading = false;
   bool isInitializing = true;
   bool showExistingValues = false;
@@ -46,7 +46,7 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
   @override
   void initState() {
     super.initState();
-    _loadDeviceTypes();
+    _loaddevicesbrands();
   }
 
   @override
@@ -60,18 +60,18 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
 
   @override
   void didPopNext() {
-    _loadDeviceTypes();
+    _loaddevicesbrands();
     super.didPopNext();
   }
 
-  Future<void> _loadDeviceTypes() async {
+  Future<void> _loaddevicesbrands() async {
     try {
-      final allDeviceTypes = await _backend.loadDeviceTypes();
+      final alldevicesbrands = await _backend.loaddevicesbrands();
 
       if (!mounted) return;
       setState(() {
-        deviceTypeCollections = allDeviceTypes;
-        deviceTypes = deviceTypeCollections.keys.toList();
+        devicesbrandCollections = alldevicesbrands;
+        devicesbrands = devicesbrandCollections.keys.toList();
         isInitializing = false;
       });
     } catch (e) {
@@ -104,11 +104,11 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
   void _addItem() async {
     if (_formKey.currentState == null ||
         !_formKey.currentState!.validate() ||
-        _selectedDeviceType == null) {
+        _selecteddevicesbrand == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _selectedDeviceType == null
+            _selecteddevicesbrand == null
                 ? 'Please select a device type'
                 : 'Please fill all required fields',
           ),
@@ -125,7 +125,7 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
     });
 
     try {
-      final collectionName = deviceTypeCollections[_selectedDeviceType];
+      final collectionName = devicesbrandCollections[_selecteddevicesbrand];
       if (collectionName == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -142,7 +142,7 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
       }
 
       await _backend.saveDeviceItem(
-        deviceType: _selectedDeviceType!,
+        devicesbrand: _selecteddevicesbrand!,
         collectionName: collectionName,
         brandName: _brandController.text,
         model: _modelController.text,
@@ -292,17 +292,17 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
       if (!mounted) return;
       if (value != null && value is Map<String, String>) {
         setState(() {
-          deviceTypeCollections[value['deviceType']!] =
+          devicesbrandCollections[value['devicesbrand']!] =
               value['collectionName']!;
-          deviceTypes = deviceTypeCollections.keys.toList();
+          devicesbrands = devicesbrandCollections.keys.toList();
         });
       } else if (value == true) {
-        _loadDeviceTypes();
+        _loaddevicesbrands();
       }
     });
   }
 
-  Future<void> _deleteDeviceType(String deviceType) async {
+  Future<void> _deletedevicesbrand(String devicesbrand) async {
     final confirmDelete = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -312,7 +312,7 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           content: Text(
-            'Are you sure you want to delete the $deviceType device type and all its data? This action cannot be undone.',
+            'Are you sure you want to delete the $devicesbrand device type and all its data? This action cannot be undone.',
           ),
           actions: [
             TextButton(
@@ -336,29 +336,29 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
     });
 
     try {
-      String collectionName = deviceTypeCollections[deviceType]!;
+      String collectionName = devicesbrandCollections[devicesbrand]!;
 
-      await _backend.deleteDeviceType(deviceType, collectionName);
+      await _backend.deletedevicesbrand(devicesbrand, collectionName);
 
-      deviceTypeCollections.remove(deviceType);
+      devicesbrandCollections.remove(devicesbrand);
 
-      if (_selectedDeviceType == deviceType) {
+      if (_selecteddevicesbrand == devicesbrand) {
         _clearForm();
         if (!mounted) return;
         setState(() {
-          _selectedDeviceType = null;
+          _selecteddevicesbrand = null;
           showExistingValues = false;
         });
       }
 
       if (!mounted) return;
       setState(() {
-        deviceTypes = deviceTypeCollections.keys.toList();
+        devicesbrands = devicesbrandCollections.keys.toList();
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$deviceType deleted successfully'),
+          content: Text('$devicesbrand deleted successfully'),
           backgroundColor: successColor,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -368,7 +368,7 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error deleting $deviceType: $e'),
+          content: Text('Error deleting $devicesbrand: $e'),
           backgroundColor: errorColor,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -383,8 +383,8 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
     }
   }
 
-  IconData _getDeviceIcon(String deviceType) {
-    switch (deviceType) {
+  IconData _getDeviceIcon(String devicesbrand) {
+    switch (devicesbrand) {
       case 'Desktop':
         return Icons.desktop_windows;
       case 'Laptop':
@@ -537,7 +537,7 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           children: [
-                            ...deviceTypes.map((deviceType) {
+                            ...devicesbrands.map((devicesbrand) {
                               return Container(
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(16),
@@ -554,21 +554,23 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                     side: BorderSide(
-                                      color: _selectedDeviceType == deviceType
+                                      color:
+                                          _selecteddevicesbrand == devicesbrand
                                           ? primaryColor
                                           : Colors.grey.shade300,
-                                      width: _selectedDeviceType == deviceType
+                                      width:
+                                          _selecteddevicesbrand == devicesbrand
                                           ? 2
                                           : 1,
                                     ),
                                   ),
-                                  color: _selectedDeviceType == deviceType
+                                  color: _selecteddevicesbrand == devicesbrand
                                       ? primaryColor.withOpacity(0.08)
                                       : surfaceColor,
                                   child: InkWell(
                                     onTap: () {
                                       setState(() {
-                                        _selectedDeviceType = deviceType;
+                                        _selecteddevicesbrand = devicesbrand;
                                         showExistingValues = false;
                                         if (isEditing) _cancelEdit();
                                       });
@@ -587,18 +589,18 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
                                                 height: isSmallScreen ? 32 : 40,
                                                 decoration: BoxDecoration(
                                                   color:
-                                                      _selectedDeviceType ==
-                                                          deviceType
+                                                      _selecteddevicesbrand ==
+                                                          devicesbrand
                                                       ? primaryColor
                                                       : primaryColor
                                                             .withOpacity(0.1),
                                                   shape: BoxShape.circle,
                                                 ),
                                                 child: Icon(
-                                                  _getDeviceIcon(deviceType),
+                                                  _getDeviceIcon(devicesbrand),
                                                   color:
-                                                      _selectedDeviceType ==
-                                                          deviceType
+                                                      _selecteddevicesbrand ==
+                                                          devicesbrand
                                                       ? Colors.white
                                                       : primaryColor,
                                                   size: isSmallScreen ? 16 : 22,
@@ -615,13 +617,13 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
                                                       MainAxisAlignment.center,
                                                   children: [
                                                     Text(
-                                                      deviceType,
+                                                      devicesbrand,
                                                       style: TextStyle(
                                                         fontWeight:
                                                             FontWeight.w600,
                                                         color:
-                                                            _selectedDeviceType ==
-                                                                deviceType
+                                                            _selecteddevicesbrand ==
+                                                                devicesbrand
                                                             ? primaryColor
                                                             : textColor,
                                                         fontSize: isSmallScreen
@@ -635,7 +637,7 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
                                                           : 4,
                                                     ),
                                                     Text(
-                                                      deviceTypeCollections[deviceType]!,
+                                                      devicesbrandCollections[devicesbrand]!,
                                                       style: TextStyle(
                                                         fontSize: isSmallScreen
                                                             ? 10
@@ -663,7 +665,9 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
                                               ),
                                             ),
                                             onPressed: () =>
-                                                _deleteDeviceType(deviceType),
+                                                _deletedevicesbrand(
+                                                  devicesbrand,
+                                                ),
                                           ),
                                         ),
                                       ],
@@ -745,7 +749,7 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
                       },
                     ),
                     SizedBox(height: isSmallScreen ? 12 : 16),
-                    if (_selectedDeviceType == null)
+                    if (_selecteddevicesbrand == null)
                       Padding(
                         padding: const EdgeInsets.only(left: 8.0, top: 8),
                         child: Text(
@@ -757,7 +761,7 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
                         ),
                       ),
                     SizedBox(height: isSmallScreen ? 16 : 24),
-                    if (_selectedDeviceType != null) ...[
+                    if (_selecteddevicesbrand != null) ...[
                       // Show Existing Values Toggle
                       Container(
                         width: double.infinity,
@@ -1188,7 +1192,7 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
   }
 
   Widget _buildExistingValuesList() {
-    final collectionName = deviceTypeCollections[_selectedDeviceType];
+    final collectionName = devicesbrandCollections[_selecteddevicesbrand];
 
     if (collectionName == null) {
       return Container(
@@ -1296,7 +1300,7 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
                     Icon(Icons.list_alt, color: primaryColor),
                     SizedBox(width: 8),
                     Text(
-                      'Existing $_selectedDeviceType Devices (${documents.length})',
+                      'Existing $_selecteddevicesbrand Devices (${documents.length})',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -1326,7 +1330,7 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        _getDeviceIcon(_selectedDeviceType!),
+                        _getDeviceIcon(_selecteddevicesbrand!),
                         color: primaryColor,
                         size: 20,
                       ),
@@ -1452,20 +1456,20 @@ class AddDeviceDialog extends StatefulWidget {
 class _AddDeviceDialogState extends State<AddDeviceDialog> {
   Color get primaryColor => Theme.of(context).primaryColor;
 
-  final TextEditingController _deviceTypeController = TextEditingController();
-  final bool _isCreating = false;
+  final TextEditingController _devicesbrandController = TextEditingController();
+  bool _isCreating = false;
   final BrandModelBackend _backend = BrandModelBackend();
 
   @override
   void dispose() {
-    _deviceTypeController.dispose();
+    _devicesbrandController.dispose();
     super.dispose();
   }
 
   Future<void> _createDeviceCollection() async {
-    final String deviceType = _deviceTypeController.text.trim();
+    final String devicesbrand = _devicesbrandController.text.trim();
 
-    if (deviceType.isEmpty) {
+    if (devicesbrand.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter a device type'),
@@ -1476,11 +1480,33 @@ class _AddDeviceDialogState extends State<AddDeviceDialog> {
       return;
     }
 
-    final String collectionName = _backend.generateCollectionName(deviceType);
+    setState(() {
+      _isCreating = true;
+    });
 
-    Navigator.of(
-      context,
-    ).pop({'deviceType': deviceType, 'collectionName': collectionName});
+    try {
+      final String collectionName = _backend.generateCollectionName(
+        devicesbrand,
+      );
+      await _backend.savedevicesbrand(devicesbrand, collectionName);
+
+      if (!mounted) return;
+      Navigator.of(
+        context,
+      ).pop({'devicesbrand': devicesbrand, 'collectionName': collectionName});
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isCreating = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error creating device type: $e'),
+          backgroundColor: const Color(0xFFD32F2F),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -1538,7 +1564,7 @@ class _AddDeviceDialogState extends State<AddDeviceDialog> {
                 ),
                 SizedBox(height: isSmallScreen ? 12 : 16),
                 TextField(
-                  controller: _deviceTypeController,
+                  controller: _devicesbrandController,
                   decoration: InputDecoration(
                     labelText: 'Device Type',
                     labelStyle: TextStyle(color: Theme.of(context).hintColor),

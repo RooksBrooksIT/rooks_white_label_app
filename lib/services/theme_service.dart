@@ -96,7 +96,12 @@ class ThemeService extends ChangeNotifier {
     _isDarkMode = prefs.getBool('isDarkMode') ?? false;
     _fontFamily = prefs.getString('fontFamily') ?? 'Roboto';
     _appName = prefs.getString('appName') ?? 'ServicePro';
-    _databaseName = prefs.getString('databaseName') ?? 'default_db';
+
+    // Support both 'tenantId' and 'databaseName' keys for backward compatibility and consistency
+    final storedTenantId = prefs.getString('tenantId');
+    final storedDatabaseName = prefs.getString('databaseName');
+    _databaseName = storedTenantId ?? storedDatabaseName ?? 'default_db';
+
     _logoUrl = prefs.getString('logoUrl');
     notifyListeners();
   }
@@ -110,6 +115,7 @@ class ThemeService extends ChangeNotifier {
     await prefs.setString('fontFamily', _fontFamily);
     await prefs.setString('appName', _appName);
     await prefs.setString('databaseName', _databaseName);
+    await prefs.setString('tenantId', _databaseName); // Keep synchronized
     if (_logoUrl != null) {
       await prefs.setString('logoUrl', _logoUrl!);
     } else {
@@ -134,7 +140,10 @@ class ThemeService extends ChangeNotifier {
     _fontFamily = fontFamily;
     _appName = appName;
     if (databaseName != null) _databaseName = databaseName;
-    _logoUrl = logoUrl;
+    // Only update logo if a new one is provided.
+    // This prevents accidental clearing of the logo URL when updating other theme properties.
+    if (logoUrl != null) _logoUrl = logoUrl;
+
     notifyListeners();
     saveToLocal();
   }
@@ -161,9 +170,22 @@ class ThemeService extends ChangeNotifier {
     if (data['databaseName'] != null) {
       _databaseName = data['databaseName'];
     }
+    // Only update logo if present in the map
     if (data['logoUrl'] != null) {
       _logoUrl = data['logoUrl'];
     }
+    notifyListeners();
+    saveToLocal();
+  }
+
+  void resetToDefault() {
+    _primaryColor = Colors.deepPurple;
+    _secondaryColor = Colors.amber;
+    _backgroundColor = Colors.white;
+    _isDarkMode = false;
+    _fontFamily = 'Roboto';
+    _appName = 'ServicePro';
+    _logoUrl = null;
     notifyListeners();
     saveToLocal();
   }

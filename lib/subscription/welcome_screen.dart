@@ -22,7 +22,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _referralCodeController = TextEditingController(); // For customers
-  String _selectedRole = 'admin';
+  final String _selectedRole = 'admin';
   bool _isLoading = false;
   bool _obscurePassword = true;
 

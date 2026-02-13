@@ -2,7 +2,87 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:lottie/lottie.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
+import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
+
+class ProfessionalTheme {
+  static Color primary(BuildContext context) => Theme.of(context).primaryColor;
+  static Color primaryDark(BuildContext context) =>
+      Theme.of(context).primaryColor;
+  static Color primaryLight(BuildContext context) =>
+      Theme.of(context).primaryColor.withOpacity(0.8);
+  static Color primaryExtraLight(BuildContext context) =>
+      Theme.of(context).primaryColor.withOpacity(0.1);
+
+  static Color background(BuildContext context) =>
+      Theme.of(context).scaffoldBackgroundColor;
+  static Color surface(BuildContext context) => Theme.of(context).cardColor;
+  static Color surfaceElevated(BuildContext context) =>
+      Theme.of(context).cardColor;
+
+  static const Color success = Color(0xFF10B981);
+  static const Color successLight = Color(0xFFD1FAE5);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color warningLight = Color(0xFFFEF3C7);
+  static const Color error = Color(0xFFEF4444);
+  static const Color errorLight = Color(0xFFFEE2E2);
+  static Color info(BuildContext context) => Theme.of(context).primaryColor;
+  static const Color infoLight = Color(0xFFCFFAFE);
+
+  static Color textPrimary(BuildContext context) =>
+      Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF0F172A);
+  static Color textSecondary(BuildContext context) =>
+      Theme.of(context).textTheme.bodyMedium?.color ?? const Color(0xFF64748B);
+  static Color textTertiary(BuildContext context) =>
+      Theme.of(context).hintColor;
+  static Color textInverse(BuildContext context) =>
+      Theme.of(context).colorScheme.onPrimary;
+
+  static Color borderLight(BuildContext context) =>
+      Theme.of(context).dividerColor.withOpacity(0.5);
+  static Color borderMedium(BuildContext context) =>
+      Theme.of(context).dividerColor;
+
+  static List<BoxShadow> cardShadow = [
+    BoxShadow(
+      color: Color(0x0A000000),
+      blurRadius: 10,
+      offset: Offset(0, 4),
+      spreadRadius: 0,
+    ),
+  ];
+
+  static List<BoxShadow> elevatedShadow = [
+    BoxShadow(
+      color: Color(0x1A000000),
+      blurRadius: 12,
+      offset: Offset(0, 2),
+      spreadRadius: 0,
+    ),
+  ];
+
+  static List<BoxShadow> buttonShadow = [
+    BoxShadow(
+      color: Color(0x0F000000),
+      blurRadius: 4,
+      offset: Offset(0, 1),
+      spreadRadius: 0,
+    ),
+  ];
+}
+
+// Professional Animations
+class ProfessionalAnimations {
+  static const Duration quick = Duration(milliseconds: 150);
+  static const Duration medium = Duration(milliseconds: 300);
+  static const Duration slow = Duration(milliseconds: 450);
+
+  static Curve easeInOut = Curves.easeInOut;
+  static Curve elasticOut = Curves.elasticOut;
+}
 
 class AmcCustomerHomePage extends StatefulWidget {
   final String customerId;
@@ -19,6 +99,7 @@ class AmcCustomerHomePage extends StatefulWidget {
 }
 
 class _AmcCustomerHomePageState extends State<AmcCustomerHomePage> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _customerIdController;
@@ -465,203 +546,423 @@ class _AmcCustomerHomePageState extends State<AmcCustomerHomePage> {
     );
   }
 
+  void _showLogoutConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: ProfessionalTheme.error.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.logout,
+                  color: ProfessionalTheme.error,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Confirm Logout',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: ProfessionalTheme.textPrimary(context),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Are you sure you want to logout from your account?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ProfessionalTheme.textSecondary(context),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(
+                          color: ProfessionalTheme.borderMedium(context),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: ProfessionalTheme.textSecondary(context),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _performLogout,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ProfessionalTheme.error,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text(
+                        'Logout',
+                        style: TextStyle(
+                          color: ProfessionalTheme.textInverse(context),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _performLogout() async {
+    if (mounted) {
+      Navigator.pop(context);
+    }
+    await AuthStateService.instance.logout();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+      (Route<dynamic> route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Service Request',
-          style: TextStyle(
-            color:
-                Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Theme.of(context).primaryColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color:
-                Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
+      key: _scaffoldKey,
+      endDrawer: CustomerNavigationDrawer(
+        userName: widget.customerName,
+        userEmail: FirebaseAuth.instance.currentUser?.email ?? '',
+        onLogout: _showLogoutConfirmation,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-        ),
-        padding: const EdgeInsets.all(20.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              const SizedBox(height: 20),
-              _buildTextField(
-                'Customer ID',
-                '',
-                Icons.perm_identity,
-                _customerIdController,
-                enabled: false,
+      body: NestedScrollView(
+        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+          return <Widget>[
+            SliverAppBar(
+              expandedHeight: 140,
+              collapsedHeight: 64,
+              floating: true,
+              pinned: true,
+              backgroundColor: ProfessionalTheme.primary(context),
+              elevation: 0,
+              actions: [
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.menu_rounded, color: Colors.white),
+                    onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+                  ),
+                ),
+              ],
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
               ),
-              const SizedBox(height: 20),
-              _buildTextField(
-                'Customer Name',
-                '',
-                Icons.person,
-                _customerNameController,
-                enabled: false,
-              ),
-              const SizedBox(height: 20),
-              _buildTextField(
-                'Mobile Number',
-                '',
-                Icons.phone,
-                _mobileNumberController,
-                enabled: false,
-                showLoading: true,
-              ),
-              const SizedBox(height: 20),
-              _buildDropdownField(
-                'Job Type',
-                jobTypes,
-                Icons.work,
-                (value) {
-                  setState(() {
-                    jobType = value ?? '';
-                    if (jobType == 'Delivery') {
-                      deviceType = '';
-                      deviceBrand = '';
-                      deviceCondition = '';
-                      _messageController.clear();
-                      _customDeviceTypeController.clear();
-                      _customDeviceBrandController.clear();
-                    } else {
-                      _descriptionController.clear();
-                    }
-                  });
-                },
-                value: jobType.isNotEmpty ? jobType : null,
-              ),
-              if (jobType == 'Service') ...[
-                const SizedBox(height: 20),
-                _isDeviceTypesLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _buildDropdownField(
-                        'Device Type',
-                        deviceTypes,
-                        Icons.devices,
-                        (value) async {
-                          setState(() {
-                            deviceType = value ?? '';
-                            if (deviceType != 'Others') {
-                              _customDeviceTypeController.clear();
-                            }
-                            deviceBrand = '';
-                            _customDeviceBrandController.clear();
-                          });
-                          if (value != null && value != 'Others') {
-                            await _fetchDeviceBrands(value);
-                          } else {
-                            setState(() {
-                              deviceBrands = [
-                                'DELL',
-                                'HP',
-                                'MAC',
-                                'LENOVO',
-                                'ASUS',
-                                'Others',
-                              ];
-                            });
-                          }
-                        },
-                        value: deviceType.isNotEmpty ? deviceType : null,
-                      ),
-                if (deviceType == 'Others')
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12.0),
-                    child: _buildTextField(
-                      'Custom Device Type',
-                      'Enter your device type',
-                      Icons.devices_other,
-                      _customDeviceTypeController,
+              flexibleSpace: FlexibleSpaceBar(
+                title: AnimatedOpacity(
+                  duration: ProfessionalAnimations.quick,
+                  opacity: innerBoxIsScrolled ? 1.0 : 0.0,
+                  child: Text(
+                    'Customer Dashboard',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                const SizedBox(height: 20),
-                _isDeviceBrandsLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _buildDropdownField(
-                        'Device Brand',
-                        deviceBrands.isNotEmpty
-                            ? deviceBrands
-                            : ['DELL', 'HP', 'MAC', 'LENOVO', 'ASUS', 'Others'],
-                        Icons.branding_watermark,
-                        (value) {
-                          setState(() {
-                            deviceBrand = value ?? '';
-                            if (deviceBrand != 'Others') {
-                              _customDeviceBrandController.clear();
-                            }
-                          });
-                        },
-                        value: deviceBrand.isNotEmpty ? deviceBrand : null,
+                ),
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            ProfessionalTheme.primary(context),
+                            ProfessionalTheme.primaryDark(context),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                       ),
-                if (deviceBrand == 'Others')
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12.0),
-                    child: _buildTextField(
-                      'Custom Device Brand',
-                      'Enter your device brand',
-                      Icons.branding_watermark,
-                      _customDeviceBrandController,
                     ),
-                  ),
+                    Positioned(
+                      left: 20,
+                      bottom: 20,
+                      right: 20,
+                      child: Row(
+                        children: [
+                          if (ThemeService.instance.logoUrl != null)
+                            Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.5),
+                                  width: 2,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 24,
+                                backgroundColor: Colors.white,
+                                backgroundImage: NetworkImage(
+                                  ThemeService.instance.logoUrl!,
+                                ),
+                              ),
+                            ),
+                          if (ThemeService.instance.logoUrl != null)
+                            const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  ThemeService.instance.appName.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white.withOpacity(0.7),
+                                    letterSpacing: 2.0,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  widget.customerName,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.5,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ];
+        },
+        body: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+          ),
+          padding: const EdgeInsets.all(20.0),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              children: [
+                const SizedBox(height: 20),
+                _buildTextField(
+                  'Customer ID',
+                  '',
+                  Icons.perm_identity,
+                  _customerIdController,
+                  enabled: false,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  'Customer Name',
+                  '',
+                  Icons.person,
+                  _customerNameController,
+                  enabled: false,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  'Mobile Number',
+                  '',
+                  Icons.phone,
+                  _mobileNumberController,
+                  enabled: false,
+                  showLoading: true,
+                ),
                 const SizedBox(height: 20),
                 _buildDropdownField(
-                  'Device Condition',
-                  currentDeviceConditions,
-                  Icons.build,
+                  'Job Type',
+                  jobTypes,
+                  Icons.work,
                   (value) {
                     setState(() {
-                      deviceCondition = value ?? '';
+                      jobType = value ?? '';
+                      if (jobType == 'Delivery') {
+                        deviceType = '';
+                        deviceBrand = '';
+                        deviceCondition = '';
+                        _messageController.clear();
+                        _customDeviceTypeController.clear();
+                        _customDeviceBrandController.clear();
+                      } else {
+                        _descriptionController.clear();
+                      }
                     });
                   },
-                  value: deviceCondition.isNotEmpty ? deviceCondition : null,
+                  value: jobType.isNotEmpty ? jobType : null,
                 ),
+                if (jobType == 'Service') ...[
+                  const SizedBox(height: 20),
+                  _isDeviceTypesLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _buildDropdownField(
+                          'Device Type',
+                          deviceTypes,
+                          Icons.devices,
+                          (value) async {
+                            setState(() {
+                              deviceType = value ?? '';
+                              if (deviceType != 'Others') {
+                                _customDeviceTypeController.clear();
+                              }
+                              deviceBrand = '';
+                              _customDeviceBrandController.clear();
+                            });
+                            if (value != null && value != 'Others') {
+                              await _fetchDeviceBrands(value);
+                            } else {
+                              setState(() {
+                                deviceBrands = [
+                                  'DELL',
+                                  'HP',
+                                  'MAC',
+                                  'LENOVO',
+                                  'ASUS',
+                                  'Others',
+                                ];
+                              });
+                            }
+                          },
+                          value: deviceType.isNotEmpty ? deviceType : null,
+                        ),
+                  if (deviceType == 'Others')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12.0),
+                      child: _buildTextField(
+                        'Custom Device Type',
+                        'Enter your device type',
+                        Icons.devices_other,
+                        _customDeviceTypeController,
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  _isDeviceBrandsLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _buildDropdownField(
+                          'Device Brand',
+                          deviceBrands.isNotEmpty
+                              ? deviceBrands
+                              : [
+                                  'DELL',
+                                  'HP',
+                                  'MAC',
+                                  'LENOVO',
+                                  'ASUS',
+                                  'Others',
+                                ],
+                          Icons.branding_watermark,
+                          (value) {
+                            setState(() {
+                              deviceBrand = value ?? '';
+                              if (deviceBrand != 'Others') {
+                                _customDeviceBrandController.clear();
+                              }
+                            });
+                          },
+                          value: deviceBrand.isNotEmpty ? deviceBrand : null,
+                        ),
+                  if (deviceBrand == 'Others')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12.0),
+                      child: _buildTextField(
+                        'Custom Device Brand',
+                        'Enter your device brand',
+                        Icons.branding_watermark,
+                        _customDeviceBrandController,
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  _buildDropdownField(
+                    'Device Condition',
+                    currentDeviceConditions,
+                    Icons.build,
+                    (value) {
+                      setState(() {
+                        deviceCondition = value ?? '';
+                      });
+                    },
+                    value: deviceCondition.isNotEmpty ? deviceCondition : null,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                    'Message',
+                    'Enter additional details',
+                    Icons.message,
+                    _messageController,
+                    maxLines: 3,
+                  ),
+                ],
+                if (jobType == 'Delivery') ...[
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                    'Description',
+                    'Enter delivery description',
+                    Icons.description,
+                    _descriptionController,
+                    maxLines: 3,
+                  ),
+                ],
                 const SizedBox(height: 20),
                 _buildTextField(
-                  'Message',
-                  'Enter additional details',
-                  Icons.message,
-                  _messageController,
-                  maxLines: 3,
+                  'Address',
+                  'Enter your address',
+                  Icons.location_on,
+                  _addressController,
+                ),
+                const SizedBox(height: 30),
+                Center(
+                  child: _isSubmitting
+                      ? const CircularProgressIndicator()
+                      : GradientButton(
+                          onPressed: _handleSubmit,
+                          text: 'Submit',
+                        ),
                 ),
               ],
-              if (jobType == 'Delivery') ...[
-                const SizedBox(height: 20),
-                _buildTextField(
-                  'Description',
-                  'Enter delivery description',
-                  Icons.description,
-                  _descriptionController,
-                  maxLines: 3,
-                ),
-              ],
-              const SizedBox(height: 20),
-              _buildTextField(
-                'Address',
-                'Enter your address',
-                Icons.location_on,
-                _addressController,
-              ),
-              const SizedBox(height: 30),
-              Center(
-                child: _isSubmitting
-                    ? const CircularProgressIndicator()
-                    : GradientButton(onPressed: _handleSubmit, text: 'Submit'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -711,6 +1012,162 @@ class GradientButton extends StatelessWidget {
             color: Colors.white,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class CustomerNavigationDrawer extends StatelessWidget {
+  final String userName;
+  final String userEmail;
+  final VoidCallback onLogout;
+
+  const CustomerNavigationDrawer({
+    super.key,
+    required this.userName,
+    required this.userEmail,
+    required this.onLogout,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      backgroundColor: ProfessionalTheme.surface(context),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.only(
+              top: 60,
+              bottom: 24,
+              left: 24,
+              right: 24,
+            ),
+            decoration: BoxDecoration(
+              color: ProfessionalTheme.primary(context),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FutureBuilder<DocumentSnapshot>(
+                  future: FirestoreService.instance
+                      .collection('users')
+                      .doc(FirebaseAuth.instance.currentUser?.uid)
+                      .get(),
+                  builder: (context, snapshot) {
+                    String? photoUrl;
+                    if (snapshot.hasData &&
+                        snapshot.data != null &&
+                        snapshot.data!.exists) {
+                      final data =
+                          snapshot.data!.data() as Map<String, dynamic>?;
+                      photoUrl = data?['photoUrl'] ?? data?['profileImage'];
+                    }
+                    photoUrl ??= FirebaseAuth.instance.currentUser?.photoURL;
+
+                    return CircleAvatar(
+                      radius: 32,
+                      backgroundColor: ProfessionalTheme.textInverse(
+                        context,
+                      ).withOpacity(0.2),
+                      backgroundImage: photoUrl != null
+                          ? NetworkImage(photoUrl)
+                          : null,
+                      child: photoUrl == null
+                          ? Icon(
+                              Icons.person,
+                              size: 32,
+                              color: ProfessionalTheme.textInverse(context),
+                            )
+                          : null,
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  userName,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: ProfessionalTheme.textInverse(context),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  userEmail,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: ProfessionalTheme.textInverse(
+                      context,
+                    ).withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                children: [
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.logout,
+                    title: 'Logout',
+                    isLogout: true,
+                    onTap: onLogout,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuItem({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    bool isSelected = false,
+    bool isLogout = false,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? ProfessionalTheme.primary(context).withOpacity(0.1)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: isLogout
+              ? ProfessionalTheme.error
+              : (isSelected
+                    ? ProfessionalTheme.primary(context)
+                    : ProfessionalTheme.textSecondary(context)),
+          size: 20,
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isLogout
+                ? ProfessionalTheme.error
+                : ProfessionalTheme.textPrimary(context),
+          ),
+        ),
+        onTap: onTap,
+        dense: true,
       ),
     );
   }

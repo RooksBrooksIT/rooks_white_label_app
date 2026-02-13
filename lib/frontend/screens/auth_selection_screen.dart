@@ -154,10 +154,10 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen>
                       Text(
                         ThemeService.instance.appName,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 30,
                           fontWeight: FontWeight.w900,
-                          color: Colors.black,
+                          color: Theme.of(context).primaryColor,
                           letterSpacing: -1.0,
                         ),
                       ),
@@ -202,7 +202,7 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen>
                             : 0.5,
                         child: _buildButton(
                           label: 'Log In',
-                          color: Colors.black,
+                          color: Theme.of(context).primaryColor,
                           textColor: Colors.white,
                           onPressed: AuthStateService.instance.isRegistered
                               ? () => Navigator.push(
@@ -222,17 +222,37 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen>
                                 },
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      if (!AuthStateService.instance.isRegistered)
-                        Text(
-                          "* One-time registration required for first-time setup",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[500],
-                            fontStyle: FontStyle.italic,
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            "Already have an account? ",
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 15,
+                            ),
                           ),
-                        ),
-                      const SizedBox(height: 40),
+                          GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const UnifiedLoginScreen(),
+                              ),
+                            ),
+                            child: Text(
+                              "Log In",
+                              style: TextStyle(
+                                color: Theme.of(context).primaryColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 30),
                     ],
                   ),
                 ),

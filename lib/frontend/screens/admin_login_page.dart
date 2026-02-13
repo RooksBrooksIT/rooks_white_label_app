@@ -47,6 +47,7 @@ class _AdminLoginState extends State<AdminLogin> {
 
     final result = await AdminLoginBackend.login(email, password);
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (result['success']) {
@@ -97,7 +98,7 @@ class _AdminLoginState extends State<AdminLogin> {
                           style: TextStyle(
                             fontSize: 30,
                             fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onPrimary,
+                            color: primaryColor,
                           ),
                         ),
                         const SizedBox(height: 20),

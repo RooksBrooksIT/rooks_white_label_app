@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
 
 class AMCCreatePage extends StatefulWidget {
   const AMCCreatePage({super.key});
@@ -9,8 +10,12 @@ class AMCCreatePage extends StatefulWidget {
   State<AMCCreatePage> createState() => _AMCCreatePageState();
 }
 
-class _AMCCreatePageState extends State<AMCCreatePage> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+class _AMCCreatePageState extends State<AMCCreatePage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _customers = [];
+  List<Map<String, dynamic>> _filteredCustomers = [];
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _usernameController = TextEditingController();
@@ -21,7 +26,6 @@ class _AMCCreatePageState extends State<AMCCreatePage> {
       TextEditingController();
 
   bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
   bool _isLoading = false;
   bool _isCheckingEmail = false;
   bool _isCheckingPhone = false;
@@ -34,28 +38,73 @@ class _AMCCreatePageState extends State<AMCCreatePage> {
   String? _originalEmail;
   String? _originalPhone;
 
-  // Blue color scheme
-  // Blue color scheme
-  Color get primaryColor => Theme.of(context).primaryColor;
-  Color get lightBlue => Theme.of(context).primaryColorLight;
-  Color get accentColor => Colors.green;
-  Color get cardColor => Theme.of(context).cardColor;
-  Color get errorColor => Theme.of(context).colorScheme.error;
-  Color get textColor =>
-      Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
-  Color get lightGrey => Theme.of(context).brightness == Brightness.dark
-      ? Colors.grey[800]!
-      : const Color(0xFFF5F5F5);
+  // Dynamic Color Palette from ThemeService
+  late Color primaryColor;
+  late Color secondaryColor;
+  late Color backgroundColor;
+  final Color accentColor = const Color(0xFF00D2FF);
+  final Color textColor = const Color(0xFF2D3436);
+  final Color textLightColor = const Color(0xFF636E72);
+  final Color errorColor = const Color(0xFFD63031);
+  final Color successColor = const Color(0xFF00B894);
   final Color editModeColor = const Color(0xFFFF9800);
 
   @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _fetchCustomers();
+  }
+
+  @override
   void dispose() {
+    _tabController.dispose();
     _usernameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchCustomers() async {
+    FirestoreService.instance.collection('AMC_user').snapshots().listen((
+      snapshot,
+    ) {
+      if (mounted) {
+        setState(() {
+          _customers = snapshot.docs.map((doc) {
+            final data = doc.data();
+            return {...data, 'id': doc.id};
+          }).toList();
+          _filteredCustomers = _customers;
+        });
+      }
+    });
+  }
+
+  void _filterCustomers(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredCustomers = _customers;
+      } else {
+        _filteredCustomers = _customers
+            .where(
+              (customer) =>
+                  (customer['name'] ?? '').toLowerCase().contains(
+                    query.toLowerCase(),
+                  ) ||
+                  (customer['email'] ?? '').toLowerCase().contains(
+                    query.toLowerCase(),
+                  ) ||
+                  (customer['Id'] ?? '').toLowerCase().contains(
+                    query.toLowerCase(),
+                  ),
+            )
+            .toList();
+      }
+    });
   }
 
   void _clearForm() {
@@ -67,7 +116,6 @@ class _AMCCreatePageState extends State<AMCCreatePage> {
     _confirmPasswordController.clear();
     setState(() {
       _obscurePassword = true;
-      _obscureConfirmPassword = true;
       _emailError = null;
       _phoneError = null;
       _isEditMode = false;
@@ -90,11 +138,7 @@ class _AMCCreatePageState extends State<AMCCreatePage> {
       _confirmPasswordController.clear();
     });
 
-    // Close the drawer
-    Navigator.of(context).pop();
-
-    // Scroll to top
-    Scrollable.ensureVisible(_formKey.currentContext!);
+    _tabController.animateTo(0);
   }
 
   Future<bool> _checkEmailExists(String email) async {
@@ -299,271 +343,122 @@ class _AMCCreatePageState extends State<AMCCreatePage> {
     }
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String labelText,
-    required String hintText,
-    required IconData prefixIcon,
-    bool obscureText = false,
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
-    Widget? suffixIcon,
-    TextInputAction textInputAction = TextInputAction.next,
-    int? maxLength,
-    bool enabled = true,
-  }) {
-    return TextFormField(
-      controller: controller,
-      style: TextStyle(color: textColor, fontSize: 16),
-      decoration: InputDecoration(
-        labelText: labelText,
-        hintText: hintText,
-        prefixIcon: Icon(prefixIcon, color: primaryColor),
-        suffixIcon: suffixIcon,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide(color: Theme.of(context).dividerColor),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide(color: Theme.of(context).dividerColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide(color: primaryColor, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide(color: errorColor),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide(color: errorColor, width: 2),
-        ),
-        filled: true,
-        fillColor: enabled
-            ? Theme.of(context).cardColor
-            : Theme.of(context).disabledColor.withOpacity(0.1),
-        contentPadding: EdgeInsets.symmetric(
-          vertical: MediaQuery.of(context).size.height * 0.02,
-          horizontal: 16,
-        ),
-        labelStyle: TextStyle(color: primaryColor, fontSize: 16),
-        floatingLabelStyle: TextStyle(color: primaryColor, fontSize: 16),
-        hintStyle: TextStyle(color: Theme.of(context).hintColor, fontSize: 16),
-        floatingLabelBehavior: FloatingLabelBehavior.auto,
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          Text(
+            value,
+            style: const TextStyle(color: Colors.black54, fontSize: 13),
+          ),
+        ],
       ),
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      validator: validator,
-      textInputAction: textInputAction,
-      maxLength: maxLength,
-      enabled: enabled,
     );
   }
 
-  Widget _buildEmailField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: _emailController,
-          style: TextStyle(color: textColor, fontSize: 16),
-          decoration: InputDecoration(
-            labelText: 'Email',
-            hintText: 'Enter your email address',
-            prefixIcon: Icon(Icons.email_outlined, color: primaryColor),
-            suffixIcon: _isCheckingEmail
-                ? Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-                      ),
-                    ),
-                  )
-                : _emailError == null && _emailController.text.isNotEmpty
-                ? Icon(Icons.check_circle, color: accentColor)
-                : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
-              borderSide: BorderSide(color: Theme.of(context).dividerColor),
+  Widget _buildAccountCreatedDialog(
+    String userName,
+    String email,
+    String password,
+    String id,
+  ) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
-              borderSide: BorderSide(color: Theme.of(context).dividerColor),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
-              borderSide: BorderSide(color: primaryColor, width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
-              borderSide: BorderSide(color: errorColor),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
-              borderSide: BorderSide(color: errorColor, width: 2),
-            ),
-            filled: true,
-            fillColor: _isEditMode
-                ? Theme.of(context).disabledColor.withOpacity(0.1)
-                : (Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[800]
-                      : const Color(0xFFF5F5F5)),
-            contentPadding: EdgeInsets.symmetric(
-              vertical: MediaQuery.of(context).size.height * 0.02,
-              horizontal: 16,
-            ),
-            labelStyle: TextStyle(color: primaryColor, fontSize: 16),
-            floatingLabelStyle: TextStyle(color: primaryColor, fontSize: 16),
-            hintStyle: TextStyle(
-              color: Theme.of(context).hintColor,
-              fontSize: 16,
-            ),
-            floatingLabelBehavior: FloatingLabelBehavior.auto,
-            errorText: _emailError,
-          ),
-          keyboardType: TextInputType.emailAddress,
-          textInputAction: TextInputAction.next,
-          enabled: !_isEditMode, // Disable email editing in edit mode
-          onChanged: (value) {
-            if (_emailError != null && value.isNotEmpty) {
-              setState(() {
-                _emailError = null;
-              });
-            }
-            if (value.isNotEmpty && !_isEditMode) {
-              Future.delayed(const Duration(milliseconds: 800), () {
-                if (mounted && _emailController.text == value) {
-                  _validateEmailUnique(value);
-                }
-              });
-            }
-          },
-          validator: (value) {
-            final basicValidation = _validateEmail(value);
-            if (basicValidation != null) {
-              return basicValidation;
-            }
-            return _emailError;
-          },
+          ],
         ),
-        if (_isCheckingEmail)
-          Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: Text(
-              'Checking email availability...',
-              style: TextStyle(
-                color: primaryColor,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircleAvatar(
+              radius: 24,
+              backgroundColor: Color(0xFFE8F5E9),
+              child: Icon(
+                Icons.check_circle_outline,
+                color: Colors.green,
+                size: 32,
               ),
             ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildPhoneNumberField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: _phoneController,
-          keyboardType: TextInputType.number,
-          maxLength: 10,
-          decoration: InputDecoration(
-            labelText: 'Phone Number',
-            hintText: 'Enter 10-digit phone number',
-            prefixIcon: Icon(Icons.phone, color: primaryColor),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
+            const SizedBox(height: 16),
+            const Text(
+              'Account Created',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            errorText: _phoneError,
-            suffixIcon: _isCheckingPhone
-                ? Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+            const SizedBox(height: 16),
+            Text(
+              'AMC ID: $id',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: primaryColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildDetailRow('Name', userName),
+            _buildDetailRow('Email', email),
+            _buildDetailRow('Password', password),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
                       ),
                     ),
-                  )
-                : _phoneError == null && _phoneController.text.length == 10
-                ? Icon(Icons.check_circle, color: accentColor)
-                : null,
-            filled: true,
-            fillColor: _isEditMode
-                ? Theme.of(context).disabledColor.withOpacity(0.1)
-                : lightGrey,
-          ),
-          enabled: !_isEditMode, // Disable phone editing in edit mode
-          validator: _validatePhoneNumberBasic,
-          onChanged: (value) {
-            if (_phoneError != null) {
-              setState(() {
-                _phoneError = null;
-              });
-            }
-            if (value.length == 10 && !_isEditMode) {
-              _validatePhoneNumberUnique(value);
-            }
-          },
+                    child: Text(
+                      'CLOSE',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      backgroundColor: primaryColor,
+                    ),
+                    child: const Text(
+                      'CONFIRM',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return _buildTextField(
-      controller: _passwordController,
-      labelText: _isEditMode ? 'New Password (Optional)' : 'Password',
-      hintText: _isEditMode
-          ? 'Enter new password (leave empty to keep current)'
-          : 'Enter your password',
-      prefixIcon: Icons.lock_outline,
-      obscureText: _obscurePassword,
-      validator: _validatePassword,
-      suffixIcon: IconButton(
-        icon: Icon(
-          _obscurePassword ? Icons.visibility_off : Icons.visibility,
-          color: primaryColor,
-        ),
-        onPressed: () {
-          setState(() {
-            _obscurePassword = !_obscurePassword;
-          });
-        },
-      ),
-    );
-  }
-
-  Widget _buildConfirmPasswordField() {
-    return _buildTextField(
-      controller: _confirmPasswordController,
-      labelText: _isEditMode ? 'Confirm New Password' : 'Confirm Password',
-      hintText: _isEditMode ? 'Confirm new password' : 'Confirm your password',
-      prefixIcon: Icons.lock_outline,
-      obscureText: _obscureConfirmPassword,
-      validator: _validateConfirmPassword,
-      textInputAction: TextInputAction.done,
-      suffixIcon: IconButton(
-        icon: Icon(
-          _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-          color: primaryColor,
-        ),
-        onPressed: () {
-          setState(() {
-            _obscureConfirmPassword = !_obscureConfirmPassword;
-          });
-        },
       ),
     );
   }
@@ -709,6 +604,18 @@ class _AMCCreatePageState extends State<AMCCreatePage> {
                 ),
                 backgroundColor: accentColor,
               ),
+            );
+
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return _buildAccountCreatedDialog(
+                  _usernameController.text,
+                  _emailController.text,
+                  _passwordController.text,
+                  newAmcId,
+                );
+              },
             );
 
             _clearForm();
@@ -923,620 +830,563 @@ class _AMCCreatePageState extends State<AMCCreatePage> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final isSmallScreen = screenWidth < 600;
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    // Refresh colors from ThemeService
+    primaryColor = ThemeService.instance.primaryColor;
+    secondaryColor = ThemeService.instance.secondaryColor;
+    backgroundColor = ThemeService.instance.backgroundColor;
 
     return Scaffold(
-      key: _scaffoldKey,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: Text(_isEditMode ? 'Edit Account' : 'Create Account'),
-        centerTitle: true,
+        backgroundColor: Colors.white,
         elevation: 0,
-        backgroundColor: _isEditMode ? editModeColor : primaryColor,
-        foregroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.people_alt),
-            onPressed: () {
-              _scaffoldKey.currentState!.openEndDrawer();
-            },
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: textColor),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'AMC Customer Management',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: textColor,
+            letterSpacing: -0.5,
+          ),
+        ),
+        centerTitle: false,
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [_buildCustomerForm(), _buildCustomerDirectory()],
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: TabBar(
+            controller: _tabController,
+            indicator: UnderlineTabIndicator(
+              borderSide: BorderSide(width: 3, color: primaryColor),
+              insets: const EdgeInsets.symmetric(horizontal: 48),
+            ),
+            labelColor: primaryColor,
+            unselectedLabelColor: textLightColor,
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+            tabs: const [
+              Tab(icon: Icon(Icons.person_add_rounded), text: 'Add Customer'),
+              Tab(icon: Icon(Icons.people_alt_rounded), text: 'Directory'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomerForm() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _isEditMode ? 'Edit Customer' : 'Add New Customer',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: textColor,
+                letterSpacing: -1,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _isEditMode
+                  ? 'Update information for this account.'
+                  : 'Create a new account for your AMC customers.',
+              style: TextStyle(
+                fontSize: 16,
+                color: textLightColor,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            const SizedBox(height: 32),
+            _buildFormField(
+              controller: _usernameController,
+              label: 'Full Name',
+              icon: Icons.person_outline_rounded,
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Please enter name';
+                if (value.length < 3) return 'Name too short';
+                return null;
+              },
+              enabled: !_isEditMode,
+            ),
+            const SizedBox(height: 20),
+            _buildEmailFieldRedesigned(),
+            const SizedBox(height: 20),
+            _buildPhoneNumberFieldRedesigned(),
+            const SizedBox(height: 20),
+            _buildFormField(
+              controller: _passwordController,
+              label: _isEditMode ? 'New Password (Optional)' : 'Password',
+              icon: Icons.lock_outline_rounded,
+              isPasswordField: true,
+              validator: _validatePassword,
+            ),
+            const SizedBox(height: 20),
+            _buildFormField(
+              controller: _confirmPasswordController,
+              label: 'Confirm Password',
+              icon: Icons.shield_outlined,
+              isPasswordField: true,
+              validator: _validateConfirmPassword,
+            ),
+            const SizedBox(height: 40),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _submitForm,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        _isEditMode ? 'Update Account' : 'Create Account',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: TextButton(
+                onPressed: _isEditMode ? _cancelEdit : _clearForm,
+                child: Text(
+                  _isEditMode ? 'Cancel Edit' : 'Clear Form',
+                  style: TextStyle(
+                    color: _isEditMode ? errorColor : textLightColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _cancelEdit() {
+    setState(() {
+      _isEditMode = false;
+      _editingDocId = null;
+      _clearForm();
+    });
+  }
+
+  Widget _buildFormField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool isPasswordField = false,
+    String? Function(String?)? validator,
+    bool enabled = true,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      endDrawer: Drawer(
-        width: screenWidth * 0.8,
-        child: Container(
-          color: const Color(0xFF1E3C72),
-          child: SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  color: primaryColor,
-                  child: Row(
-                    children: const [
-                      Icon(Icons.people_outline, color: Colors.white),
-                      SizedBox(width: 10),
+      child: TextFormField(
+        controller: controller,
+        obscureText: isPasswordField && _obscurePassword,
+        enabled: enabled,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: textLightColor,
+            fontWeight: FontWeight.w500,
+          ),
+          floatingLabelStyle: TextStyle(
+            color: primaryColor,
+            fontWeight: FontWeight.w600,
+          ),
+          prefixIcon: Icon(icon, color: primaryColor),
+          suffixIcon: isPasswordField
+              ? IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    color: textLightColor,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: enabled ? Colors.white : backgroundColor.withOpacity(0.5),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+        ),
+        validator: validator,
+      ),
+    );
+  }
+
+  Widget _buildEmailFieldRedesigned() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: _emailController,
+        keyboardType: TextInputType.emailAddress,
+        enabled: !_isEditMode,
+        decoration: InputDecoration(
+          labelText: 'Email Address',
+          labelStyle: TextStyle(
+            color: textLightColor,
+            fontWeight: FontWeight.w500,
+          ),
+          floatingLabelStyle: TextStyle(
+            color: primaryColor,
+            fontWeight: FontWeight.w600,
+          ),
+          prefixIcon: Icon(Icons.alternate_email_rounded, color: primaryColor),
+          suffixIcon: _isCheckingEmail
+              ? const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: !_isEditMode
+              ? Colors.white
+              : backgroundColor.withOpacity(0.5),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+        ),
+        onChanged: (value) {
+          if (value.isNotEmpty && !_isEditMode) {
+            _validateEmailUnique(value);
+          }
+        },
+        validator: _validateEmail,
+      ),
+    );
+  }
+
+  Widget _buildPhoneNumberFieldRedesigned() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: _phoneController,
+        keyboardType: TextInputType.number,
+        enabled: !_isEditMode,
+        decoration: InputDecoration(
+          labelText: 'Phone Number',
+          labelStyle: TextStyle(
+            color: textLightColor,
+            fontWeight: FontWeight.w500,
+          ),
+          floatingLabelStyle: TextStyle(
+            color: primaryColor,
+            fontWeight: FontWeight.w600,
+          ),
+          prefixIcon: Icon(Icons.phone_iphone_rounded, color: primaryColor),
+          suffixIcon: _isCheckingPhone
+              ? const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: !_isEditMode
+              ? Colors.white
+              : backgroundColor.withOpacity(0.5),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+          counterText: '',
+        ),
+        maxLength: 10,
+        onChanged: (value) {
+          if (value.length == 10 && !_isEditMode) {
+            _validatePhoneNumberUnique(value);
+          }
+        },
+        validator: _validatePhoneNumberBasic,
+      ),
+    );
+  }
+
+  Widget _buildCustomerDirectory() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Customer Directory',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: textColor,
+                  letterSpacing: -1,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: _filterCustomers,
+                  decoration: InputDecoration(
+                    hintText: 'Search by name or AMC ID...',
+                    prefixIcon: Icon(Icons.search_rounded, color: primaryColor),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _filteredCustomers.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.person_search_rounded,
+                        size: 64,
+                        color: textLightColor.withOpacity(0.5),
+                      ),
+                      const SizedBox(height: 16),
                       Text(
-                        'Account Management',
+                        'No customers found',
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
                           fontSize: 18,
-                          color: Colors.white,
+                          color: textLightColor,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 10),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Text(
-                    'All created accounts are listed below:',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                ),
-                const Divider(),
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirestoreService.instance
-                        .collection('AMC_user')
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.people_outline,
-                                size: 48,
-                                color: Colors.grey.shade400,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No accounts found',
-                                style: TextStyle(color: Colors.grey.shade600),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                      final docs = snapshot.data!.docs;
-                      return ListView.builder(
-                        itemCount: docs.length,
-                        itemBuilder: (context, index) {
-                          final data =
-                              docs[index].data() as Map<String, dynamic>;
-                          final name = data['name'] ?? '';
-                          final email =
-                              data['email'] ?? (data['EmailId'] ?? '');
-                          final amcId = data['Id'] ?? docs[index].id;
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  itemCount: _filteredCustomers.length,
+                  itemBuilder: (context, index) {
+                    final customer = _filteredCustomers[index];
+                    final String name = customer['name'] ?? 'No Name';
+                    final String id = customer['Id'] ?? 'No ID';
+                    final String email = customer['email'] ?? 'No Email';
+                    final String phone = customer['Phone Number'] ?? 'No Phone';
 
-                          return Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.2),
-                                  blurRadius: 3,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ],
-                            ),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: primaryColor,
-                                child: Text(
-                                  name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                              ),
-                              title: Text(
-                                name.isNotEmpty ? name : 'No Name',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(email.isNotEmpty ? email : 'No Email'),
-                                  Text(
-                                    'ID: $amcId',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: primaryColor,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.edit,
-                                      color: editModeColor,
-                                    ),
-                                    onPressed: () {
-                                      _loadAccountForEdit(data, docs[index].id);
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      color: Colors.red,
-                                    ),
-                                    onPressed: () async {
-                                      await _deleteAccount(
-                                        docs[index].id,
-                                        name,
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              (_isEditMode ? editModeColor : primaryColor).withOpacity(0.9),
-              lightBlue.withOpacity(0.8),
-            ],
-          ),
-        ),
-        child: _isLoading
-            ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    _isEditMode ? editModeColor : primaryColor,
-                  ),
-                ),
-              )
-            : Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isSmallScreen ? 16.0 : 24.0,
-                        vertical: isLandscape ? 8.0 : 16.0,
-                      ),
-                      child: Column(
-                        children: [
-                          if (!isLandscape)
-                            Container(
-                              margin: const EdgeInsets.only(bottom: 16),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).cardColor,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                _isEditMode
-                                    ? Icons.edit_outlined
-                                    : Icons.person_add_alt_1,
-                                size: screenWidth * 0.08,
-                                color: _isEditMode
-                                    ? editModeColor
-                                    : primaryColor,
-                              ),
-                            ),
-                          if (!isLandscape)
-                            Text(
-                              _isEditMode
-                                  ? 'Edit Account'
-                                  : 'Create New Account',
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.06,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          if (!isLandscape) const SizedBox(height: 8),
-                          if (!isLandscape)
-                            Text(
-                              _isEditMode
-                                  ? 'You can only update the password for existing accounts'
-                                  : 'Please fill in all the required information',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: screenWidth * 0.035,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          SizedBox(height: isLandscape ? 8 : 24),
-                          Card(
-                            elevation: 8,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            color: cardColor,
-                            child: Padding(
-                              padding: EdgeInsets.all(
-                                isSmallScreen ? 16.0 : 24.0,
-                              ),
-                              child: Form(
-                                key: _formKey,
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    if (_isEditMode)
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: editModeColor.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          border: Border.all(
-                                            color: editModeColor.withOpacity(
-                                              0.3,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              Icons.info_outline,
-                                              color: editModeColor,
-                                              size: 20,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                'Edit Mode: Only password can be updated for existing accounts',
-                                                style: TextStyle(
-                                                  color: editModeColor,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    if (_isEditMode) const SizedBox(height: 16),
-                                    _buildTextField(
-                                      controller: _usernameController,
-                                      labelText: 'Username',
-                                      hintText: 'Enter your username',
-                                      prefixIcon: Icons.person_outline,
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Please enter a username';
-                                        }
-                                        if (value.length < 3) {
-                                          return 'Username must be at least 3 characters long';
-                                        }
-                                        return null;
-                                      },
-                                      enabled:
-                                          !_isEditMode, // Disable username editing in edit mode
-                                    ),
-                                    SizedBox(height: isSmallScreen ? 12 : 20),
-                                    _buildEmailField(),
-                                    SizedBox(height: isSmallScreen ? 12 : 20),
-                                    _buildPhoneNumberField(),
-                                    SizedBox(height: isSmallScreen ? 12 : 20),
-                                    _buildPasswordField(),
-                                    SizedBox(height: isSmallScreen ? 12 : 20),
-                                    _buildConfirmPasswordField(),
-                                    SizedBox(height: isSmallScreen ? 20 : 32),
-                                    isSmallScreen
-                                        ? Column(
-                                            children: [
-                                              SizedBox(
-                                                width: double.infinity,
-                                                child: ElevatedButton(
-                                                  onPressed: _submitForm,
-                                                  style: ElevatedButton.styleFrom(
-                                                    padding:
-                                                        EdgeInsets.symmetric(
-                                                          vertical:
-                                                              screenHeight *
-                                                              0.02,
-                                                        ),
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            12.0,
-                                                          ),
-                                                    ),
-                                                    backgroundColor: _isEditMode
-                                                        ? editModeColor
-                                                        : primaryColor,
-                                                    elevation: 2,
-                                                  ),
-                                                  child: Text(
-                                                    _isEditMode
-                                                        ? 'UPDATE ACCOUNT'
-                                                        : 'CREATE ACCOUNT',
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: Colors.white,
-                                                      fontSize: 16,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 12),
-                                              SizedBox(
-                                                width: double.infinity,
-                                                child: OutlinedButton(
-                                                  onPressed: _clearForm,
-                                                  style: OutlinedButton.styleFrom(
-                                                    padding:
-                                                        EdgeInsets.symmetric(
-                                                          vertical:
-                                                              screenHeight *
-                                                              0.02,
-                                                        ),
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            12.0,
-                                                          ),
-                                                    ),
-                                                    side: BorderSide(
-                                                      color: _isEditMode
-                                                          ? editModeColor
-                                                          : primaryColor,
-                                                    ),
-                                                  ),
-                                                  child: Text(
-                                                    _isEditMode
-                                                        ? 'CANCEL EDIT'
-                                                        : 'CLEAR',
-                                                    style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: _isEditMode
-                                                          ? editModeColor
-                                                          : primaryColor,
-                                                      fontSize: 16,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          )
-                                        : Row(
-                                            children: [
-                                              Expanded(
-                                                child: OutlinedButton(
-                                                  onPressed: _clearForm,
-                                                  style: OutlinedButton.styleFrom(
-                                                    padding:
-                                                        EdgeInsets.symmetric(
-                                                          vertical:
-                                                              screenHeight *
-                                                              0.02,
-                                                        ),
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            12.0,
-                                                          ),
-                                                    ),
-                                                    side: BorderSide(
-                                                      color: _isEditMode
-                                                          ? editModeColor
-                                                          : primaryColor,
-                                                    ),
-                                                  ),
-                                                  child: Text(
-                                                    _isEditMode
-                                                        ? 'CANCEL EDIT'
-                                                        : 'CLEAR',
-                                                    style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: _isEditMode
-                                                          ? editModeColor
-                                                          : primaryColor,
-                                                      fontSize: 16,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 16),
-                                              Expanded(
-                                                child: ElevatedButton(
-                                                  onPressed: _submitForm,
-                                                  style: ElevatedButton.styleFrom(
-                                                    padding:
-                                                        EdgeInsets.symmetric(
-                                                          vertical:
-                                                              screenHeight *
-                                                              0.02,
-                                                        ),
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            12.0,
-                                                          ),
-                                                    ),
-                                                    backgroundColor: _isEditMode
-                                                        ? editModeColor
-                                                        : primaryColor,
-                                                    elevation: 2,
-                                                  ),
-                                                  child: Text(
-                                                    _isEditMode
-                                                        ? 'UPDATE ACCOUNT'
-                                                        : 'CREATE ACCOUNT',
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: Colors.white,
-                                                      fontSize: 16,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.02),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
-                          SizedBox(height: isSmallScreen ? 16 : 24),
-                          Card(
-                            elevation: 4,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            color: Colors.white,
-                            child: Padding(
-                              padding: EdgeInsets.all(
-                                isSmallScreen ? 12.0 : 16.0,
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 28,
+                              backgroundColor: primaryColor.withOpacity(0.1),
+                              child: Text(
+                                name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: primaryColor,
+                                ),
                               ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Password Requirements',
+                                    name,
                                     style: TextStyle(
+                                      fontSize: 17,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: isSmallScreen ? 14 : 16,
-                                      color: _isEditMode
-                                          ? editModeColor
-                                          : primaryColor,
+                                      color: textColor,
                                     ),
                                   ),
-                                  SizedBox(height: isSmallScreen ? 8 : 12),
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Icon(
-                                        Icons.info_outline,
-                                        size: 16,
-                                        color: Colors.grey,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          '• At least 8 characters\n• One uppercase letter\n• One number',
-                                          style: TextStyle(
-                                            fontSize: isSmallScreen ? 12 : 14,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'ID: $id',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryColor,
+                                    ),
                                   ),
-                                  if (_isEditMode) ...[
-                                    SizedBox(height: isSmallScreen ? 8 : 12),
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Icon(
-                                          Icons.edit_outlined,
-                                          size: 16,
-                                          color: Colors.grey,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            '• In edit mode, only password can be updated\n• Leave password fields empty to keep current password',
-                                            style: TextStyle(
-                                              fontSize: isSmallScreen ? 12 : 14,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    email,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: textLightColor,
                                     ),
-                                  ] else ...[
-                                    SizedBox(height: isSmallScreen ? 8 : 12),
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Icon(
-                                          Icons.email_outlined,
-                                          size: 16,
-                                          color: Colors.grey,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            '• Email will be checked for uniqueness automatically',
-                                            style: TextStyle(
-                                              fontSize: isSmallScreen ? 12 : 14,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    phone,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: textLightColor,
+                                      fontStyle: FontStyle.italic,
                                     ),
-                                  ],
+                                  ),
                                 ],
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(
-                      vertical: screenHeight * 0.015,
-                    ),
-                    color: _isEditMode ? editModeColor : primaryColor,
-                    child: Center(
-                      child: Text(
-                        '© 2025 Rooks IT Services',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: screenWidth * 0.035,
+                            Column(
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.edit_outlined,
+                                    color: primaryColor.withOpacity(0.7),
+                                  ),
+                                  onPressed: () => _loadAccountForEdit(
+                                    customer,
+                                    customer['id'],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: errorColor.withOpacity(0.7),
+                                  ),
+                                  onPressed: () =>
+                                      _deleteAccount(customer['id'], name),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 }

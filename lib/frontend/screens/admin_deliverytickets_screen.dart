@@ -463,6 +463,15 @@ class _AdminDeliveryTicketsState extends State<AdminDeliveryTickets> {
     return defaultValue;
   }
 
+  Timestamp _parseTimestamp(dynamic v) {
+    if (v is Timestamp) return v;
+    if (v is String) {
+      DateTime? dt = DateTime.tryParse(v);
+      if (dt != null) return Timestamp.fromDate(dt);
+    }
+    return Timestamp.now();
+  }
+
   Widget _buildDeliveryStreamBuilder(double screenWidth, double screenHeight) {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore.collection('Admin_details').snapshots(),
@@ -629,7 +638,7 @@ class _AdminDeliveryTicketsState extends State<AdminDeliveryTickets> {
       deviceBrand: _getField(data, ['deviceBrand']),
       deviceCondition: _getField(data, ['deviceCondition']),
       message: _getField(data, ['message', 'Message']),
-      timestamp: (data['timestamp'] as Timestamp?) ?? Timestamp.now(),
+      timestamp: _parseTimestamp(data['timestamp']),
       address: _getField(data, ['address', 'Address']),
       mobileNumber: _getField(data, ['mobileNumber', 'MobileNumber']),
       jobType: _getField(data, ['jobType', 'JobType']),

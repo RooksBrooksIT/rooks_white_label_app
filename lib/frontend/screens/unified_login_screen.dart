@@ -46,6 +46,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
       Widget nextScreen;
       switch (role) {
         case 'admin':
+        case 'Owner':
           nextScreen = const admindashboard();
           break;
         case 'engineer':
@@ -95,7 +96,9 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w900,
-                    color: Colors.black,
+                    color:
+                        Theme.of(context).textTheme.headlineMedium?.color ??
+                        Colors.black,
                     letterSpacing: -1.0,
                   ),
                 ),
@@ -137,7 +140,29 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {}, // Forgot password placeholder
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Forgot Password'),
+                          content: const Text(
+                            'Contact Admin to change the password',
+                          ),
+                          actions: [
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                foregroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.onPrimary,
+                                backgroundColor: Theme.of(context).primaryColor,
+                              ),
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                     child: Text(
                       'Forgot Password?',
                       style: TextStyle(
@@ -157,7 +182,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
+                      backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
@@ -225,7 +250,10 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Colors.black, width: 2),
+              borderSide: BorderSide(
+                color: Theme.of(context).primaryColor,
+                width: 2,
+              ),
             ),
           ),
         ),

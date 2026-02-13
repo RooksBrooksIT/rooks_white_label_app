@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:subscription_rooks_app/backend/brand_model_backend.dart';
 import 'package:lottie/lottie.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:flutter/services.dart';
 
 // -- CustomerHomePage now gets these values upon navigation --
@@ -10,6 +12,9 @@ class CustomerHomePage extends StatefulWidget {
   final String customerName;
   final String mobileNumber;
   final String categoryName;
+  final String? initialJobType;
+  final String? initialDeviceType;
+  final String? initialCustomDeviceType;
 
   const CustomerHomePage({
     super.key,
@@ -17,8 +22,9 @@ class CustomerHomePage extends StatefulWidget {
     required this.customerName,
     required this.mobileNumber,
     required this.categoryName,
-    required String loggedInName,
-    required String name,
+    this.initialJobType,
+    this.initialDeviceType,
+    this.initialCustomDeviceType,
   });
 
   @override
@@ -57,13 +63,22 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
   void initState() {
     super.initState();
 
-    // Initialize controllers with empty so we can set the correct values later
-    _customerIdController = TextEditingController();
+    // Initialize controllers with passed values
+    _customerIdController = TextEditingController(text: widget.customerId);
     _customerNameController = TextEditingController(text: widget.customerName);
     _mobileNumberController = TextEditingController(text: widget.mobileNumber);
 
     _fetchDeviceTypes();
-    deviceType = '';
+    jobType = widget.initialJobType ?? '';
+    deviceType = widget.initialDeviceType ?? '';
+    if (widget.initialCustomDeviceType != null) {
+      _customDeviceTypeController.text = widget.initialCustomDeviceType!;
+    }
+
+    // Auto-fetch brands if device type is pre-selected
+    if (deviceType.isNotEmpty) {
+      _fetchDeviceBrands(deviceType);
+    }
 
     // Fetch customer details by name to automatically fill ID and mobile
     _fetchCustomerDetailsByName();
@@ -72,17 +87,17 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
   Future<void> _fetchCustomerDetailsByName() async {
     try {
       final querySnapshot = await FirestoreService.instance
-          .collection('CustomerLogindetails')
+          .collection('AMC_user')
           .where('name', isEqualTo: widget.customerName)
-          .where('phonenumber', isEqualTo: widget.mobileNumber)
+          .where('Phone Number', isEqualTo: widget.mobileNumber)
           .limit(1)
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
         final doc = querySnapshot.docs.first;
         setState(() {
-          _customerIdController.text = doc['id'] ?? '';
-          _mobileNumberController.text = doc['phonenumber'] ?? '';
+          _customerIdController.text = doc['Id'] ?? '';
+          _mobileNumberController.text = doc['Phone Number'] ?? '';
         });
       }
     } catch (e) {
@@ -128,58 +143,20 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
     });
 
     try {
-      String? collectionName;
-      switch (deviceType.toLowerCase()) {
-        case 'desktop':
-          collectionName = 'desktopBrands';
-          break;
-        case 'laptop':
-          collectionName = 'laptopBrands';
-          break;
-        case 'cctv':
-          collectionName = 'cctvBrands';
-          break;
-        case 'projector':
-          collectionName = 'projectorBrands';
-          break;
-        case 'printer':
-          collectionName = 'printerBrands';
-          break;
-        default:
-          collectionName = null;
-      }
-      if (collectionName != null) {
-        final snapshot = await FirestoreService.instance
-            .collection(collectionName)
-            .get();
-        final brands =
-            snapshot.docs
-                .map((doc) {
-                  return doc['brandName']?.toString() ??
-                      doc['name']?.toString() ??
-                      doc['brand']?.toString() ??
-                      '';
-                })
-                .where((b) => b.isNotEmpty)
-                .toSet()
-                .toList()
-              ..sort();
+      // Strictly fetch from the master 'devicesbrands' collection as requested
+      final brands = await BrandModelBackend().fetchAllDeviceBrands();
 
-        if (!brands.contains('Others')) {
-          brands.add('Others');
-        }
-
-        setState(() {
-          deviceBrands = brands;
-        });
-      } else {
-        setState(() {
-          deviceBrands = ['DELL', 'HP', 'MAC', 'LENOVO', 'ASUS', 'Others'];
-        });
+      if (!brands.contains('Others')) {
+        brands.add('Others');
       }
-    } catch (e) {
+
       setState(() {
-        deviceBrands = ['DELL', 'HP', 'MAC', 'LENOVO', 'ASUS', 'Others'];
+        deviceBrands = brands;
+      });
+    } catch (e) {
+      print('Error fetching device brands: $e');
+      setState(() {
+        deviceBrands = ['Others'];
       });
     } finally {
       setState(() {
@@ -206,7 +183,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Our Service Details',
+          ThemeService.instance.appName,
           style: TextStyle(
             color:
                 Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
@@ -304,15 +281,14 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                           if (value != null && value != 'Others') {
                             await _fetchDeviceBrands(value);
                           } else {
+                            // Fetch dynamic brands from master collection for "Others" or null
+                            final brands = await BrandModelBackend()
+                                .fetchAllDeviceBrands();
+                            if (!brands.contains('Others')) {
+                              brands.add('Others');
+                            }
                             setState(() {
-                              deviceBrands = [
-                                'DELL',
-                                'HP',
-                                'MAC',
-                                'LENOVO',
-                                'ASUS',
-                                'Others',
-                              ];
+                              deviceBrands = brands;
                             });
                           }
                         },
@@ -333,9 +309,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                     ? const Center(child: CircularProgressIndicator())
                     : _buildDropdownField(
                         'Device Brand',
-                        deviceBrands.isNotEmpty
-                            ? deviceBrands
-                            : ['DELL', 'HP', 'MAC', 'LENOVO', 'ASUS', 'Others'],
+                        deviceBrands.isNotEmpty ? deviceBrands : ['Others'],
                         Icons.branding_watermark,
                         (value) {
                           setState(() {
