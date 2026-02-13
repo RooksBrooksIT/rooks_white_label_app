@@ -178,7 +178,10 @@ class FirestoreService {
     try {
       final doc = await brandingDoc(tenantId: tenantId, appId: appId).get();
       if (doc.exists && doc.data() != null) {
-        ThemeService.instance.loadFromMap(doc.data()!);
+        ThemeService.instance.loadFromMap({
+          ...doc.data()!,
+          'databaseName': tenantId, // Ensure databaseName is restored
+        });
       }
     } catch (e) {
       // debugPrint('Error syncing branding: $e');

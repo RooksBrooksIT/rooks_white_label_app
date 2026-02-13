@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,13 +13,12 @@ import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/location_service.dart';
-
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+import 'package:subscription_rooks_app/services/notification_service.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/services/storage_service.dart';
 
 class ProfessionalTheme {
   static Color primary(BuildContext context) => Theme.of(context).primaryColor;
@@ -389,18 +389,43 @@ class ProfessionalNavigationDrawer extends StatelessWidget {
               ),
             ),
             child: Column(
+              // Line 390
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 32,
-                  backgroundColor: ProfessionalTheme.textInverse(
-                    context,
-                  ).withOpacity(0.2),
-                  child: Icon(
-                    Icons.engineering,
-                    size: 32,
-                    color: ProfessionalTheme.textInverse(context),
-                  ),
+                FutureBuilder<DocumentSnapshot>(
+                  future: FirestoreService.instance
+                      .collection('users')
+                      .doc(FirebaseAuth.instance.currentUser?.uid)
+                      .get(),
+                  builder: (context, snapshot) {
+                    String? photoUrl;
+                    if (snapshot.hasData &&
+                        snapshot.data != null &&
+                        snapshot.data!.exists) {
+                      final data =
+                          snapshot.data!.data() as Map<String, dynamic>?;
+                      photoUrl = data?['photoUrl'] ?? data?['profileImage'];
+                    }
+                    // Fallback to Auth photoURL if Firestore doesn't have it
+                    photoUrl ??= FirebaseAuth.instance.currentUser?.photoURL;
+
+                    return CircleAvatar(
+                      radius: 32,
+                      backgroundColor: ProfessionalTheme.textInverse(
+                        context,
+                      ).withOpacity(0.2),
+                      backgroundImage: photoUrl != null
+                          ? NetworkImage(photoUrl)
+                          : null,
+                      child: photoUrl == null
+                          ? Icon(
+                              Icons.engineering,
+                              size: 32,
+                              color: ProfessionalTheme.textInverse(context),
+                            )
+                          : null,
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -593,20 +618,13 @@ class _EngineerPageState extends State<EngineerPage> {
   void initState() {
     super.initState();
 
-    // Initialize Local Notifications
-    const AndroidInitializationSettings androidInitSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const DarwinInitializationSettings iosInitSettings =
-        DarwinInitializationSettings();
-    const InitializationSettings initSettings = InitializationSettings(
-      android: androidInitSettings,
-      iOS: iosInitSettings,
+    NotificationService.instance.registerToken(
+      'engineer',
+      widget.userName,
+      widget.userEmail,
     );
 
-    flutterLocalNotificationsPlugin.initialize(initSettings);
-
     _handleInitialNotification();
-    _updateEngineerToken();
     _listenToNotifications();
     _setupFCMListeners();
   }
@@ -735,26 +753,6 @@ class _EngineerPageState extends State<EngineerPage> {
     }
   }
 
-  Future<void> _updateEngineerToken() async {
-    try {
-      // Get the FCM token from Firebase Messaging
-      final fcmToken = await FirebaseMessaging.instance.getToken();
-      if (fcmToken == null) return;
-
-      // Save the token to Firestore
-      await FirestoreService.instance
-          .collection('EngineerTokens')
-          .doc(widget.userName)
-          .set({
-            'token': fcmToken,
-            'lastUpdated': FieldValue.serverTimestamp(),
-            'email': widget.userEmail,
-          }, SetOptions(merge: true));
-    } catch (e) {
-      print('Error updating FCM token: $e');
-    }
-  }
-
   void _handleInitialNotification() {
     if (widget.notificationData != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -764,30 +762,14 @@ class _EngineerPageState extends State<EngineerPage> {
   }
 
   void _showNotificationDialog(Map<String, dynamic> data) async {
-    // Show local notification
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-          'assignment_channel',
-          'New Assignments',
-          channelDescription: 'Notifications for new service assignments',
-          importance: Importance.max,
-          priority: Priority.high,
-          showWhen: true,
-          enableVibration: true,
-          playSound: true,
-        );
-
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-    );
-
-    await flutterLocalNotificationsPlugin.show(
-      0,
-      data['type'] == 'new_assignment' ? 'New Assignment' : 'Notification',
-      data['type'] == 'new_assignment'
+    NotificationService.instance.showNotification(
+      title: data['type'] == 'new_assignment'
+          ? 'New Assignment'
+          : 'Notification',
+      body: data['type'] == 'new_assignment'
           ? 'You have been assigned a new task (ID: ${data['bookingId']})'
           : data['body'] ?? 'You have a new notification',
-      platformChannelSpecifics,
+      data: data.map((key, value) => MapEntry(key, value.toString())),
     );
 
     // Show dialog
@@ -1053,39 +1035,59 @@ class _EngineerPageState extends State<EngineerPage> {
                         ),
                       ),
                     ),
-                    // Optional: Add a subtle pattern or overlay
-                    Opacity(
-                      opacity: 0.1,
-                      child: Icon(
-                        Icons.engineering,
-                        size: 200,
-                        color: Colors.white.withOpacity(0.2),
-                      ),
-                    ),
                     Positioned(
                       left: 20,
-                      bottom: 24,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
+                      bottom: 20,
+                      right: 20,
+                      child: Row(
                         children: [
-                          Text(
-                            'OVERVIEW',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white.withOpacity(0.7),
-                              letterSpacing: 2.0,
+                          if (ThemeService.instance.logoUrl != null)
+                            Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.5),
+                                  width: 2,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 24,
+                                backgroundColor: Colors.white,
+                                backgroundImage: NetworkImage(
+                                  ThemeService.instance.logoUrl!,
+                                ),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.userName,
-                            style: const TextStyle(
-                              fontSize: 28,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -1.0,
+                          if (ThemeService.instance.logoUrl != null)
+                            const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  ThemeService.instance.appName.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white.withOpacity(0.7),
+                                    letterSpacing: 2.0,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  widget.userName,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.5,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -1626,13 +1628,13 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
   bool _isExpanded = false;
   final ImagePicker _picker = ImagePicker();
   List<XFile>? _imageFiles = [];
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _paymentAmountController =
       TextEditingController();
   final TextEditingController _otherPaymentController = TextEditingController();
   bool _isPickingImages = false;
   bool _isReadOnly = false;
+  bool _isUploading = false;
   String _currentStatus = '';
   String _selectedPaymentType = 'Cash';
   String _selectedPaymentMethod = 'Visiting Charge';
@@ -1788,16 +1790,13 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
     List<String> downloadUrls = [];
     for (var imageFile in imageFiles) {
       try {
-        File file = File(imageFile.path);
-        String fileName =
-            '${widget.userName}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        Reference storageReference = _storage.ref().child(
-          'job_images/$fileName',
+        final downloadUrl = await StorageService.instance.uploadWorkerImage(
+          userName: widget.userName,
+          file: File(imageFile.path),
         );
-        UploadTask uploadTask = storageReference.putFile(file);
-        TaskSnapshot taskSnapshot = await uploadTask;
-        String downloadUrl = await taskSnapshot.ref.getDownloadURL();
-        downloadUrls.add(downloadUrl);
+        if (downloadUrl != null) {
+          downloadUrls.add(downloadUrl);
+        }
       } catch (e) {
         debugPrint('Error uploading image: $e');
       }
@@ -1961,6 +1960,7 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
     );
 
     if (confirm == true) {
+      setState(() => _isUploading = true);
       try {
         List<String> newImageUrls = await _uploadImages(_imageFiles ?? []);
         List<String> allImageUrls = [
@@ -2027,6 +2027,12 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
               'amount': double.tryParse(_amountController.text.trim()) ?? 0,
               'updatedBy': widget.userName,
               'updatedAt': FieldValue.serverTimestamp(),
+              'imageUrls': allImageUrls,
+              'payments': _payments
+                  .map((p) => {...p, 'addedAt': Timestamp.now()})
+                  .toList(),
+              'lat': _capturedLat,
+              'lng': _capturedLng,
             }, SetOptions(merge: true));
 
         _showSnackBar('Job updated successfully!', ProfessionalTheme.success);
@@ -2055,6 +2061,10 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
           'Failed to update job [$errorType]: $errorMsg\n$stackMsg',
           ProfessionalTheme.error,
         );
+      } finally {
+        if (mounted) {
+          setState(() => _isUploading = false);
+        }
       }
     }
   }
@@ -3794,7 +3804,7 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
           Expanded(
             flex: 2,
             child: ElevatedButton(
-              onPressed: _performUpdate,
+              onPressed: _isUploading ? null : _performUpdate,
               style: ElevatedButton.styleFrom(
                 backgroundColor: ProfessionalTheme.primary(context),
                 shape: RoundedRectangleBorder(
@@ -3805,14 +3815,24 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.update,
-                    size: 16,
-                    color: ProfessionalTheme.textInverse(context),
-                  ),
+                  if (_isUploading)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  else
+                    Icon(
+                      Icons.update,
+                      size: 16,
+                      color: ProfessionalTheme.textInverse(context),
+                    ),
                   const SizedBox(width: 8),
                   Text(
-                    'Update Job',
+                    _isUploading ? 'Updating...' : 'Update Job',
                     style: TextStyle(
                       color: ProfessionalTheme.textInverse(context),
                       fontWeight: FontWeight.w600,

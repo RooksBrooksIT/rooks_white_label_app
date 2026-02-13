@@ -10,6 +10,8 @@ import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:subscription_rooks_app/frontend/screens/customer_createtickets_devicetype.dart';
 import 'package:flutter/services.dart';
+import 'package:subscription_rooks_app/services/notification_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AMCTrackMyService extends StatefulWidget {
   final String customerName;
@@ -28,6 +30,19 @@ class _AMCTrackMyServiceState extends State<AMCTrackMyService> {
   // Banner state
   bool showBanner = false;
   String bannerMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      NotificationService.instance.registerToken(
+        'customer',
+        widget.customerId,
+        user.email ?? '',
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

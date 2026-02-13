@@ -127,6 +127,20 @@ class AuthStateService extends ChangeNotifier {
       _isRegistered = true;
 
       if (role == 'admin' || role == 'Owner') {
+        // Also register in the 'admin' collection for backward compatibility with AdminLoginBackend
+        await FirestoreService.instance
+            .collection('admin', tenantId: targetScope)
+            .doc(name)
+            .set({
+              'email': email,
+              'password':
+                  password, // Note: Existing logic uses plain text password in this collection
+              'name': name,
+              'tenantId': targetScope,
+              'uid': uid,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+
         await prefs.setBool('admin_isLoggedIn', true);
         await prefs.setString('admin_email', email);
         await prefs.setString('admin_org_collection', targetScope);
@@ -172,15 +186,25 @@ class AuthStateService extends ChangeNotifier {
 
       if (metadata != null) {
         scope = metadata['tenantId'] ?? scope;
-        // Update Local Theme Context immediately so subsequent calls use correct DB
         // Fetch actual branding from 'branding/config' under the tenant
+        // Use the appName found in metadata as the appId path
+        final appNameFromMetadata = metadata['appName'];
+
         final brandingDoc = await FirestoreService.instance
-            .brandingDoc(tenantId: scope)
+            .brandingDoc(tenantId: scope, appId: appNameFromMetadata)
             .get();
 
         Map<String, dynamic>? brandingData;
         if (brandingDoc.exists) {
           brandingData = brandingDoc.data();
+        } else if (appNameFromMetadata != null) {
+          // Fallback to 'data' bucket if app-specific branding not found
+          final fallbackDoc = await FirestoreService.instance
+              .brandingDoc(tenantId: scope, appId: 'data')
+              .get();
+          if (fallbackDoc.exists) {
+            brandingData = fallbackDoc.data();
+          }
         }
 
         final appName = brandingData?['appName'] ?? metadata['appName'];
@@ -244,22 +268,18 @@ class AuthStateService extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
 
-    // Clear Admin session
+    // Clear Admin session (but keep org/branding context)
     await prefs.remove('admin_isLoggedIn');
     await prefs.remove('admin_email');
-    await prefs.remove('admin_org_collection');
 
     // Clear Engineer session
     await prefs.remove('engineerName');
     await prefs.remove('engineerEmail');
-    await prefs.remove('tenantId');
 
     // Clear Customer session
     await prefs.remove('email');
-    await prefs.remove('databaseName');
 
     // Clear unified session flags
-    await prefs.remove(_kIsRegistered);
     await prefs.remove(_kUserRole);
     await prefs.remove('last_role');
 
@@ -336,6 +356,11 @@ class AuthStateService extends ChangeNotifier {
       final bool isAdminLoggedIn = await AdminLoginBackend.checkLoginStatus();
       debugPrint('AuthStateService: Admin logged in: $isAdminLoggedIn');
       if (isAdminLoggedIn) {
+        final adminTenantId = prefs.getString('admin_org_collection');
+        if (adminTenantId != null) {
+          // Sync branding for the found session
+          await FirestoreService.instance.syncBranding(adminTenantId);
+        }
         return const admindashboard();
       }
 

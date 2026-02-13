@@ -3,6 +3,8 @@ import 'package:subscription_rooks_app/frontend/screens/auth_selection_screen.da
 import 'package:subscription_rooks_app/frontend/screens/engineer_login_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/amc_customerlogin_page.dart';
 
+import 'package:subscription_rooks_app/services/theme_service.dart';
+
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
 
@@ -50,8 +52,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.primaryColor;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
@@ -59,11 +64,25 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Header section
-                const Icon(
-                  Icons.account_circle_outlined,
-                  size: 80,
-                  color: Colors.black87,
+                // Header section with Dynamic Logo support
+                ListenableBuilder(
+                  listenable: ThemeService.instance,
+                  builder: (context, _) {
+                    if (ThemeService.instance.logoUrl != null) {
+                      return Image.network(
+                        ThemeService.instance.logoUrl!,
+                        height: 100,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.account_circle, size: 80),
+                      );
+                    }
+                    return Icon(
+                      Icons.account_circle_outlined,
+                      size: 80,
+                      color: theme.textTheme.bodyLarge?.color?.withOpacity(0.8),
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
                 const Text(
@@ -72,7 +91,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
                     letterSpacing: -0.5,
                   ),
                 ),
@@ -80,7 +98,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 Text(
                   "Choose how you would like to proceed with the platform.",
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 15, color: theme.hintColor),
                 ),
                 const SizedBox(height: 48),
 
@@ -110,7 +128,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   child: ElevatedButton(
                     onPressed: _onContinue,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
+                      backgroundColor: primaryColor,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -150,6 +168,9 @@ class _RoleItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.primaryColor;
+
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -159,16 +180,16 @@ class _RoleItem extends StatelessWidget {
             width: 85,
             height: 85,
             decoration: BoxDecoration(
-              color: isSelected ? Colors.black : Colors.white,
+              color: isSelected ? primaryColor : theme.cardColor,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected ? Colors.black : Colors.grey[300]!,
+                color: isSelected ? primaryColor : theme.dividerColor,
                 width: 1.5,
               ),
               boxShadow: [
                 if (isSelected)
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: primaryColor.withOpacity(0.2),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -177,7 +198,9 @@ class _RoleItem extends StatelessWidget {
             child: Icon(
               icon,
               size: 36,
-              color: isSelected ? Colors.white : Colors.black54,
+              color: isSelected
+                  ? Colors.white
+                  : theme.iconTheme.color?.withOpacity(0.6),
             ),
           ),
           const SizedBox(height: 12),
@@ -186,7 +209,7 @@ class _RoleItem extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? Colors.black : Colors.grey[600],
+              color: isSelected ? primaryColor : theme.hintColor,
             ),
           ),
         ],

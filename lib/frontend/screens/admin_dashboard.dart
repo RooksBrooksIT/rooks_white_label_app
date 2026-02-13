@@ -22,6 +22,7 @@ import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:flutter/services.dart';
 
 import 'package:subscription_rooks_app/backend/screens/admin_dashboard.dart';
+import 'package:subscription_rooks_app/services/notification_service.dart';
 
 class admindashboard extends StatefulWidget {
   const admindashboard({super.key});
@@ -56,6 +57,7 @@ class _admindashboardState extends State<admindashboard> {
     super.initState();
     _initStreams();
     _loadAdminData();
+    NotificationService.instance.initialize();
   }
 
   void _initStreams() {
@@ -82,6 +84,11 @@ class _admindashboardState extends State<admindashboard> {
         adminEmail = profile['email']!;
         referralCode = code;
       });
+      NotificationService.instance.registerToken(
+        'admin',
+        adminName,
+        adminEmail,
+      );
     }
   }
 
@@ -401,24 +408,35 @@ class _admindashboardState extends State<admindashboard> {
                 padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.5),
-                          width: 2,
-                        ),
-                      ),
-                      child: CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Colors.white.withOpacity(0.2),
-                        child: const Icon(
-                          Icons.person_rounded,
-                          color: Colors.white,
-                          size: 35,
-                        ),
-                      ),
+                    ListenableBuilder(
+                      listenable: ThemeService.instance,
+                      builder: (context, _) {
+                        return Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.5),
+                              width: 2,
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            radius: 30,
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            backgroundImage:
+                                ThemeService.instance.logoUrl != null
+                                ? NetworkImage(ThemeService.instance.logoUrl!)
+                                : null,
+                            child: ThemeService.instance.logoUrl == null
+                                ? const Icon(
+                                    Icons.person_rounded,
+                                    color: Colors.white,
+                                    size: 35,
+                                  )
+                                : null,
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -857,14 +875,24 @@ class _admindashboardState extends State<admindashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 35,
-            backgroundColor: Colors.white.withOpacity(0.2),
-            child: const Icon(
-              Icons.person_rounded,
-              color: Colors.white,
-              size: 40,
-            ),
+          ListenableBuilder(
+            listenable: ThemeService.instance,
+            builder: (context, _) {
+              return CircleAvatar(
+                radius: 35,
+                backgroundColor: Colors.white.withOpacity(0.2),
+                backgroundImage: ThemeService.instance.logoUrl != null
+                    ? NetworkImage(ThemeService.instance.logoUrl!)
+                    : null,
+                child: ThemeService.instance.logoUrl == null
+                    ? const Icon(
+                        Icons.person_rounded,
+                        color: Colors.white,
+                        size: 40,
+                      )
+                    : null,
+              );
+            },
           ),
           const SizedBox(height: 16),
           Text(

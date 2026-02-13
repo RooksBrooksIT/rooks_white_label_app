@@ -96,7 +96,9 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w900,
-                    color: Colors.black,
+                    color:
+                        Theme.of(context).textTheme.headlineMedium?.color ??
+                        Colors.black,
                     letterSpacing: -1.0,
                   ),
                 ),
@@ -180,7 +182,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
+                      backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
@@ -248,7 +250,10 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Colors.black, width: 2),
+              borderSide: BorderSide(
+                color: Theme.of(context).primaryColor,
+                width: 2,
+              ),
             ),
           ),
         ),

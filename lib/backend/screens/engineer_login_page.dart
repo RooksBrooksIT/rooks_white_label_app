@@ -74,6 +74,10 @@ class EngineerLoginBackend {
         await prefs.setString('engineerName', username);
         await prefs.setString('tenantId', tenantId); // Store tenant association
         await registerFcmToken(username);
+
+        // Sync branding configuration immediately
+        await FirestoreService.instance.syncBranding(tenantId);
+
         return {'success': true, 'username': username};
       } else {
         return {

@@ -122,9 +122,23 @@ class _BrandingCustomizationScreenState
   @override
   void initState() {
     super.initState();
-    // Initialize with the first theme
-    _primaryColor = _presetThemes[0]['primary']!;
-    _secondaryColor = _presetThemes[0]['secondary']!;
+    // Initialize with current values from ThemeService
+    final theme = ThemeService.instance;
+    _primaryColor = theme.primaryColor;
+    _secondaryColor = theme.secondaryColor;
+    _backgroundColor = Colors.white; // Requirement: Fixed to white
+    _selectedFont = theme.fontFamily;
+    _appNameController.text = theme.appName;
+
+    // Try to find if current colors match a preset
+    _selectedThemeIndex = _presetThemes.length; // Default to Custom
+    for (int i = 0; i < _presetThemes.length; i++) {
+      if (_presetThemes[i]['primary']?.value == _primaryColor.value &&
+          _presetThemes[i]['secondary']?.value == _secondaryColor.value) {
+        _selectedThemeIndex = i;
+        break;
+      }
+    }
   }
 
   @override
@@ -868,11 +882,17 @@ class _BrandingCustomizationScreenState
               'backgroundColor': _backgroundColor.value,
               'useDarkMode': _useDarkMode,
               'fontFamily': _selectedFont,
+              'databaseName': ThemeService.instance.databaseName,
             };
 
             // Use real auth uid if available
             final uid =
                 AuthStateService.instance.currentUser?.uid ?? 'demo-user';
+
+            print(
+              'BrandingCustomizationScreen: uid=$uid, appName=${_appNameController.text}',
+            );
+            print('BrandingCustomizationScreen: logoFile=${_logoFile?.path}');
 
             // Generate Referral Code
             final referralCode = _generateReferralCode();
@@ -880,6 +900,7 @@ class _BrandingCustomizationScreenState
 
             // Upload logo if exists
             if (_logoFile != null) {
+              print('BrandingCustomizationScreen: Starting logo upload...');
               final logoUrl = await StorageService.instance.uploadLogo(
                 userId: uid,
                 file: _logoFile!,
@@ -893,6 +914,13 @@ class _BrandingCustomizationScreenState
             await FirestoreService.instance.saveAppBranding(
               tenantId: ThemeService.instance.databaseName,
               appId: _appNameController.text,
+              brandingData: brandingData,
+            );
+
+            // Also save to default 'data' location for simplified lookups during login
+            await FirestoreService.instance.saveAppBranding(
+              tenantId: ThemeService.instance.databaseName,
+              appId: 'data',
               brandingData: brandingData,
             );
 
@@ -922,6 +950,7 @@ class _BrandingCustomizationScreenState
               uid: uid,
               tenantId: ThemeService.instance.databaseName,
               role: 'admin',
+              appName: _appNameController.text, // Fix: Pass appName
             );
 
             // Update App Theme

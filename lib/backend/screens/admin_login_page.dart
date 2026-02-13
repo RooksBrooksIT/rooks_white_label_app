@@ -37,6 +37,13 @@ class AdminLoginBackend {
           if (docData.containsKey('name')) {
             await prefs.setString('appName', docData['name']);
           }
+
+          // Sync branding configuration immediately
+          // Use 'name' from docData as the appId to match branding storage path
+          await FirestoreService.instance.syncBranding(
+            tenantId,
+            appId: docData['name'],
+          );
         }
 
         return {'success': true};

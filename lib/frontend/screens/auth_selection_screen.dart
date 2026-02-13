@@ -154,10 +154,10 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen>
                       Text(
                         ThemeService.instance.appName,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 30,
                           fontWeight: FontWeight.w900,
-                          color: Colors.black,
+                          color: Theme.of(context).primaryColor,
                           letterSpacing: -1.0,
                         ),
                       ),
@@ -202,7 +202,7 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen>
                             : 0.5,
                         child: _buildButton(
                           label: 'Log In',
-                          color: Colors.black,
+                          color: Theme.of(context).primaryColor,
                           textColor: Colors.white,
                           onPressed: AuthStateService.instance.isRegistered
                               ? () => Navigator.push(
@@ -240,10 +240,10 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen>
                                 builder: (_) => const UnifiedLoginScreen(),
                               ),
                             ),
-                            child: const Text(
+                            child: Text(
                               "Log In",
                               style: TextStyle(
-                                color: Colors.black,
+                                color: Theme.of(context).primaryColor,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                                 decoration: TextDecoration.underline,
