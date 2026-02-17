@@ -642,7 +642,7 @@ class _CreateTicketsState extends State<CreateTickets> {
 
     return FirestoreService.instance.runTransaction((transaction) async {
       final snapshot = await transaction.get(counterRef);
-      int lastId = 1700;
+      int lastId = 0;
       if (snapshot.exists &&
           snapshot.data() != null &&
           snapshot.data()!['lastBookingId'] != null) {

@@ -69,6 +69,22 @@ class _AMCTrackMyServiceState extends State<AMCTrackMyService> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_active),
+            tooltip: 'Test Notification',
+            onPressed: () {
+              NotificationService.instance.showNotification(
+                title: 'Test Notification',
+                body:
+                    'This is a test notification from the customer dashboard.',
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Test notification sent')),
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -1147,6 +1163,15 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
                     ?.toString() ??
                 '';
           });
+
+          // Register FCM token for the customer
+          if (customerId.isNotEmpty && userEmail != null) {
+            await NotificationService.instance.registerToken(
+              'customer',
+              customerId,
+              userEmail!,
+            );
+          }
         }
       }
     } catch (e) {
@@ -1304,16 +1329,64 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
   AppBar _buildAppBar() {
     return AppBar(
       automaticallyImplyLeading: false,
-      title: Text(
-        ThemeService.instance.appName,
-        style: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-          color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-          letterSpacing: 0.5,
-        ),
+      title: Row(
+        children: [
+          if (ThemeService.instance.logoUrl != null)
+            Container(
+              padding: const EdgeInsets.all(2),
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color:
+                      (Theme.of(context).appBarTheme.foregroundColor ??
+                              Colors.white)
+                          .withOpacity(0.5),
+                  width: 2,
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.white,
+                backgroundImage: NetworkImage(ThemeService.instance.logoUrl!),
+              ),
+            ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  ThemeService.instance.appName.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color:
+                        (Theme.of(context).appBarTheme.foregroundColor ??
+                                Colors.white)
+                            .withOpacity(0.7),
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                Text(
+                  userName,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color:
+                        Theme.of(context).appBarTheme.foregroundColor ??
+                        Colors.white,
+                    letterSpacing: -0.5,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
-      centerTitle: true,
+      centerTitle: false,
       flexibleSpace: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).primaryColor,

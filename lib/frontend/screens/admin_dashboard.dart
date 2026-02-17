@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:subscription_rooks_app/frontend/screens/admin_Engineer_reports.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_assign_tickets.dart';
@@ -84,11 +85,14 @@ class _admindashboardState extends State<admindashboard> {
         adminEmail = profile['email']!;
         referralCode = code;
       });
-      NotificationService.instance.registerToken(
-        'admin',
-        adminName,
-        adminEmail,
-      );
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        NotificationService.instance.registerToken(
+          'admin',
+          user.uid, // Use UID instead of name
+          adminEmail,
+        );
+      }
     }
   }
 

@@ -572,7 +572,7 @@ class _AssignEngineerPageState extends State<AssignEngineerPage> {
           .collection('Admin_details')
           .doc(widget.customer.bookingId)
           .set({
-            'assignedEmployee': engineerName,
+            'assignedEmployee': engineerName.trim(),
             'customerName': widget.customer.customerName,
             'bookingId': widget.customer.bookingId,
             'deviceType': widget.customer.deviceType,
