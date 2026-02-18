@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_rooks_app/services/stripe_service.dart';
 import 'package:subscription_rooks_app/services/storage_service.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
+import 'package:subscription_rooks_app/services/icici_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'dart:io';
-import 'card_details_screen.dart';
 
 import 'transaction_completed_screen.dart';
 
@@ -35,31 +35,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     text: 'user@okaxis',
   );
 
-  // No longer need card controllers as Stripe handles it
   final TextEditingController nameController = TextEditingController();
-
-  void _onCardSelected(String type) {
-    setState(() {
-      selectedPaymentMethod = type;
-    });
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CardDetailsScreen(
-          paymentAmount: widget.price,
-          planName: widget.planName,
-          isYearly: widget.isYearly,
-        ),
-      ),
-    ).then((success) {
-      if (success == true) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Payment Successful!')));
-      }
-    });
-  }
 
   // Responsive values based on screen width
   double get titleFontSize {
@@ -387,20 +363,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
         SizedBox(height: isDesktop ? 24 : 20),
 
         _buildPaymentMethod(
-          'Cards (Stripe)',
-          'Cards',
-          Icons.credit_card,
-          Colors.orange,
-          [_buildCardOption('Credit Card'), _buildCardOption('Debit Card')],
-        ),
-        SizedBox(height: isDesktop ? 24 : 20),
-
-        _buildPaymentMethod(
           'More ways to Pay',
           'NetBanking',
           Icons.account_balance,
           Colors.green,
           [_buildBankOption('Net Banking')],
+        ),
+        SizedBox(height: isDesktop ? 24 : 20),
+
+        _buildPaymentMethod(
+          'ICICI Payment Gateway',
+          'ICICI',
+          Icons.account_balance_wallet_outlined,
+          const Color(0xFFE55B25), // ICICI brand orange
+          [
+            _buildIciciOption('ICICI - All Options', '0'),
+            _buildIciciOption('ICICI - Net Banking', '1'),
+            _buildIciciOption('ICICI - Cards', '2'),
+            _buildIciciOption('ICICI - UPI', '3'),
+          ],
         ),
       ],
     );
@@ -516,80 +497,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildCardOption(String type) {
-    final itemHeight = isDesktop ? 70 : 60;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      constraints: BoxConstraints(minHeight: itemHeight.toDouble()),
-      child: Material(
-        borderRadius: BorderRadius.circular(borderRadius),
-        color: Colors.white,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(borderRadius),
-          onTap: () => _onCardSelected(type),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isDesktop ? 20 : 16,
-              vertical: isDesktop ? 16 : 12,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: isDesktop ? 48 : 40,
-                  height: isDesktop ? 48 : 40,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.credit_card,
-                    color: Colors.orange.shade700,
-                    size: isDesktop ? 24 : 20,
-                  ),
-                ),
-                SizedBox(width: isDesktop ? 20 : 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        type,
-                        style: TextStyle(
-                          fontSize: isDesktop ? 18 : 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Secure checkout via Stripe',
-                        style: TextStyle(
-                          fontSize: isDesktop ? 15 : 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Radio<String>(
-                  value: type,
-                  groupValue: selectedPaymentMethod,
-                  onChanged: (value) {
-                    if (value != null) {
-                      _onCardSelected(value);
-                    }
-                  },
-                  activeColor: Colors.black87,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildBankOption(String name) {
     final itemHeight = isDesktop ? 70 : 60;
 
@@ -659,6 +566,95 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       selectedPaymentMethod = value!;
                     });
                     _showBankListDialog();
+                  },
+                  activeColor: Colors.black87,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Store payType for ICICI payments
+  String _iciciPayType = '0';
+
+  Widget _buildIciciOption(String name, String payType) {
+    final itemHeight = isDesktop ? 70 : 60;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      constraints: BoxConstraints(minHeight: itemHeight.toDouble()),
+      child: Material(
+        borderRadius: BorderRadius.circular(borderRadius),
+        color: Colors.white,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(borderRadius),
+          onTap: () {
+            setState(() {
+              selectedPaymentMethod = name;
+              _iciciPayType = payType;
+            });
+          },
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isDesktop ? 20 : 16,
+              vertical: isDesktop ? 16 : 12,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: isDesktop ? 48 : 40,
+                  height: isDesktop ? 48 : 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3EE),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    payType == '3'
+                        ? Icons.qr_code
+                        : payType == '2'
+                        ? Icons.credit_card
+                        : payType == '1'
+                        ? Icons.account_balance
+                        : Icons.payment,
+                    color: const Color(0xFFE55B25),
+                    size: isDesktop ? 24 : 20,
+                  ),
+                ),
+                SizedBox(width: isDesktop ? 20 : 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: isDesktop ? 18 : 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Powered by ICICI Bank',
+                        style: TextStyle(
+                          fontSize: isDesktop ? 15 : 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Radio<String>(
+                  value: name,
+                  groupValue: selectedPaymentMethod,
+                  onChanged: (value) {
+                    setState(() {
+                      selectedPaymentMethod = value!;
+                      _iciciPayType = payType;
+                    });
                   },
                   activeColor: Colors.black87,
                 ),
@@ -842,23 +838,81 @@ class _PaymentScreenState extends State<PaymentScreen> {
     try {
       bool paymentSuccess = false;
 
-      // Handle Stripe logic if method is Card
-      if (selectedPaymentMethod.contains('Card') ||
-          selectedPaymentMethod == 'Credit Card' ||
-          selectedPaymentMethod == 'Debit Card') {
-        // Close the loading indicator to show the Stripe sheet
-        if (mounted) Navigator.pop(context);
+      // Handle ICICI Payment Gateway
+      if (selectedPaymentMethod.startsWith('ICICI')) {
+        if (mounted) Navigator.pop(context); // Close loading
 
-        paymentSuccess = await StripeService.instance.makePayment(
-          amount: widget.price.toString(),
-          currency: 'inr',
+        final result = await IciciService.instance.initiateSale(
+          amount: '${widget.price}.00',
+          customerName:
+              AuthStateService.instance.currentUser?.displayName ?? 'Customer',
+          customerEmail:
+              AuthStateService.instance.currentUser?.email ??
+              'customer@example.com',
+          customerMobile:
+              AuthStateService.instance.currentUser?.phoneNumber ??
+              '919999999999',
+          payType: _iciciPayType,
         );
 
-        if (!paymentSuccess) {
-          throw Exception('Payment was not completed');
+        if (result == null) {
+          throw Exception('Failed to initiate ICICI payment');
         }
 
-        // Show loading again to finalize (optional but good for UX consistency)
+        // The API response may contain a redirectUrl or payment URL
+        final redirectUrl =
+            result['redirectUrl'] ?? result['paymentUrl'] ?? result['url'];
+
+        if (redirectUrl != null && redirectUrl.toString().isNotEmpty) {
+          final uri = Uri.parse(redirectUrl.toString());
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          } else {
+            throw Exception('Could not open payment page');
+          }
+        }
+
+        // After returning from browser, check transaction status
+        final merchantTxnNo = result['merchantTxnNo'];
+        if (merchantTxnNo != null) {
+          // Show loading while checking status
+          if (mounted) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => const AlertDialog(
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Checking payment status...'),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          await Future.delayed(const Duration(seconds: 3));
+          final statusResult = await IciciService.instance
+              .checkTransactionStatus(merchantTxnNo: merchantTxnNo);
+          debugPrint('ICICI Transaction Status: $statusResult');
+          paymentSuccess =
+              statusResult != null &&
+              (statusResult['status'] == 'SUCCESS' ||
+                  statusResult['txnStatus'] == 'SUCCESS');
+
+          if (!paymentSuccess) {
+            throw Exception(
+              'ICICI payment was not completed or verification failed',
+            );
+          }
+        } else {
+          // If no merchantTxnNo returned, assume we need to wait
+          paymentSuccess = true; // Optimistic for UAT
+        }
+
+        // Show finalizing
         if (mounted) {
           showDialog(
             context: context,
@@ -875,7 +929,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           );
         }
-      } else {
+      }
+      // Handle other methods (UPI, NetBanking, etc.)
+      else {
         // Simulate payment processing latency for other methods
         await Future.delayed(const Duration(seconds: 2));
         paymentSuccess = true;

@@ -8,6 +8,7 @@
       "version": "1.0.0+1",
       "dependencies": [
         "cloud_firestore",
+        "crypto",
         "cupertino_icons",
         "firebase_auth",
         "firebase_core",
@@ -18,7 +19,6 @@
         "flutter_colorpicker",
         "flutter_local_notifications",
         "flutter_map",
-        "flutter_stripe",
         "geolocator",
         "google_fonts",
         "google_maps_flutter",
@@ -66,6 +66,13 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "crypto",
+      "version": "3.0.7",
+      "dependencies": [
+        "typed_data"
       ]
     },
     {
@@ -340,17 +347,6 @@
       ]
     },
     {
-      "name": "flutter_stripe",
-      "version": "12.1.1",
-      "dependencies": [
-        "flutter",
-        "meta",
-        "stripe_android",
-        "stripe_ios",
-        "stripe_platform_interface"
-      ]
-    },
-    {
       "name": "firebase_database",
       "version": "12.1.1",
       "dependencies": [
@@ -500,6 +496,13 @@
         "stream_channel",
         "string_scanner",
         "term_glyph"
+      ]
+    },
+    {
+      "name": "typed_data",
+      "version": "1.4.0",
+      "dependencies": [
+        "collection"
       ]
     },
     {
@@ -864,13 +867,6 @@
       ]
     },
     {
-      "name": "crypto",
-      "version": "3.0.7",
-      "dependencies": [
-        "typed_data"
-      ]
-    },
-    {
       "name": "bidi",
       "version": "2.0.13",
       "dependencies": []
@@ -1190,31 +1186,6 @@
       ]
     },
     {
-      "name": "stripe_platform_interface",
-      "version": "12.1.1",
-      "dependencies": [
-        "flutter",
-        "freezed_annotation",
-        "json_annotation",
-        "meta",
-        "plugin_platform_interface"
-      ]
-    },
-    {
-      "name": "stripe_ios",
-      "version": "12.1.0",
-      "dependencies": [
-        "flutter"
-      ]
-    },
-    {
-      "name": "stripe_android",
-      "version": "12.1.0",
-      "dependencies": [
-        "flutter"
-      ]
-    },
-    {
       "name": "firebase_database_web",
       "version": "0.2.7+2",
       "dependencies": [
@@ -1476,13 +1447,6 @@
       ]
     },
     {
-      "name": "typed_data",
-      "version": "1.4.0",
-      "dependencies": [
-        "collection"
-      ]
-    },
-    {
       "name": "qr",
       "version": "3.0.2",
       "dependencies": [
@@ -1566,22 +1530,6 @@
       "name": "mime",
       "version": "2.0.0",
       "dependencies": []
-    },
-    {
-      "name": "json_annotation",
-      "version": "4.9.0",
-      "dependencies": [
-        "meta"
-      ]
-    },
-    {
-      "name": "freezed_annotation",
-      "version": "3.1.0",
-      "dependencies": [
-        "collection",
-        "json_annotation",
-        "meta"
-      ]
     },
     {
       "name": "vm_service",
