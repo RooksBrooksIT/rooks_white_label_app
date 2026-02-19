@@ -1,15 +1,17 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
-import 'package:subscription_rooks_app/frontend/screens/amc_customerlogin_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
+import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:subscription_rooks_app/frontend/screens/customer_createtickets_devicetype.dart';
 import 'package:flutter/services.dart';
+import 'package:subscription_rooks_app/services/notification_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AMCTrackMyService extends StatefulWidget {
   final String customerName;
@@ -28,6 +30,60 @@ class _AMCTrackMyServiceState extends State<AMCTrackMyService> {
   // Banner state
   bool showBanner = false;
   String bannerMessage = '';
+  StreamSubscription? _notificationSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      NotificationService.instance.registerToken(
+        role: 'customer',
+        userId: widget.customerId,
+        email: user.email ?? '',
+      );
+    }
+    _setupNotificationListener();
+  }
+
+  void _setupNotificationListener() {
+    _notificationSubscription = FirestoreService.instance
+        .collection('notifications')
+        .where('customerId', isEqualTo: widget.customerId)
+        .where('seen', isEqualTo: false)
+        .snapshots()
+        .listen((snapshot) {
+          for (var change in snapshot.docChanges) {
+            if (change.type == DocumentChangeType.added) {
+              final data = change.doc.data() as Map<String, dynamic>;
+              final title = data['title'] ?? 'Update';
+              final body = data['body'] ?? 'Your ticket has been updated.';
+
+              if (mounted) {
+                setState(() {
+                  showBanner = true;
+                  bannerMessage = body;
+                });
+
+                // Show a local push notification for immediate feedback
+                NotificationService.instance.showNotification(
+                  title: title,
+                  body: body,
+                );
+
+                // Mark notification as seen so it doesn't trigger again
+                change.doc.reference.update({'seen': true});
+              }
+            }
+          }
+        });
+  }
+
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +110,22 @@ class _AMCTrackMyServiceState extends State<AMCTrackMyService> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_active),
+            tooltip: 'Test Notification',
+            onPressed: () {
+              NotificationService.instance.showNotification(
+                title: 'Test Notification',
+                body:
+                    'This is a test notification from the customer dashboard.',
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Test notification sent')),
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -1132,6 +1204,13 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
                     ?.toString() ??
                 '';
           });
+
+          // Register FCM token for the customer
+          await NotificationService.instance.registerToken(
+            role: 'customer',
+            userId: customerId,
+            email: userEmail!,
+          );
         }
       }
     } catch (e) {
@@ -1250,12 +1329,10 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
 
     if (confirmLogout == true) {
       try {
-        await FirebaseAuth.instance.signOut();
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
+        await AuthStateService.instance.logout();
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (ctx) => const AMCLoginPage()),
+          MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
           (route) => false,
         );
       } catch (e) {
@@ -1291,16 +1368,64 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
   AppBar _buildAppBar() {
     return AppBar(
       automaticallyImplyLeading: false,
-      title: Text(
-        ThemeService.instance.appName,
-        style: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-          color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-          letterSpacing: 0.5,
-        ),
+      title: Row(
+        children: [
+          if (ThemeService.instance.logoUrl != null)
+            Container(
+              padding: const EdgeInsets.all(2),
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color:
+                      (Theme.of(context).appBarTheme.foregroundColor ??
+                              Colors.white)
+                          .withOpacity(0.5),
+                  width: 2,
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.white,
+                backgroundImage: NetworkImage(ThemeService.instance.logoUrl!),
+              ),
+            ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  ThemeService.instance.appName.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color:
+                        (Theme.of(context).appBarTheme.foregroundColor ??
+                                Colors.white)
+                            .withOpacity(0.7),
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                Text(
+                  userName,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color:
+                        Theme.of(context).appBarTheme.foregroundColor ??
+                        Colors.white,
+                    letterSpacing: -0.5,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
-      centerTitle: true,
+      centerTitle: false,
       flexibleSpace: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).primaryColor,

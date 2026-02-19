@@ -5,6 +5,8 @@ import 'package:subscription_rooks_app/backend/brand_model_backend.dart';
 import 'package:lottie/lottie.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:flutter/services.dart';
+import 'package:subscription_rooks_app/services/notification_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 // -- CustomerHomePage now gets these values upon navigation --
 class CustomerHomePage extends StatefulWidget {
@@ -82,6 +84,17 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
 
     // Fetch customer details by name to automatically fill ID and mobile
     _fetchCustomerDetailsByName();
+
+    // Register FCM token for redundancy
+    if (widget.customerId.isNotEmpty) {
+      final user = FirebaseAuth.instance.currentUser;
+      final email = user?.email ?? '';
+      NotificationService.instance.registerToken(
+        role: 'customer',
+        userId: widget.customerId,
+        email: email,
+      );
+    }
   }
 
   Future<void> _fetchCustomerDetailsByName() async {
@@ -181,6 +194,15 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          NotificationService.instance.showNotification(
+            title: 'Test Notification',
+            body: 'If you see this, local notifications are working!',
+          );
+        },
+        child: const Icon(Icons.notifications_active),
+      ),
       appBar: AppBar(
         title: Text(
           ThemeService.instance.appName,

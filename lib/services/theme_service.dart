@@ -140,7 +140,10 @@ class ThemeService extends ChangeNotifier {
     _fontFamily = fontFamily;
     _appName = appName;
     if (databaseName != null) _databaseName = databaseName;
-    _logoUrl = logoUrl;
+    // Only update logo if a new one is provided.
+    // This prevents accidental clearing of the logo URL when updating other theme properties.
+    if (logoUrl != null) _logoUrl = logoUrl;
+
     notifyListeners();
     saveToLocal();
   }
@@ -167,9 +170,22 @@ class ThemeService extends ChangeNotifier {
     if (data['databaseName'] != null) {
       _databaseName = data['databaseName'];
     }
+    // Only update logo if present in the map
     if (data['logoUrl'] != null) {
       _logoUrl = data['logoUrl'];
     }
+    notifyListeners();
+    saveToLocal();
+  }
+
+  void resetToDefault() {
+    _primaryColor = Colors.deepPurple;
+    _secondaryColor = Colors.amber;
+    _backgroundColor = Colors.white;
+    _isDarkMode = false;
+    _fontFamily = 'Roboto';
+    _appName = 'ServicePro';
+    _logoUrl = null;
     notifyListeners();
     saveToLocal();
   }

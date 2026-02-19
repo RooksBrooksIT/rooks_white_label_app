@@ -1,9 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:subscription_rooks_app/services/notification_service.dart';
 
 class EngineerLoginBackend {
   static Future<String?> checkLoginStatus() async {
@@ -21,25 +20,13 @@ class EngineerLoginBackend {
 
   static Future<void> registerFcmToken(String engineerName) async {
     try {
-      FirebaseMessaging messaging = FirebaseMessaging.instance;
-      await messaging.requestPermission(alert: true, badge: true, sound: true);
-      String? token = await messaging.getToken();
-
-      if (token != null && engineerName.isNotEmpty) {
-        await FirestoreService.instance
-            .collection('EngineerTokens')
-            .doc(engineerName)
-            .set({'token': token}, SetOptions(merge: true));
-      }
-
-      messaging.onTokenRefresh.listen((newToken) {
-        FirestoreService.instance
-            .collection('EngineerTokens')
-            .doc(engineerName)
-            .set({'token': newToken}, SetOptions(merge: true));
-      });
+      // Use the unified NotificationService for consistency
+      await NotificationService.instance.registerToken(
+        userId: engineerName,
+        role: 'engineer',
+      );
     } catch (e) {
-      debugPrint('Error registering FCM token: $e');
+      debugPrint('Error registering engineer FCM token: $e');
     }
   }
 
@@ -74,6 +61,10 @@ class EngineerLoginBackend {
         await prefs.setString('engineerName', username);
         await prefs.setString('tenantId', tenantId); // Store tenant association
         await registerFcmToken(username);
+
+        // Sync branding configuration immediately
+        await FirestoreService.instance.syncBranding(tenantId);
+
         return {'success': true, 'username': username};
       } else {
         return {

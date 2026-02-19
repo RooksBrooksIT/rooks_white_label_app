@@ -53,6 +53,7 @@ class FirestoreService {
     required String uid,
     required String tenantId,
     required String role,
+    String? appName,
   }) async {
     // 1. Local tenant mapping (for tenant-specific user management)
     await collection('users', tenantId: tenantId).doc(uid).set({
@@ -64,6 +65,7 @@ class FirestoreService {
     // 2. Global lookup (for routing during login)
     await _db.collection('global_user_directory').doc(uid).set({
       'tenantId': tenantId,
+      'appName': appName,
       'role': role,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
@@ -181,7 +183,10 @@ class FirestoreService {
     try {
       final doc = await brandingDoc(tenantId: tenantId, appId: appId).get();
       if (doc.exists && doc.data() != null) {
-        ThemeService.instance.loadFromMap(doc.data()!);
+        ThemeService.instance.loadFromMap({
+          ...doc.data()!,
+          'databaseName': tenantId, // Ensure databaseName is restored
+        });
       }
     } catch (e) {
       // debugPrint('Error syncing branding: $e');
@@ -242,6 +247,25 @@ class FirestoreService {
       }
     } catch (e) {
       // debugPrint('Error validating global referral code: $e');
+    }
+    return null;
+  }
+
+  /// Get the referral code for a specific admin
+  Future<String?> getReferralCodeForAdmin(String adminUid) async {
+    try {
+      final snapshot = await _db
+          .collectionGroup('referral_codes')
+          .where('adminUid', isEqualTo: adminUid)
+          .where('isActive', isEqualTo: true)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.first.get('code') as String?;
+      }
+    } catch (e) {
+      // debugPrint('Error fetching admin referral code: $e');
     }
     return null;
   }

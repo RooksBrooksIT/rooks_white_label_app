@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
-import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/utils/pdf_utils.dart';
 import 'dart:io';
 // import 'package:open_file/open_file';
 
@@ -23,6 +24,11 @@ class _CustomerReportGeneratorState extends State<CustomerReportGenerator> {
   List<Map<String, dynamic>>? multipleResults;
   bool _loading = false;
   String _debugInfo = '';
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   // Track selected rows for multiple results
   final Map<int, bool> _selectedRows = {};
@@ -223,9 +229,11 @@ class _CustomerReportGeneratorState extends State<CustomerReportGenerator> {
       final pdf = pw.Document();
 
       // Load and embed the logo
-      final logoImage = pw.MemoryImage(
-        (await rootBundle.load('assets/RooksLogo.png')).buffer.asUint8List(),
-      );
+      pw.MemoryImage? logoImage;
+      final logoUrl = ThemeService.instance.logoUrl;
+      if (logoUrl != null && logoUrl.isNotEmpty) {
+        logoImage = await PdfUtils.fetchNetworkImage(logoUrl);
+      }
 
       pdf.addPage(
         pw.Page(
@@ -251,7 +259,7 @@ class _CustomerReportGeneratorState extends State<CustomerReportGenerator> {
                         ),
                         pw.SizedBox(height: 5),
                         pw.Text(
-                          'Service Company',
+                          ThemeService.instance.appName,
                           style: pw.TextStyle(
                             fontSize: 14,
                             fontWeight: pw.FontWeight.normal,
@@ -268,11 +276,12 @@ class _CustomerReportGeneratorState extends State<CustomerReportGenerator> {
                         ),
                       ],
                     ),
-                    pw.Container(
-                      height: 60,
-                      width: 60,
-                      child: pw.Image(logoImage),
-                    ),
+                    if (logoImage != null)
+                      pw.Container(
+                        height: 60,
+                        width: 60,
+                        child: pw.Image(logoImage),
+                      ),
                   ],
                 ),
 

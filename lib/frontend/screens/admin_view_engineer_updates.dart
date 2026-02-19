@@ -1025,6 +1025,16 @@ class _EngineerUpdateCardState extends State<EngineerUpdateCard> {
         } else if (adminStatus.isNotEmpty) {
           selectedStatus = adminStatus;
         }
+
+        // Ensure the selected status is one of the valid options
+        if (![
+          'Pending',
+          'In Progress',
+          'Completed',
+          'Unrepairable',
+        ].contains(selectedStatus)) {
+          selectedStatus = 'Pending';
+        }
       }
     }
   }
@@ -1919,7 +1929,7 @@ class _EngineerUpdateCardState extends State<EngineerUpdateCard> {
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedStatus,
+                          value: selectedStatus,
                           isExpanded: true,
                           decoration: const InputDecoration(
                             border: InputBorder.none,

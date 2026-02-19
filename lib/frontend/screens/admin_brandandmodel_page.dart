@@ -554,10 +554,12 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                     side: BorderSide(
-                                      color: _selecteddevicesbrand == devicesbrand
+                                      color:
+                                          _selecteddevicesbrand == devicesbrand
                                           ? primaryColor
                                           : Colors.grey.shade300,
-                                      width: _selecteddevicesbrand == devicesbrand
+                                      width:
+                                          _selecteddevicesbrand == devicesbrand
                                           ? 2
                                           : 1,
                                     ),
@@ -663,7 +665,9 @@ class _BrandModelPageState extends State<BrandModelPage> with RouteAware {
                                               ),
                                             ),
                                             onPressed: () =>
-                                                _deletedevicesbrand(devicesbrand),
+                                                _deletedevicesbrand(
+                                                  devicesbrand,
+                                                ),
                                           ),
                                         ),
                                       ],
@@ -1481,7 +1485,9 @@ class _AddDeviceDialogState extends State<AddDeviceDialog> {
     });
 
     try {
-      final String collectionName = _backend.generateCollectionName(devicesbrand);
+      final String collectionName = _backend.generateCollectionName(
+        devicesbrand,
+      );
       await _backend.savedevicesbrand(devicesbrand, collectionName);
 
       if (!mounted) return;

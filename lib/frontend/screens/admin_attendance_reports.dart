@@ -5,8 +5,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter/services.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/utils/pdf_utils.dart';
 
 class AdminAttendanceReportsPage extends StatefulWidget {
   const AdminAttendanceReportsPage({super.key});
@@ -366,12 +366,9 @@ class _AdminAttendanceReportsPageState
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  const Text(
                     'Details',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                   ElevatedButton.icon(
                     onPressed: () => _generateProfessionalPDF(
@@ -655,11 +652,9 @@ class _AdminAttendanceReportsPageState
 
       // Load logo
       pw.MemoryImage? logoImage;
-      try {
-        final ByteData bytes = await rootBundle.load('assets/images/logo.png');
-        logoImage = pw.MemoryImage(bytes.buffer.asUint8List());
-      } catch (e) {
-        debugPrint('Could not load logo: $e');
+      final logoUrl = ThemeService.instance.logoUrl;
+      if (logoUrl != null && logoUrl.isNotEmpty) {
+        logoImage = await PdfUtils.fetchNetworkImage(logoUrl);
       }
 
       pdf.addPage(
@@ -781,7 +776,7 @@ class _AdminAttendanceReportsPageState
                     if (d['date'] != null && d['date'] is Timestamp) {
                       dateStr = DateFormat(
                         'dd/MM/yyyy',
-                      ).format(_parseTimestamp(d['date']).toDate());
+                      ).format((d['date'] as Timestamp).toDate());
                     }
 
                     return [

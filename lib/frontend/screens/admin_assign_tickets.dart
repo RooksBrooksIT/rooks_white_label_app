@@ -642,7 +642,7 @@ class _CreateTicketsState extends State<CreateTickets> {
 
     return FirestoreService.instance.runTransaction((transaction) async {
       final snapshot = await transaction.get(counterRef);
-      int lastId = 1700;
+      int lastId = 0;
       if (snapshot.exists &&
           snapshot.data() != null &&
           snapshot.data()!['lastBookingId'] != null) {
@@ -978,12 +978,12 @@ class _CreateTicketsState extends State<CreateTickets> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Mobile Number',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: Theme.of(context).textTheme.bodyLarge?.color,
           ),
         ),
         const SizedBox(height: 8),
@@ -1101,7 +1101,7 @@ class _CreateTicketsState extends State<CreateTickets> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           decoration: InputDecoration(
             filled: true,
             fillColor: Theme.of(context).cardColor,

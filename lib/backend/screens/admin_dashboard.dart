@@ -28,17 +28,14 @@ class AdminDashboardBackend {
 
   static Future<String> getReferralCode() async {
     try {
-      // Using FirestoreService to fetch referral code for current tenant efficiently
-      final snapshot = await FirestoreService.instance
-          .collection('referral_codes')
-          .where('isActive', isEqualTo: true)
-          .limit(1)
-          .get();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return '';
 
-      if (snapshot.docs.isNotEmpty) {
-        final data = snapshot.docs.first.data();
-        return data['code']?.toString() ?? snapshot.docs.first.id;
-      }
+      final code = await FirestoreService.instance.getReferralCodeForAdmin(
+        user.uid,
+      );
+
+      return code ?? '';
     } catch (e) {
       print('Error fetching referral code: $e');
     }

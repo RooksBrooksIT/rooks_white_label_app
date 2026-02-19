@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,13 +9,19 @@ import 'package:intl/intl.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_attendance_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_barcode_identifier.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_barcode_scanner_page.dart';
-import 'package:subscription_rooks_app/frontend/screens/engineer_login_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:subscription_rooks_app/services/location_service.dart';
+import 'package:subscription_rooks_app/services/notification_service.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/services/storage_service.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -388,18 +395,43 @@ class ProfessionalNavigationDrawer extends StatelessWidget {
               ),
             ),
             child: Column(
+              // Line 390
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 32,
-                  backgroundColor: ProfessionalTheme.textInverse(
-                    context,
-                  ).withOpacity(0.2),
-                  child: Icon(
-                    Icons.engineering,
-                    size: 32,
-                    color: ProfessionalTheme.textInverse(context),
-                  ),
+                FutureBuilder<DocumentSnapshot>(
+                  future: FirestoreService.instance
+                      .collection('users')
+                      .doc(FirebaseAuth.instance.currentUser?.uid)
+                      .get(),
+                  builder: (context, snapshot) {
+                    String? photoUrl;
+                    if (snapshot.hasData &&
+                        snapshot.data != null &&
+                        snapshot.data!.exists) {
+                      final data =
+                          snapshot.data!.data() as Map<String, dynamic>?;
+                      photoUrl = data?['photoUrl'] ?? data?['profileImage'];
+                    }
+                    // Fallback to Auth photoURL if Firestore doesn't have it
+                    photoUrl ??= FirebaseAuth.instance.currentUser?.photoURL;
+
+                    return CircleAvatar(
+                      radius: 32,
+                      backgroundColor: ProfessionalTheme.textInverse(
+                        context,
+                      ).withOpacity(0.2),
+                      backgroundImage: photoUrl != null
+                          ? NetworkImage(photoUrl)
+                          : null,
+                      child: photoUrl == null
+                          ? Icon(
+                              Icons.engineering,
+                              size: 32,
+                              color: ProfessionalTheme.textInverse(context),
+                            )
+                          : null,
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -606,20 +638,13 @@ class _EngineerPageState extends State<EngineerPage> {
   void initState() {
     super.initState();
 
-    // Initialize Local Notifications
-    const AndroidInitializationSettings androidInitSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const DarwinInitializationSettings iosInitSettings =
-        DarwinInitializationSettings();
-    const InitializationSettings initSettings = InitializationSettings(
-      android: androidInitSettings,
-      iOS: iosInitSettings,
+    NotificationService.instance.registerToken(
+      role: 'engineer',
+      userId: widget.userName,
+      email: widget.userEmail,
     );
 
-    flutterLocalNotificationsPlugin.initialize(initSettings);
-
     _handleInitialNotification();
-    _updateEngineerToken();
     _listenToNotifications();
     _setupFCMListeners();
   }
@@ -639,7 +664,7 @@ class _EngineerPageState extends State<EngineerPage> {
           .collection('notifications')
           .where('engineerName', isEqualTo: widget.userName)
           .where('audience', isEqualTo: 'engineer')
-          .orderBy('timestamp', descending: true)
+          .where('processed', isEqualTo: false)
           .snapshots();
 
       _notificationSubscription = query.listen(
@@ -649,10 +674,10 @@ class _EngineerPageState extends State<EngineerPage> {
               final data = change.doc.data();
               if (data == null) continue;
 
-              // Check if the ticket is still in "Assigned" status
+              final docId = change.doc.id;
               final bookingId = data['bookingId']?.toString() ?? '';
               if (bookingId.isNotEmpty) {
-                _checkTicketStatusAndNotify(bookingId, data);
+                _checkTicketStatusAndNotify(bookingId, data, docId);
               }
             }
           }
@@ -669,6 +694,7 @@ class _EngineerPageState extends State<EngineerPage> {
   Future<void> _checkTicketStatusAndNotify(
     String bookingId,
     Map<String, dynamic> data,
+    String docId,
   ) async {
     try {
       final doc = await FirestoreService.instance
@@ -695,7 +721,7 @@ class _EngineerPageState extends State<EngineerPage> {
           try {
             FirestoreService.instance
                 .collection('notifications')
-                .doc(data['id'] ?? '')
+                .doc(docId)
                 .update({'processed': true});
           } catch (e) {
             // ignore
@@ -748,26 +774,6 @@ class _EngineerPageState extends State<EngineerPage> {
     }
   }
 
-  Future<void> _updateEngineerToken() async {
-    try {
-      // Get the FCM token from Firebase Messaging
-      final fcmToken = await FirebaseMessaging.instance.getToken();
-      if (fcmToken == null) return;
-
-      // Save the token to Firestore
-      await FirestoreService.instance
-          .collection('EngineerTokens')
-          .doc(widget.userName)
-          .set({
-            'token': fcmToken,
-            'lastUpdated': FieldValue.serverTimestamp(),
-            'email': widget.userEmail,
-          }, SetOptions(merge: true));
-    } catch (e) {
-      print('Error updating FCM token: $e');
-    }
-  }
-
   void _handleInitialNotification() {
     if (widget.notificationData != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -777,30 +783,14 @@ class _EngineerPageState extends State<EngineerPage> {
   }
 
   void _showNotificationDialog(Map<String, dynamic> data) async {
-    // Show local notification
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-          'assignment_channel',
-          'New Assignments',
-          channelDescription: 'Notifications for new service assignments',
-          importance: Importance.max,
-          priority: Priority.high,
-          showWhen: true,
-          enableVibration: true,
-          playSound: true,
-        );
-
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-    );
-
-    await flutterLocalNotificationsPlugin.show(
-      0,
-      data['type'] == 'new_assignment' ? 'New Assignment' : 'Notification',
-      data['type'] == 'new_assignment'
+    NotificationService.instance.showNotification(
+      title: data['type'] == 'new_assignment'
+          ? 'New Assignment'
+          : 'Notification',
+      body: data['type'] == 'new_assignment'
           ? 'You have been assigned a new task (ID: ${data['bookingId']})'
           : data['body'] ?? 'You have a new notification',
-      platformChannelSpecifics,
+      data: data.map((key, value) => MapEntry(key, value.toString())),
     );
 
     // Show dialog
@@ -996,13 +986,17 @@ class _EngineerPageState extends State<EngineerPage> {
   }
 
   void _performLogout() async {
-    Navigator.pop(context);
+    await LocationService.instance.stopTracking(widget.userName);
+    if (mounted) {
+      Navigator.pop(context);
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('engineerEmail');
     await prefs.remove('engineerName');
+    await AuthStateService.instance.logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => Engineerlogin()),
+      MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
       (Route<dynamic> route) => false,
     );
   }
@@ -1065,39 +1059,59 @@ class _EngineerPageState extends State<EngineerPage> {
                         ),
                       ),
                     ),
-                    // Optional: Add a subtle pattern or overlay
-                    Opacity(
-                      opacity: 0.1,
-                      child: Icon(
-                        Icons.engineering,
-                        size: 200,
-                        color: Colors.white.withOpacity(0.2),
-                      ),
-                    ),
                     Positioned(
                       left: 20,
-                      bottom: 24,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
+                      bottom: 20,
+                      right: 20,
+                      child: Row(
                         children: [
-                          Text(
-                            'OVERVIEW',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white.withOpacity(0.7),
-                              letterSpacing: 2.0,
+                          if (ThemeService.instance.logoUrl != null)
+                            Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.5),
+                                  width: 2,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 24,
+                                backgroundColor: Colors.white,
+                                backgroundImage: NetworkImage(
+                                  ThemeService.instance.logoUrl!,
+                                ),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.userName,
-                            style: const TextStyle(
-                              fontSize: 28,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -1.0,
+                          if (ThemeService.instance.logoUrl != null)
+                            const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  ThemeService.instance.appName.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white.withOpacity(0.7),
+                                    letterSpacing: 2.0,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  widget.userName,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.5,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -1571,17 +1585,40 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
   bool _isExpanded = false;
   final ImagePicker _picker = ImagePicker();
   List<XFile>? _imageFiles = [];
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _paymentAmountController =
       TextEditingController();
   final TextEditingController _otherPaymentController = TextEditingController();
   bool _isPickingImages = false;
   bool _isReadOnly = false;
+  bool _isUploading = false;
   String _currentStatus = '';
   String _selectedPaymentType = 'Cash';
   String _selectedPaymentMethod = 'Visiting Charge';
   List<Map<String, dynamic>> _payments = [];
+  double? _capturedLat;
+  double? _capturedLng;
+  DateTime? _capturedTimestamp;
+  bool _isLoadingLocation = false;
+
+  Future<void> _logManualLocation() async {
+    setState(() => _isLoadingLocation = true);
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      setState(() {
+        _capturedLat = position.latitude;
+        _capturedLng = position.longitude;
+        _capturedTimestamp = DateTime.now();
+      });
+      _showSnackBar('Location captured!', ProfessionalTheme.success);
+    } catch (e) {
+      _showSnackBar('Error capturing location: $e', ProfessionalTheme.error);
+    } finally {
+      setState(() => _isLoadingLocation = false);
+    }
+  }
 
   @override
   void initState() {
@@ -1707,16 +1744,13 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
     List<String> downloadUrls = [];
     for (var imageFile in imageFiles) {
       try {
-        File file = File(imageFile.path);
-        String fileName =
-            '${widget.userName}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        Reference storageReference = _storage.ref().child(
-          'job_images/$fileName',
+        final downloadUrl = await StorageService.instance.uploadWorkerImage(
+          userName: widget.userName,
+          file: File(imageFile.path),
         );
-        UploadTask uploadTask = storageReference.putFile(file);
-        TaskSnapshot taskSnapshot = await uploadTask;
-        String downloadUrl = await taskSnapshot.ref.getDownloadURL();
-        downloadUrls.add(downloadUrl);
+        if (downloadUrl != null) {
+          downloadUrls.add(downloadUrl);
+        }
       } catch (e) {
         debugPrint('Error uploading image: $e');
       }
@@ -1880,6 +1914,7 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
     );
 
     if (confirm == true) {
+      setState(() => _isUploading = true);
       try {
         List<String> newImageUrls = await _uploadImages(_imageFiles ?? []);
         List<String> allImageUrls = [
@@ -1944,6 +1979,12 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
               'amount': double.tryParse(_amountController.text.trim()) ?? 0,
               'updatedBy': widget.userName,
               'updatedAt': FieldValue.serverTimestamp(),
+              'imageUrls': allImageUrls,
+              'payments': _payments
+                  .map((p) => {...p, 'addedAt': Timestamp.now()})
+                  .toList(),
+              'lat': _capturedLat,
+              'lng': _capturedLng,
             }, SetOptions(merge: true));
 
         _showSnackBar('Job updated successfully!', ProfessionalTheme.success);
@@ -1972,6 +2013,10 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
           'Failed to update job [$errorType]: $errorMsg\n$stackMsg',
           ProfessionalTheme.error,
         );
+      } finally {
+        if (mounted) {
+          setState(() => _isUploading = false);
+        }
       }
     }
   }
@@ -2502,7 +2547,7 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
             ],
           ),
           child: DropdownButtonFormField<String>(
-            value: dropdownValue,
+            initialValue: dropdownValue,
             decoration: InputDecoration(
               prefixIcon: Icon(
                 Icons.swap_horiz_rounded,
@@ -2549,6 +2594,149 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
               color: ProfessionalTheme.error,
               fontStyle: FontStyle.italic,
             ),
+          ),
+        ],
+
+        // Manual Location Log Button
+        if (_currentStatus == 'Order Taken' ||
+            _currentStatus == 'Order Received') ...[
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _isLoadingLocation ? null : _logManualLocation,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                side: BorderSide(color: ProfessionalTheme.primary(context)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              icon: _isLoadingLocation
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: ProfessionalTheme.primary(context),
+                      ),
+                    )
+                  : Icon(
+                      Icons.my_location,
+                      color: ProfessionalTheme.primary(context),
+                    ),
+              label: Text(
+                _isLoadingLocation ? 'Logging...' : 'Log Current Location',
+                style: TextStyle(
+                  color: ProfessionalTheme.primary(context),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+
+        // Display Captured Location
+        if (_capturedLat != null && _capturedLng != null) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Latitude',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: ProfessionalTheme.textSecondary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: ProfessionalTheme.surface(context),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: ProfessionalTheme.borderLight(context),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.explore_outlined,
+                            size: 16,
+                            color: ProfessionalTheme.textTertiary(context),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _capturedLat!.toStringAsFixed(6),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: ProfessionalTheme.textPrimary(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Longitude',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: ProfessionalTheme.textSecondary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: ProfessionalTheme.surface(context),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: ProfessionalTheme.borderLight(context),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.explore_outlined,
+                            size: 16,
+                            color: ProfessionalTheme.textTertiary(context),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _capturedLng!.toStringAsFixed(6),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: ProfessionalTheme.textPrimary(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ],
@@ -3036,7 +3224,7 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
         ),
         const SizedBox(height: 12),
         if (_imageFiles != null && _imageFiles!.isNotEmpty)
-          Container(
+          SizedBox(
             height: 100,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
@@ -3440,7 +3628,7 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
           Expanded(
             flex: 2,
             child: ElevatedButton(
-              onPressed: _performUpdate,
+              onPressed: _isUploading ? null : _performUpdate,
               style: ElevatedButton.styleFrom(
                 backgroundColor: ProfessionalTheme.primary(context),
                 shape: RoundedRectangleBorder(
@@ -3451,14 +3639,24 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.update,
-                    size: 16,
-                    color: ProfessionalTheme.textInverse(context),
-                  ),
+                  if (_isUploading)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  else
+                    Icon(
+                      Icons.update,
+                      size: 16,
+                      color: ProfessionalTheme.textInverse(context),
+                    ),
                   const SizedBox(width: 8),
                   Text(
-                    'Update Job',
+                    _isUploading ? 'Updating...' : 'Update Job',
                     style: TextStyle(
                       color: ProfessionalTheme.textInverse(context),
                       fontWeight: FontWeight.w600,

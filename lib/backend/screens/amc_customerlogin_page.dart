@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:subscription_rooks_app/services/notification_service.dart';
 
 class AMCLoginBackend {
   static Future<String?> checkLoginStatus() async {
@@ -34,6 +35,16 @@ class AMCLoginBackend {
 
         // Sync branding configuration immediately
         await FirestoreService.instance.syncBranding(tenantId);
+
+        // Register FCM token for the customer immediately upon login
+        final userId = querySnapshot.docs.first.data()['Id'] ?? '';
+        if (userId.isNotEmpty) {
+          NotificationService.instance.registerToken(
+            role: 'customer',
+            userId: userId,
+            email: email,
+          );
+        }
 
         return {'success': true};
       } else {

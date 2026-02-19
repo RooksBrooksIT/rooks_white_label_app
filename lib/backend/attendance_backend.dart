@@ -65,7 +65,6 @@ class AttendanceBackend {
 
       // Path construction:
       // attendance (col) -> engineerId (doc) -> year (col) -> month (doc) -> daily (col) -> dateStr (doc)
-      // This maps closely to "attendance/{engineerId}/{year}/{month}/{date}" while being valid Firestore.
       final docRef = FirestoreService.instance
           .collection('attendance')
           .doc(engineerId)
@@ -76,16 +75,14 @@ class AttendanceBackend {
 
       final data = {
         'date': dateStr,
-        'engineerId': engineerId, // Added for easier querying
+        'engineerId': engineerId,
         'shift': shift,
         'status': status,
         'assignedBy': assignedBy,
-        'acceptedByEngineer': false, // Default
+        'acceptedByEngineer': false,
         'comment': comment ?? '',
         'flagged': false,
         'timestamp': FieldValue.serverTimestamp(),
-        // Check if we need to preserve existing fields like loginTime or ticketsHandled
-        // We use SetOptions(merge: true) to preserve them.
       };
 
       await docRef.set(data, SetOptions(merge: true));
@@ -124,7 +121,6 @@ class AttendanceBackend {
         .collectionGroup('daily')
         .where('engineerId', isEqualTo: engineerId);
 
-    // Note: Date filtering on string 'date' field (yyyy-MM-dd) works lexicographically
     if (fromDate != null) {
       final fromStr = DateFormat('yyyy-MM-dd').format(fromDate);
       query = query.where('date', isGreaterThanOrEqualTo: fromStr);
@@ -135,12 +131,6 @@ class AttendanceBackend {
     }
 
     return query.snapshots().asyncMap((snapshot) async {
-      // We might need to fetch engineer name if not in doc, but for now just return data
-      // admin_attendance_reports expects 'engineerUsername'
-      // We can fetch user details once and cache, or just pass engineerId
-      // For now, let's try to inject the name if we can, or just expect the UI to handle it.
-      // The UI uses 'engineerUsername'. We'll inject it.
-
       String username = 'Unknown';
       try {
         final userDoc = await FirestoreService.instance
@@ -163,47 +153,44 @@ class AttendanceBackend {
 
   /// Gets all attendance history
   static Stream<List<Map<String, dynamic>>> getAllAttendanceHistory() {
-    return FirestoreService.instance.collectionGroup('daily').snapshots().asyncMap((
-      snapshot,
-    ) async {
-      // fetch all engineers to map IDs to names
-      final usersMap = <String, String>{};
-      try {
-        final engineers =
-            await getEngineers(); // Use getEngineers instead of getUsers
-        for (var e in engineers) {
-          usersMap[e['uid']] = e['username'];
-        }
-      } catch (e) {
-        print('Error fetching engineers for mapping: $e');
-      }
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        final engId = data['engineerId'] as String?;
-        String username = 'Unknown';
-
-        if (engId != null && usersMap.containsKey(engId)) {
-          username = usersMap[engId]!;
-        }
-
-        // Fallback: try to guess from parent path if engineerId not in doc (legacy data)
-        if (engId == null || username == 'Unknown') {
-          // Try parent ID mapping if engineerId field was missing
+    return FirestoreService.instance
+        .collectionGroup('daily')
+        .snapshots()
+        .asyncMap((snapshot) async {
+          final usersMap = <String, String>{};
           try {
-            final pathSegments = doc.reference.path.split('/');
-            if (pathSegments.length >= 2) {
-              final potentialId = pathSegments[1]; // attendance/ID/...
-              if (usersMap.containsKey(potentialId)) {
-                username = usersMap[potentialId]!;
-              }
+            final engineers = await getEngineers();
+            for (var e in engineers) {
+              usersMap[e['uid']] = e['username'];
             }
-          } catch (e) {}
-        }
+          } catch (e) {
+            print('Error fetching engineers for mapping: $e');
+          }
 
-        return {...data, 'engineerUsername': username};
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            final engId = data['engineerId'] as String?;
+            String username = 'Unknown';
+
+            if (engId != null && usersMap.containsKey(engId)) {
+              username = usersMap[engId]!;
+            }
+
+            if (engId == null || username == 'Unknown') {
+              try {
+                final pathSegments = doc.reference.path.split('/');
+                if (pathSegments.length >= 2) {
+                  final potentialId = pathSegments[1];
+                  if (usersMap.containsKey(potentialId)) {
+                    username = usersMap[potentialId]!;
+                  }
+                }
+              } catch (e) {}
+            }
+
+            return {...data, 'engineerUsername': username};
+          }).toList();
+        });
   }
 
   /// Marks the engineer's attendance as Present/Accepted.
@@ -274,13 +261,9 @@ class AttendanceBackend {
     required String assignedBy,
   }) async {
     try {
-      // Firestore batch limit is 500. We should handle chunks if list > 500.
-      final engineerChunks = _chunkList(engineerIds, 450); // Safety margin
+      final engineerChunks = _chunkList(engineerIds, 450);
 
       for (var chunk in engineerChunks) {
-        // BUT we need the paths to be tenant aware.
-        // `FirestoreService.collection` returns a CollectionReference with the right path.
-
         final firestoreBatch = FirebaseFirestore.instance.batch();
 
         final year = DateFormat('yyyy').format(date);
@@ -318,13 +301,11 @@ class AttendanceBackend {
   }
 
   /// Fetches attendance for all engineers on a specific date.
-  /// Returns a list of attendance documents.
   static Future<List<Map<String, dynamic>>> getDailyAttendance(
     DateTime date,
   ) async {
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(date);
-      // Query collection group 'daily' where date matches
       final snapshot = await FirestoreService.instance
           .collectionGroup('daily')
           .where('date', isEqualTo: dateStr)
@@ -338,7 +319,6 @@ class AttendanceBackend {
   }
 
   /// Saves a batch of attendance records with varying statuses.
-  /// records: List of { 'engineerId': String, 'status': String }
   static Future<void> batchSaveAttendance({
     required List<Map<String, dynamic>> records,
     required DateTime date,
@@ -357,7 +337,6 @@ class AttendanceBackend {
         for (var record in chunk) {
           final engineerId = record['engineerId'];
           final status = record['status'];
-          // Optional: handle comments or other fields if passed in record
 
           final docRef = FirestoreService.instance
               .collection('attendance')
@@ -373,7 +352,7 @@ class AttendanceBackend {
             'shift': shift,
             'status': status,
             'assignedBy': assignedBy,
-            'acceptedByEngineer': false, // Admin override or initial set
+            'acceptedByEngineer': false,
             'flagged': false,
             'timestamp': FieldValue.serverTimestamp(),
             if (status == 'Absent')
