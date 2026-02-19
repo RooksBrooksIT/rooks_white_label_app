@@ -1077,6 +1077,7 @@ class _EngineerUpdateCardState extends State<EngineerUpdateCard> {
       String customerPhoneNumber = originalData['mobileNumber'] ?? '';
       String bookingId = originalData['bookingId'] ?? '';
       String customerName = originalData['customerName'] ?? '';
+      String customerId = originalData['id'] ?? originalData['Id'] ?? '';
 
       Map<String, dynamic> updateData = {
         'statusDescription': statusDescController.text,
@@ -1141,21 +1142,20 @@ class _EngineerUpdateCardState extends State<EngineerUpdateCard> {
         });
       }
 
-      // Trigger in-app notification entry for AdminUpdatesPage when ticket is closed
-      if (action == 'Completed' || action == 'Unrepairable') {
-        try {
-          await FirestoreService.instance.collection('notifications').add({
-            'customerName': customerName,
-            'bookingId': bookingId,
-            'title': 'Ticket Closed',
-            'body': 'Your ticket $bookingId has been ${action.toLowerCase()}.',
-            'timestamp': FieldValue.serverTimestamp(),
-            'seen': false,
-          });
-        } catch (e) {
-          // Log but do not block UI
-          debugPrint('Failed to create notification doc: $e');
-        }
+      // Trigger in-app notification entry for customer
+      try {
+        await FirestoreService.instance.collection('notifications').add({
+          'customerId': customerId,
+          'customerName': customerName,
+          'bookingId': bookingId,
+          'title': 'Ticket Update',
+          'body': 'Your ticket $bookingId status has been updated to $action.',
+          'timestamp': FieldValue.serverTimestamp(),
+          'seen': false,
+        });
+      } catch (e) {
+        // Log but do not block UI
+        debugPrint('Failed to create notification doc: $e');
       }
 
       if (!mounted) return;

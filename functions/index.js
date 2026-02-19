@@ -16,7 +16,7 @@ async function sendNotification(tenantId, appId, role, userId, payload) {
     try {
         const path = `${tenantId}/${appId}/notifications_tokens/${role}/tokens/${userId}`;
         console.log(`[DEBUG] Token lookup for ${role}: ${path}`);
-        
+
         const tokenDoc = await admin.firestore()
             .collection(tenantId)
             .doc(appId)
@@ -139,6 +139,22 @@ async function handleAssignment(event) {
                 },
             };
             await sendNotification(tenantId, appId, "customer", newData.id, customerPayload);
+
+            // Also create an in-app notification document for the banner
+            await admin.firestore()
+                .collection(tenantId)
+                .doc(appId)
+                .collection("notifications")
+                .add({
+                    customerId: newData.id,
+                    customerName: newData.customerName || "",
+                    bookingId: bookingId,
+                    title: "Ticket Assigned",
+                    body: `Your ticket (${bookingId}) has been assigned to ${newData.assignedEmployee}`,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    seen: false,
+                    type: "ticket_assigned"
+                });
         }
     }
 }
@@ -240,6 +256,22 @@ exports.onStatusUpdated = onDocumentUpdated("{tenantId}/{appId}/Admin_details/{b
         };
         if (newData.id) {
             await sendNotification(tenantId, appId, "customer", newData.id, payload);
+
+            // Also create an in-app notification document for the banner
+            await admin.firestore()
+                .collection(tenantId)
+                .doc(appId)
+                .collection("notifications")
+                .add({
+                    customerId: newData.id,
+                    customerName: newData.customerName || "",
+                    bookingId: bookingId,
+                    title: "Ticket Update",
+                    body: `Your ticket (${bookingId}) status is now: ${currentStatus}`,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    seen: false,
+                    type: "status_update"
+                });
         }
     }
 });

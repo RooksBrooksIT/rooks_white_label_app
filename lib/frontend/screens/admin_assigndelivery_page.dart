@@ -562,6 +562,7 @@ class _AssigndeliveryCustomerPageState
           .collection('Admin_details')
           .doc(widget.customer.bookingId)
           .set({
+            'id': widget.customer.customerid,
             'assignedEmployee': engineerName,
             'customerName': widget.customer.customerName,
             'bookingId': widget.customer.bookingId,

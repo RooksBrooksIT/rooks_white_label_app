@@ -88,10 +88,10 @@ class _AMCTrackMyServiceState extends State<AMCTrackMyService> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: const Color.fromARGB(255, 223, 224, 224),
       appBar: AppBar(
         backgroundColor: Theme.of(context).primaryColor,
-        elevation: 6,
+        elevation: 0,
         centerTitle: true,
         iconTheme: IconThemeData(
           color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
@@ -99,515 +99,158 @@ class _AMCTrackMyServiceState extends State<AMCTrackMyService> {
         title: Text(
           ThemeService.instance.appName,
           style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
             color:
                 Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-            letterSpacing: 0.5,
+            letterSpacing: 1.2,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_active),
-            tooltip: 'Test Notification',
-            onPressed: () {
-              NotificationService.instance.showNotification(
-                title: 'Test Notification',
-                body:
-                    'This is a test notification from the customer dashboard.',
-              );
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Test notification sent')),
-              );
-            },
-          ),
-        ],
+        // actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.notifications_none_rounded),
+        //     tooltip: 'Test Notification',
+        //     onPressed: () {
+        //       NotificationService.instance.showNotification(
+        //         title: 'Test Notification',
+        //         body:
+        //             'This is a test notification from the customer dashboard.',
+        //       );
+        //     },
+        //   ),
+        // ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          if (showBanner)
-            MaterialBanner(
-              content: Text(
-                bannerMessage,
-                style: const TextStyle(fontSize: 16, color: Colors.white),
-              ),
-              backgroundColor: Colors.green.shade700,
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      showBanner = false;
-                    });
-                  },
-                  child: const Text(
-                    'DISMISS',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirestoreService.instance
-                  .collection('Admin_details')
-                  .where('customerName', isEqualTo: widget.customerName)
-                  .where('id', isEqualTo: widget.customerId)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: Lottie.asset(
-                      'assets/loading_animation.json',
-                      width: 110,
-                      repeat: true,
-                    ),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Failed to load tickets.',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.red.shade700,
-                      ),
-                    ),
-                  );
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Lottie.asset(
-                          'assets/empty_box.json',
-                          height: 180,
+          Column(
+            children: [
+              _buildHeaderDecoration(),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: FirestoreService.instance
+                      .collection('Admin_details')
+                      .where('id', isEqualTo: widget.customerId)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(
+                        child: Lottie.asset(
+                          'assets/loading_animation.json',
+                          width: 100,
                           repeat: true,
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No service tickets found.',
-                          style: TextStyle(fontSize: 18, color: Colors.black54),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                final tickets = snapshot.data!.docs;
-                return ListView.separated(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  itemCount: tickets.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 14),
-                  itemBuilder: (context, index) {
-                    final data = tickets[index].data();
-                    final documentId = tickets[index].id;
-                    return _buildTicketCard(data, documentId);
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      return _buildErrorState();
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return _buildEmptyState();
+                    }
+                    final tickets = snapshot.data!.docs;
+                    return ListView.builder(
+                      padding: const EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        top: 8,
+                        bottom: 32,
+                      ),
+                      itemCount: tickets.length,
+                      itemBuilder: (context, index) {
+                        final data = tickets[index].data();
+                        final documentId = tickets[index].id;
+                        return _buildProfessionalTicketCard(data, documentId);
+                      },
+                    );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
+          if (showBanner) _buildFloatingBanner(),
         ],
       ),
     );
   }
 
-  Widget _buildTicketCard(Map<String, dynamic> data, String documentId) {
-    final cardColor = Theme.of(context).cardColor;
-    final canceledCardColor = Theme.of(context).disabledColor.withOpacity(0.1);
-    final bookingId = data['bookingId'] ?? 'N/A';
-    final customerName = data['customerName'] ?? 'N/A';
-    final customerId = data['id'] ?? 'Not Assigned Yet';
-    final message = data['message'] ?? '-';
-    final mobileNumber = data['mobileNumber'] ?? '-';
-    final jobType = data['JobType'] ?? '-';
-    final deviceCondition = data['deviceCondition'] ?? '-';
-    final deviceBrand = data['deviceBrand'] ?? '-';
-    final description = data['description'] ?? '-';
-    final amount = data['amount']?.toString() ?? '0';
-    final Timestamp? timestamp = data['timestamp'] as Timestamp?;
-    final feedback = data['FeedBack'] ?? '';
-    final rawStatus = data['engineerStatus'] ?? '';
-    final adminStatus = data['adminStatus']?.toString().toLowerCase() ?? '';
-    final isCanceled = adminStatus == 'canceled' || adminStatus == 'cancelled';
-    final statusInfo = _mapEngineerStatus(rawStatus);
-    final isCompleted = statusInfo.label.toLowerCase() == 'completed';
-    final hasFeedback = feedback.toString().isNotEmpty;
+  Widget _buildHeaderDecoration() {
+    return Container(
+      width: double.infinity,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Theme.of(context).primaryColor,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+      ),
+    );
+  }
 
-    return GestureDetector(
-      onTap: isCompleted && !hasFeedback && !isCanceled
-          ? () {
-              showDialog(
-                context: context,
-                builder: (ctx) => FeedbackDialog(
-                  bookingId: bookingId.toString(),
-                  documentId: documentId,
-                ),
-              );
-            }
-          : null,
-      child: Card(
-        color: isCanceled ? canceledCardColor : cardColor,
-        elevation: isCanceled ? 1 : 3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        shadowColor: isCanceled ? Colors.grey : Colors.grey.shade200,
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildFloatingBanner() {
+    return Positioned(
+      top: 20,
+      left: 16,
+      right: 16,
+      child: TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 400),
+        tween: Tween(begin: 0.0, end: 1.0),
+        builder: (context, value, child) {
+          return Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, (1 - value) * -20),
+              child: child,
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+            border: Border.all(color: Colors.green.withOpacity(0.3), width: 1),
+          ),
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.receipt,
-                    color: isCanceled
-                        ? Colors.grey.shade700
-                        : Theme.of(context).primaryColor,
-                    size: 26,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      "Booking ID: $bookingId",
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: isCanceled
-                            ? Theme.of(context).disabledColor
-                            : Theme.of(context).textTheme.bodyLarge?.color,
-                        letterSpacing: 0.4,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (isCanceled)
-                    _buildStatusChip('Canceled', Colors.red.shade600)
-                  else
-                    _buildStatusChip(statusInfo.label, statusInfo.color),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Icon(
-                    Icons.engineering_outlined,
-                    color: isCanceled
-                        ? Colors.grey.shade700
-                        : Theme.of(context).primaryColor,
-                    size: 26,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      "Your ID: $customerId",
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: isCanceled
-                            ? Theme.of(context).disabledColor
-                            : Theme.of(context).textTheme.bodyLarge?.color,
-                        letterSpacing: 0.4,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              _buildDetailRow(
-                Icons.person_outline,
-                'Customer',
-                customerName,
-                isCanceled,
-              ),
-              _buildDetailRow(
-                Icons.message_outlined,
-                'Message',
-                message,
-                isCanceled,
-              ),
-              _buildDetailRow(
-                Icons.phone_android_rounded,
-                'Mobile',
-                mobileNumber,
-                isCanceled,
-              ),
-              _buildDetailRow(
-                Icons.work_outlined,
-                'Job Type',
-                jobType,
-                isCanceled,
-              ),
-              _buildDetailRow(
-                Icons.devices_other_outlined,
-                'Device Condition',
-                deviceCondition,
-                isCanceled,
-              ),
-              _buildDetailRow(
-                Icons.branding_watermark_outlined,
-                'Device Brand',
-                deviceBrand,
-                isCanceled,
-              ),
-              _buildDetailRow(
-                Icons.description_outlined,
-                'Description',
-                description,
-                isCanceled,
-              ),
-              _buildDetailRow(
-                Icons.calendar_today_outlined,
-                'Created On',
-                _formatTimestamp(timestamp),
-                isCanceled,
-              ),
-
-              if (isCanceled && (data['Reason_cancel'] != null))
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.red.shade200, width: 1.5),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.cancel_outlined,
-                        color: Colors.red.shade700,
-                        size: 22,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Cancellation Note:',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red.shade800,
-                                fontSize: 15,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              data['Reason_cancel'].toString(),
-                              style: TextStyle(
-                                color: Colors.red.shade700,
-                                fontSize: 14,
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  shape: BoxShape.circle,
                 ),
-
-              if (hasFeedback)
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isCanceled
-                        ? Colors.grey.shade300
-                        : Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: isCanceled ? Colors.grey : Colors.green.shade200,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.feedback_outlined,
-                        color: isCanceled
-                            ? Colors.grey.shade700
-                            : Colors.green.shade700,
-                        size: 22,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Your Feedback:',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: isCanceled
-                                    ? Colors.grey.shade800
-                                    : Colors.green.shade800,
-                                fontSize: 15,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              feedback,
-                              style: TextStyle(
-                                color: isCanceled
-                                    ? Colors.grey.shade700
-                                    : Colors.green.shade700,
-                                fontSize: 14,
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              if (isCompleted && !hasFeedback && !isCanceled)
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.blue.shade200, width: 1.5),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.touch_app_rounded,
-                        color: Colors.blue.shade700,
-                        size: 22,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Tap anywhere on this card to provide your feedback',
-                          style: TextStyle(
-                            color: Colors.blue.shade700,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              if (!isCompleted && !isCanceled)
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: Colors.orange.shade200,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline_rounded,
-                        color: Colors.orange.shade700,
-                        size: 22,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Feedback will be available once the status is "Completed"',
-                          style: TextStyle(
-                            color: Colors.orange.shade700,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              // Cancel Ticket Button
-              if (!isCanceled &&
-                  !isCompleted &&
-                  rawStatus.toLowerCase() != 'in progress')
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 10),
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => CancelTicketDialog(
-                          bookingId: bookingId.toString(),
-                          documentId: documentId,
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 24,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      elevation: 3,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.cancel_outlined, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Cancel Ticket',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-              const SizedBox(height: 20),
-              Text(
-                'Bill Amount :',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                  color: isCanceled
-                      ? Theme.of(context).disabledColor
-                      : Theme.of(context).textTheme.bodyLarge?.color,
-                  letterSpacing: 0.3,
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.green,
+                  size: 20,
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(
-                '₹$amount',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: isCanceled
-                      ? Colors.grey.shade700
-                      : const Color.fromARGB(255, 13, 116, 18),
-                  letterSpacing: 1,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  bannerMessage,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF334155),
+                  ),
                 ),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.close, size: 18, color: Colors.grey),
+                onPressed: () => setState(() => showBanner = false),
               ),
             ],
           ),
@@ -616,47 +259,235 @@ class _AMCTrackMyServiceState extends State<AMCTrackMyService> {
     );
   }
 
-  Widget _buildDetailRow(
-    IconData icon,
-    String title,
-    String content,
-    bool isCanceled,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            color: isCanceled
-                ? Colors.grey.shade600
-                : Theme.of(context).primaryColor.withOpacity(0.85),
-            size: 20,
+          Icon(Icons.error_outline_rounded, size: 64, color: Colors.red[300]),
+          const SizedBox(height: 16),
+          const Text(
+            'Something went wrong',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(width: 14),
-          SizedBox(
-            width: 110,
-            child: Text(
-              '$title:',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: isCanceled
-                    ? Theme.of(context).disabledColor
-                    : Theme.of(context).textTheme.bodyLarge?.color,
-                fontSize: 15,
-              ),
+          const Text(
+            'Please try again later',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Lottie.asset('assets/empty_box.json', height: 200, repeat: true),
+          const SizedBox(height: 24),
+          const Text(
+            'No Active Tickets',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1E293B),
             ),
           ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              content,
-              style: TextStyle(
-                color: isCanceled ? Colors.grey.shade700 : Colors.black54,
-                fontSize: 14,
-                height: 1.3,
+          const SizedBox(height: 8),
+          const Text(
+            'Your service requests will appear here',
+            style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfessionalTicketCard(
+    Map<String, dynamic> data,
+    String documentId,
+  ) {
+    final bookingId = data['bookingId'] ?? 'N/A';
+    final customerId = data['id'] ?? 'Not Assigned';
+    final jobType = data['JobType'] ?? 'N/A';
+    final deviceBrand = data['deviceBrand'] ?? 'N/A';
+    final amount = data['amount']?.toString() ?? '0';
+    final timestamp = data['timestamp'] as Timestamp?;
+    final rawStatus = data['engineerStatus'] ?? '';
+    final adminStatus = data['adminStatus']?.toString().toLowerCase() ?? '';
+    final isCanceled = adminStatus == 'canceled' || adminStatus == 'cancelled';
+    final statusInfo = _mapEngineerStatus(rawStatus);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Section
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    Icons.receipt_long_rounded,
+                    color: Theme.of(context).primaryColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "ID: $bookingId",
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1E293B),
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Job: $jobType • ID: $customerId",
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildStatusBadge(
+                  isCanceled ? 'CANCELED' : statusInfo.label.toUpperCase(),
+                  isCanceled ? Colors.red : statusInfo.color,
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(
+            height: 1,
+            indent: 20,
+            endIndent: 20,
+            color: Color(0xFFF1F5F9),
+          ),
+
+          // Progress Tracker
+          if (!isCanceled) _buildStatusTracker(rawStatus),
+
+          // Main Info
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    _buildInfoItem(
+                      Icons.devices_rounded,
+                      "Device",
+                      deviceBrand,
+                    ),
+                    const SizedBox(width: 12),
+                    _buildInfoItem(
+                      Icons.calendar_today_rounded,
+                      "Date",
+                      _formatTimestamp(timestamp),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildDetailSection(data, isCanceled),
+              ],
+            ),
+          ),
+
+          // Footer
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
               ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "ESTIMATED BILL",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF94A3B8),
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    Text(
+                      "₹$amount",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: isCanceled
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF059669),
+                      ),
+                    ),
+                  ],
+                ),
+                if (!isCanceled &&
+                    statusInfo.label == 'Completed' &&
+                    (data['FeedBack'] ?? '').isEmpty)
+                  _buildActionIndicator(
+                    "Rate Service",
+                    Icons.star_border_rounded,
+                    () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => FeedbackDialog(
+                          bookingId: bookingId.toString(),
+                          documentId: documentId,
+                        ),
+                      );
+                    },
+                  )
+                else if (!isCanceled &&
+                    statusInfo.label != 'Completed' &&
+                    statusInfo.label != 'In Progress')
+                  _buildActionIndicator("Cancel", Icons.close_rounded, () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => CancelTicketDialog(
+                        bookingId: bookingId.toString(),
+                        documentId: documentId,
+                      ),
+                    );
+                  }, isDanger: true),
+              ],
             ),
           ),
         ],
@@ -664,27 +495,279 @@ class _AMCTrackMyServiceState extends State<AMCTrackMyService> {
     );
   }
 
-  Widget _buildStatusChip(String label, Color color) {
+  Widget _buildStatusBadge(String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.45),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          fontSize: 13,
-          letterSpacing: 0.4,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusTracker(String currentStatus) {
+    final status = currentStatus.toLowerCase().trim();
+    int currentStep = 0;
+    if (status == 'assigned')
+      currentStep = 1;
+    else if (status == 'in progress')
+      currentStep = 2;
+    else if (status == 'completed')
+      currentStep = 3;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(25, 20, 25, 10),
+      child: Row(
+        children: [
+          _buildStep(0, "Raised", currentStep >= 0),
+          _buildStepLine(currentStep >= 1),
+          _buildStep(1, "Assigned", currentStep >= 1),
+          _buildStepLine(currentStep >= 2),
+          _buildStep(2, "Repairing", currentStep >= 2),
+          _buildStepLine(currentStep >= 3),
+          _buildStep(3, "Done", currentStep >= 3),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep(int step, String label, bool isActive) {
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: isActive
+                  ? Theme.of(context).primaryColor
+                  : const Color(0xFFE2E8F0),
+              shape: BoxShape.circle,
+              border: isActive
+                  ? Border.all(color: Colors.white, width: 2)
+                  : null,
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color: Theme.of(context).primaryColor.withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: isActive
+                ? const Icon(Icons.check, size: 14, color: Colors.white)
+                : null,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+              color: isActive
+                  ? Theme.of(context).primaryColor
+                  : const Color(0xFF94A3B8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepLine(bool isActive) {
+    return Container(
+      width: 20,
+      height: 2,
+      margin: const EdgeInsets.only(bottom: 18),
+      color: isActive
+          ? Theme.of(context).primaryColor
+          : const Color(0xFFE2E8F0),
+    );
+  }
+
+  Widget _buildInfoItem(IconData icon, String label, String value) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: const Color(0xFF64748B)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF94A3B8),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF1E293B),
+                      fontWeight: FontWeight.w700,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailSection(Map<String, dynamic> data, bool isCanceled) {
+    final condition = data['deviceCondition'] ?? 'N/A';
+    final desc = data['description'] ?? '';
+    final feedback = data['FeedBack'] ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (condition != 'N/A') ...[
+          const Text(
+            "ISSUE REPORTED",
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF94A3B8),
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            condition,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF475569),
+              height: 1.4,
+            ),
+          ),
+        ],
+        if (desc.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          const Text(
+            "ENGINEER NOTES",
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF94A3B8),
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amber.withOpacity(0.1)),
+            ),
+            child: Text(
+              desc,
+              style: const TextStyle(
+                fontSize: 13,
+                fontStyle: FontStyle.italic,
+                color: Color(0xFF475569),
+              ),
+            ),
+          ),
+        ],
+        if (feedback.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildStatusBadge("FEEDBACK: $feedback", Colors.blueGrey),
+        ],
+        if (isCanceled && data['Reason_cancel'] != null) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.cancel_outlined, color: Colors.red, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "Reason: ${data['Reason_cancel']}",
+                    style: const TextStyle(color: Colors.red, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildActionIndicator(
+    String label,
+    IconData icon,
+    VoidCallback onTap, {
+    bool isDanger = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: isDanger
+                ? Colors.red.withOpacity(0.05)
+                : Theme.of(context).primaryColor.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDanger
+                  ? Colors.red.withOpacity(0.1)
+                  : Theme.of(context).primaryColor.withOpacity(0.1),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isDanger ? Colors.red : Theme.of(context).primaryColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: isDanger ? Colors.red : Theme.of(context).primaryColor,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -806,51 +889,82 @@ class _CancelTicketDialogState extends State<CancelTicketDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      elevation: 24,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.warning_amber_rounded,
-              size: 48,
-              color: Colors.orange.shade700,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.cancel_outlined,
+                size: 40,
+                color: Colors.red,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(
-              "Cancel Booking #${widget.bookingId}?",
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0B3470),
+              "Cancel Booking",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: const Color(0xFF1E293B),
+                letterSpacing: -0.5,
+              ),
+            ),
+            Text(
+              "#${widget.bookingId}",
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.red.shade700,
               ),
             ),
             const SizedBox(height: 16),
             const Text(
-              'Please provide reason for cancellation:',
-              style: TextStyle(fontSize: 16),
+              'Please let us know the reason for cancellation to help us improve.',
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF64748B),
+                height: 1.5,
+              ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             TextField(
               controller: _reasonController,
               maxLines: 3,
+              style: const TextStyle(fontSize: 14),
               decoration: InputDecoration(
-                hintText: 'Enter reason for cancellation...',
+                hintText: 'Enter reason here...',
+                hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                contentPadding: const EdgeInsets.all(16),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFF0B3470)),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Colors.red, width: 1.5),
                 ),
               ),
               onChanged: (value) {
-                setState(() {}); // Rebuild to update button visibility
+                setState(() {});
               },
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 28),
             Row(
               children: [
                 Expanded(
@@ -859,17 +973,23 @@ class _CancelTicketDialogState extends State<CancelTicketDialog> {
                         ? null
                         : () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
-                      foregroundColor: Colors.grey,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text('Cancel'),
+                    child: const Text(
+                      'Dismiss',
+                      style: TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
+                  flex: 2,
                   child: ElevatedButton(
                     onPressed:
                         _reasonController.text.trim().isEmpty || _isSubmitting
@@ -878,10 +998,12 @@ class _CancelTicketDialogState extends State<CancelTicketDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      disabledBackgroundColor: Colors.red.withOpacity(0.3),
                     ),
                     child: _isSubmitting
                         ? const SizedBox(
@@ -889,12 +1011,16 @@ class _CancelTicketDialogState extends State<CancelTicketDialog> {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
+                              color: Colors.white,
                             ),
                           )
-                        : const Text('Confirm Cancel'),
+                        : const Text(
+                            'Confirm Cancel',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -947,25 +1073,25 @@ class FeedbackDialog extends StatelessWidget {
     switch (feedback) {
       case "Good":
         message =
-            "Thank you for your positive feedback! We're thrilled to hear you had a great experience with our service.";
-        icon = Icons.emoji_emotions;
+            "Thank you for your positive feedback! We're thrilled to hear you had a great experience.";
+        icon = Icons.star_rounded;
         color = Colors.green;
         break;
       case "Ok":
         message =
-            "Thank you for your feedback. We appreciate your input and will work to improve our service for your next visit.";
-        icon = Icons.sentiment_neutral;
+            "Thank you for your feedback. We appreciate your input and will work to improve our service.";
+        icon = Icons.sentiment_satisfied_rounded;
         color = Colors.orange;
         break;
       case "Not Satisfied":
         message =
-            "We sincerely apologize for the unsatisfactory experience. Our team will contact you shortly to address your concerns.";
-        icon = Icons.sentiment_dissatisfied;
+            "We sincerely apologize. Our team will contact you shortly to address your concerns.";
+        icon = Icons.sentiment_very_dissatisfied_rounded;
         color = Colors.red;
         break;
       default:
         message = "Thank you for your feedback!";
-        icon = Icons.thumb_up;
+        icon = Icons.thumb_up_rounded;
         color = Colors.blue;
     }
 
@@ -975,31 +1101,48 @@ class FeedbackDialog extends StatelessWidget {
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(28),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
+          elevation: 24,
+          child: Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 64, color: color),
-                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 48, color: color),
+                ),
+                const SizedBox(height: 24),
                 Text(
-                  "Thank You for Your Feedback!",
+                  "Received!",
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF1E293B),
+                    letterSpacing: -0.5,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Text(
                   message,
-                  style: const TextStyle(fontSize: 16),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                    height: 1.5,
+                  ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -1007,12 +1150,20 @@ class FeedbackDialog extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: color,
                       foregroundColor: Colors.white,
+                      elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text("Close", style: TextStyle(fontSize: 16)),
+                    child: const Text(
+                      "Done",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1026,119 +1177,133 @@ class FeedbackDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      elevation: 24,
+      child: Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              "Feedback for Booking #$bookingId",
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0B3470),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.rate_review_outlined,
+                size: 32,
+                color: Theme.of(context).primaryColor,
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'How satisfied are you with the service?',
-              style: TextStyle(fontSize: 16),
-            ),
             const SizedBox(height: 20),
+            Text(
+              "How was your experience?",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                color: const Color(0xFF1E293B),
+                letterSpacing: -0.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Booking #$bookingId",
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 32),
 
             // Horizontal row of circular feedback buttons
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Good feedback button
-                Column(
-                  children: [
-                    InkWell(
-                      onTap: () => _submitFeedback(context, "Good"),
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.green, width: 2),
-                        ),
-                        child: const Center(
-                          child: Text('😊', style: TextStyle(fontSize: 24)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Good',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ],
+                _buildFeedbackOption(
+                  context,
+                  emoji: '😞',
+                  label: "Poor",
+                  color: Colors.red,
+                  onTap: () => _submitFeedback(context, "Not Satisfied"),
                 ),
-
-                // Ok feedback button
-                Column(
-                  children: [
-                    InkWell(
-                      onTap: () => _submitFeedback(context, "Ok"),
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.orange, width: 2),
-                        ),
-                        child: const Center(
-                          child: Text('😐', style: TextStyle(fontSize: 24)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Ok',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ],
+                _buildFeedbackOption(
+                  context,
+                  emoji: '😐',
+                  label: "Okay",
+                  color: Colors.orange,
+                  onTap: () => _submitFeedback(context, "Ok"),
                 ),
-
-                // Not Satisfied feedback button
-                Column(
-                  children: [
-                    InkWell(
-                      onTap: () => _submitFeedback(context, "Not Satisfied"),
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.red, width: 2),
-                        ),
-                        child: const Center(
-                          child: Text('😞', style: TextStyle(fontSize: 24)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Not Satisfied',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ],
+                _buildFeedbackOption(
+                  context,
+                  emoji: '😊',
+                  label: "Good",
+                  color: Colors.green,
+                  onTap: () => _submitFeedback(context, "Good"),
                 ),
               ],
             ),
 
-            const SizedBox(height: 20),
-            Divider(color: Colors.grey.shade300),
-            const SizedBox(height: 12),
+            const SizedBox(height: 32),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               child: const Text(
                 "Maybe Later",
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeedbackOption(
+    BuildContext context, {
+    required String emoji,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: 80,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withOpacity(0.1), width: 1),
+        ),
+        child: Column(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 32)),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: color.withOpacity(0.8),
               ),
             ),
           ],
@@ -1352,12 +1517,14 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: const Color.fromARGB(255, 223, 224, 224),
         appBar: _buildAppBar(),
         body: isLoading
             ? Center(
-                child: CircularProgressIndicator(
-                  color: Theme.of(context).primaryColor,
+                child: Lottie.asset(
+                  'assets/loading_animation.json',
+                  width: 100,
+                  repeat: true,
                 ),
               )
             : _buildBody(),
@@ -1368,97 +1535,83 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
   AppBar _buildAppBar() {
     return AppBar(
       automaticallyImplyLeading: false,
-      title: Row(
-        children: [
-          if (ThemeService.instance.logoUrl != null)
-            Container(
-              padding: const EdgeInsets.all(2),
-              margin: const EdgeInsets.only(right: 12),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color:
-                      (Theme.of(context).appBarTheme.foregroundColor ??
-                              Colors.white)
-                          .withOpacity(0.5),
-                  width: 2,
-                ),
-              ),
-              child: CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.white,
-                backgroundImage: NetworkImage(ThemeService.instance.logoUrl!),
-              ),
-            ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  ThemeService.instance.appName.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color:
-                        (Theme.of(context).appBarTheme.foregroundColor ??
-                                Colors.white)
-                            .withOpacity(0.7),
-                    letterSpacing: 2.0,
-                  ),
-                ),
-                Text(
-                  userName,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color:
-                        Theme.of(context).appBarTheme.foregroundColor ??
-                        Colors.white,
-                    letterSpacing: -0.5,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      backgroundColor: Theme.of(context).primaryColor,
+      elevation: 0,
       centerTitle: false,
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).primaryColor,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+      toolbarHeight: 90,
+      title: Padding(
+        padding: const EdgeInsets.only(top: 8.0),
+        child: Row(
+          children: [
+            if (ThemeService.instance.logoUrl != null)
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: 24,
+                  backgroundColor: Colors.white,
+                  backgroundImage: NetworkImage(ThemeService.instance.logoUrl!),
+                ),
+              ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    ThemeService.instance.appName.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white.withOpacity(0.7),
+                      letterSpacing: 2.0,
+                    ),
+                  ),
+                  Text(
+                    "Hello, $userName",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
-      iconTheme: IconThemeData(
-        color: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-      ),
-      elevation: 0,
-      toolbarHeight: 80,
       actions: [
-        Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            shape: BoxShape.circle,
-          ),
-          child: IconButton(
-            icon: Icon(
-              Icons.logout,
-              color:
-                  Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
-              size: 22,
+        Padding(
+          padding: const EdgeInsets.only(right: 12.0, top: 4.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(14),
             ),
-            onPressed: () => handleLogout(context),
-            tooltip: 'Logout',
+            child: IconButton(
+              icon: const Icon(
+                Icons.logout_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              onPressed: () => handleLogout(context),
+              tooltip: 'Logout',
+            ),
           ),
         ),
       ],
@@ -1466,64 +1619,63 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
   }
 
   Widget _buildBody() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-      ),
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Decoration (matching Track My Service style)
+          _buildHeaderDecoration(),
+
           // Welcome Section
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Theme.of(context).shadowColor.withOpacity(0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 20, 28, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Welcome back,',
+                  'WELCOME BACK',
                   style: TextStyle(
-                    fontSize: 18,
-                    color: Theme.of(context).hintColor,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                    color: Theme.of(context).primaryColor.withOpacity(0.6),
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  userName,
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF1E293B),
+                    letterSpacing: -1.0,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  userName,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
                     color: Theme.of(context).primaryColor,
-                    letterSpacing: 0.5,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Manage your maintenance services efficiently',
+                const SizedBox(height: 20),
+                const Text(
+                  'How can we help you maintain your balance today?',
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Theme.of(context).hintColor,
-                    fontWeight: FontWeight.w400,
+                    fontSize: 16,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
+                    height: 1.4,
                   ),
                 ),
               ],
             ),
           ),
+
+          const SizedBox(height: 32),
 
           const SizedBox(height: 32),
 
@@ -1534,9 +1686,9 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
               children: [
                 Expanded(
                   child: _buildActionCard(
-                    icon: Icons.add_circle_outline,
+                    icon: Icons.add_rounded,
                     title: 'Add Device',
-                    subtitle: 'Create new maintenance requests',
+                    subtitle: 'Create new requests',
                     onTap: () {
                       Navigator.push(
                         context,
@@ -1556,9 +1708,9 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: _buildActionCard(
-                    icon: Icons.track_changes,
+                    icon: Icons.track_changes_rounded,
                     title: 'Track Service',
-                    subtitle: 'View and manage your requests',
+                    subtitle: 'Manage active requests',
                     onTap: userName != 'Guest'
                         ? () {
                             Navigator.push(
@@ -1572,14 +1724,14 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
                             );
                           }
                         : null,
-                    color: const Color(0xFF2E7D32),
+                    color: const Color(0xFF059669),
                   ),
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: 40),
+          const SizedBox(height: 32),
 
           // Additional Info Section
           Padding(
@@ -1588,23 +1740,38 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
               children: [
                 Expanded(
                   child: _buildInfoCard(
-                    icon: Icons.notifications_active,
+                    icon: Icons.bolt_rounded,
                     title: 'Real-time Updates',
-                    subtitle: 'Get instant notifications',
+                    subtitle: 'Stay notified instantly',
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: _buildInfoCard(
-                    icon: Icons.support_agent,
-                    title: 'Quick Support',
-                    subtitle: '24/7 assistance',
+                    icon: Icons.workspace_premium_rounded,
+                    title: 'Expert Support',
+                    subtitle: 'Professionals at duty',
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 40),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderDecoration() {
+    return Container(
+      width: double.infinity,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Theme.of(context).primaryColor,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(40),
+          bottomRight: Radius.circular(40),
+        ),
       ),
     );
   }
@@ -1616,83 +1783,73 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
     required VoidCallback? onTap,
     required Color color,
   }) {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      shadowColor: color.withOpacity(0.3),
-      child: Container(
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.4),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: onTap,
-            splashColor: Colors.white.withOpacity(0.2),
-            highlightColor: Colors.white.withOpacity(0.1),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, color: Colors.white, size: 26),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(28),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(28),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                    textAlign: TextAlign.center,
+                  child: Icon(icon, color: color, size: 28),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF1E293B),
+                    letterSpacing: -0.5,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withOpacity(0.8),
-                      fontWeight: FontWeight.w400,
-                    ),
-                    textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
+                    height: 1.3,
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 2,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Text(
+                      "Explore",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                      ),
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.arrow_forward,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_rounded, color: color, size: 14),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
@@ -1705,59 +1862,41 @@ class _AMCCustomerMainPageState extends State<AMCCustomerMainPage> {
     required String title,
     required String subtitle,
   }) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).shadowColor.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white, width: 2),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            color: Theme.of(context).primaryColor.withOpacity(0.4),
+            size: 24,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1E293B),
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: Theme.of(context).primaryColor,
-                size: 20,
-              ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 11,
+              color: Color(0xFF94A3B8),
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).primaryColor,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 10,
-                color: Theme.of(context).primaryColor.withOpacity(0.6),
-                fontWeight: FontWeight.w400,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
