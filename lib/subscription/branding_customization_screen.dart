@@ -12,21 +12,23 @@ import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class BrandingCustomizationScreen extends StatefulWidget {
-  final String planName;
-  final bool isYearly;
-  final int price;
+  final String? planName;
+  final bool? isYearly;
+  final int? price;
   final int? originalPrice;
-  final String paymentMethod;
-  final String transactionId;
+  final String? paymentMethod;
+  final String? transactionId;
+  final bool isEditMode;
 
   const BrandingCustomizationScreen({
     super.key,
-    required this.planName,
-    required this.isYearly,
-    required this.price,
+    this.planName,
+    this.isYearly,
+    this.price,
     this.originalPrice,
-    required this.paymentMethod,
-    required this.transactionId,
+    this.paymentMethod,
+    this.transactionId,
+    this.isEditMode = false,
   });
 
   @override
@@ -41,6 +43,7 @@ class _BrandingCustomizationScreenState
   Color _secondaryColor = Colors.amber;
   Color _backgroundColor = Colors.white; // Fixed to white as per requirements
   File? _logoFile;
+  String? _existingLogoUrl;
   final bool _useDarkMode = false; // Fixed to false as per requirements
 
   String _selectedFont = 'Roboto';
@@ -129,6 +132,11 @@ class _BrandingCustomizationScreenState
     _backgroundColor = Colors.white; // Requirement: Fixed to white
     _selectedFont = theme.fontFamily;
     _appNameController.text = theme.appName;
+
+    // Pre-fill existing logo URL in edit mode
+    if (widget.isEditMode && theme.logoUrl != null) {
+      _existingLogoUrl = theme.logoUrl;
+    }
 
     // Try to find if current colors match a preset
     _selectedThemeIndex = _presetThemes.length; // Default to Custom
@@ -367,6 +375,32 @@ class _BrandingCustomizationScreenState
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: Image.file(_logoFile!, fit: BoxFit.contain),
+                  )
+                : _existingLogoUrl != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.network(
+                      _existingLogoUrl!,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.cloud_upload_outlined,
+                            size: 48,
+                            color: Colors.deepPurple.shade300,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Tap to change logo',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   )
                 : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -861,13 +895,17 @@ class _BrandingCustomizationScreenState
           showDialog(
             context: context,
             barrierDismissible: false,
-            builder: (context) => const AlertDialog(
+            builder: (context) => AlertDialog(
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Finalizing subscription...'),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    widget.isEditMode
+                        ? 'Updating profile...'
+                        : 'Finalizing subscription...',
+                  ),
                 ],
               ),
             ),
@@ -894,11 +932,7 @@ class _BrandingCustomizationScreenState
             );
             print('BrandingCustomizationScreen: logoFile=${_logoFile?.path}');
 
-            // Generate Referral Code
-            final referralCode = _generateReferralCode();
-            brandingData['referralCode'] = referralCode;
-
-            // Upload logo if exists
+            // Upload logo if a new file was picked
             if (_logoFile != null) {
               print('BrandingCustomizationScreen: Starting logo upload...');
               final logoUrl = await StorageService.instance.uploadLogo(
@@ -908,124 +942,185 @@ class _BrandingCustomizationScreenState
               if (logoUrl != null) {
                 brandingData['logoUrl'] = logoUrl;
               }
+            } else if (_existingLogoUrl != null) {
+              // Keep existing logo URL if no new file was picked
+              brandingData['logoUrl'] = _existingLogoUrl!;
             }
 
-            // 1. Save to App-Specific Collection
-            await FirestoreService.instance.saveAppBranding(
-              tenantId: ThemeService.instance.databaseName,
-              appId: _appNameController.text,
-              brandingData: brandingData,
-            );
+            if (widget.isEditMode) {
+              // --- Edit Mode: Only update branding data ---
 
-            // Also save to default 'data' location for simplified lookups during login
-            await FirestoreService.instance.saveAppBranding(
-              tenantId: ThemeService.instance.databaseName,
-              appId: 'data',
-              brandingData: brandingData,
-            );
+              // Save to App-Specific Collection
+              await FirestoreService.instance.saveAppBranding(
+                tenantId: ThemeService.instance.databaseName,
+                appId: _appNameController.text,
+                brandingData: brandingData,
+              );
 
-            // 2. Save Referral Code Mapping
-            await FirestoreService.instance.saveReferralCode(
-              code: referralCode,
-              tenantId: ThemeService.instance.databaseName,
-              appId: _appNameController.text,
-              adminUid: uid,
-            );
+              // Also save to default 'data' location
+              await FirestoreService.instance.saveAppBranding(
+                tenantId: ThemeService.instance.databaseName,
+                appId: 'data',
+                brandingData: brandingData,
+              );
 
-            // 3. Save Full Subscription with Branding (linked to user)
-            await FirestoreService.instance.upsertSubscription(
-              uid: uid,
-              tenantId: ThemeService.instance.databaseName,
-              appId: _appNameController.text,
-              planName: widget.planName,
-              isYearly: widget.isYearly,
-              price: widget.price,
-              originalPrice: widget.originalPrice,
-              paymentMethod: widget.paymentMethod,
-              brandingData: brandingData,
-            );
+              // Update App Theme
+              ThemeService.instance.updateTheme(
+                primary: _primaryColor,
+                secondary: _secondaryColor,
+                backgroundColor: _backgroundColor,
+                isDarkMode: _useDarkMode,
+                fontFamily: _selectedFont,
+                appName: _appNameController.text,
+                databaseName: ThemeService.instance.databaseName,
+                logoUrl: brandingData['logoUrl'] as String?,
+              );
 
-            // 4. Update Global User Directory (Link Admin to this App)
-            await FirestoreService.instance.saveUserDirectory(
-              uid: uid,
-              tenantId: ThemeService.instance.databaseName,
-              role: 'admin',
-              appName: _appNameController.text, // Fix: Pass appName
-            );
+              if (!mounted) return;
+              Navigator.pop(context); // Close loading
 
-            // Update App Theme
-            ThemeService.instance.updateTheme(
-              primary: _primaryColor,
-              secondary: _secondaryColor,
-              backgroundColor: _backgroundColor,
-              isDarkMode: _useDarkMode,
-              fontFamily: _selectedFont,
-              appName: _appNameController.text,
-              databaseName: ThemeService.instance.databaseName,
-              logoUrl: brandingData['logoUrl'] as String?,
-            );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Profile updated successfully!'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
 
-            if (!mounted) return;
-            Navigator.pop(context); // Close loading
+              // Use pushReplacement to force a full rebuild of the dashboard
+              // with the updated branding colors and app name
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const admindashboard()),
+              );
+            } else {
+              // --- First-time Setup Mode ---
 
-            // Show Success Dialog with Referral Code
-            await showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => AlertDialog(
-                title: const Text('Setup Complete!'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Your application is ready. Share this referral code with your customers so they can register:',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+              // Generate Referral Code
+              final referralCode = _generateReferralCode();
+              brandingData['referralCode'] = referralCode;
+
+              // 1. Save to App-Specific Collection
+              await FirestoreService.instance.saveAppBranding(
+                tenantId: ThemeService.instance.databaseName,
+                appId: _appNameController.text,
+                brandingData: brandingData,
+              );
+
+              // Also save to default 'data' location for simplified lookups during login
+              await FirestoreService.instance.saveAppBranding(
+                tenantId: ThemeService.instance.databaseName,
+                appId: 'data',
+                brandingData: brandingData,
+              );
+
+              // 2. Save Referral Code Mapping
+              await FirestoreService.instance.saveReferralCode(
+                code: referralCode,
+                tenantId: ThemeService.instance.databaseName,
+                appId: _appNameController.text,
+                adminUid: uid,
+              );
+
+              // 3. Save Full Subscription with Branding (linked to user)
+              await FirestoreService.instance.upsertSubscription(
+                uid: uid,
+                tenantId: ThemeService.instance.databaseName,
+                appId: _appNameController.text,
+                planName: widget.planName!,
+                isYearly: widget.isYearly!,
+                price: widget.price!,
+                originalPrice: widget.originalPrice,
+                paymentMethod: widget.paymentMethod!,
+                brandingData: brandingData,
+              );
+
+              // 4. Update Global User Directory (Link Admin to this App)
+              await FirestoreService.instance.saveUserDirectory(
+                uid: uid,
+                tenantId: ThemeService.instance.databaseName,
+                role: 'admin',
+                appName: _appNameController.text,
+              );
+
+              // 5. Activate the user after successful subscription
+              await FirestoreService.instance.setUserActiveStatus(
+                uid: uid,
+                tenantId: ThemeService.instance.databaseName,
+                active: true,
+              );
+
+              // Update App Theme
+              ThemeService.instance.updateTheme(
+                primary: _primaryColor,
+                secondary: _secondaryColor,
+                backgroundColor: _backgroundColor,
+                isDarkMode: _useDarkMode,
+                fontFamily: _selectedFont,
+                appName: _appNameController.text,
+                databaseName: ThemeService.instance.databaseName,
+                logoUrl: brandingData['logoUrl'] as String?,
+              );
+
+              if (!mounted) return;
+              Navigator.pop(context); // Close loading
+
+              // Show Success Dialog with Referral Code
+              await showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => AlertDialog(
+                  title: const Text('Setup Complete!'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Your application is ready. Share this referral code with your customers so they can register:',
+                        textAlign: TextAlign.center,
                       ),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      child: Text(
-                        referralCode,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Text(
+                          referralCode,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'You can verify this later in your dashboard.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'You can verify this later in your dashboard.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Let\'s Go'),
                     ),
                   ],
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Let\'s Go'),
-                  ),
-                ],
-              ),
-            );
+              );
 
-            if (!mounted) return;
-            // Navigate to Main App
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const admindashboard(),
-              ), // Go to Home
-              (route) => false,
-            );
+              if (!mounted) return;
+              // Navigate directly to Admin Dashboard
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const admindashboard()),
+                (route) => false,
+              );
+            }
           } catch (e) {
             if (mounted) {
               Navigator.pop(context); // Close loading
@@ -1041,9 +1136,9 @@ class _BrandingCustomizationScreenState
             borderRadius: BorderRadius.circular(16),
           ),
         ),
-        child: const Text(
-          'Complete Setup',
-          style: TextStyle(
+        child: Text(
+          widget.isEditMode ? 'Update Profile' : 'Complete Setup',
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Colors.white,

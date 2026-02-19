@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:crypto/crypto.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Service to interact with ICICI Payment Gateway UAT APIs.
 ///
@@ -220,6 +221,43 @@ class IciciService {
     } catch (e) {
       debugPrint('ICICI initiateRefund error: $e');
       return null;
+    }
+  }
+
+  /// Save a payment transaction record to Firestore.
+  ///
+  /// This creates a record under `payment_transactions` collection
+  /// for audit and admin visibility.
+  Future<void> saveTransaction({
+    required String uid,
+    required String merchantTxnNo,
+    required String amount,
+    required String status,
+    required String paymentMethod,
+    String? planName,
+    bool? isYearly,
+    Map<String, dynamic>? additionalData,
+  }) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('payment_transactions')
+          .doc(merchantTxnNo)
+          .set({
+            'uid': uid,
+            'merchantTxnNo': merchantTxnNo,
+            'amount': amount,
+            'status': status,
+            'paymentMethod': paymentMethod,
+            'planName': planName,
+            'isYearly': isYearly,
+            'timestamp': FieldValue.serverTimestamp(),
+            'createdAt': DateTime.now().toIso8601String(),
+            if (additionalData != null) ...additionalData,
+          });
+
+      debugPrint('Transaction saved to Firestore: $merchantTxnNo');
+    } catch (e) {
+      debugPrint('Error saving transaction to Firestore: $e');
     }
   }
 }

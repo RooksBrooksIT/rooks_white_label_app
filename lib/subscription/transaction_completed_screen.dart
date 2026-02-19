@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'branding_customization_screen.dart';
-import '../frontend/screens/app_main_page.dart';
 
 class TransactionCompletedScreen extends StatelessWidget {
   final String planName;
@@ -176,34 +175,8 @@ class TransactionCompletedScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
+
                 // Secondary Action Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 60,
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (_) => const AppMainPage()),
-                        (route) => false,
-                      );
-                    },
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.black54,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Text(
-                      'GO TO DASHBOARD',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
@@ -21,6 +22,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _referralCodeController = TextEditingController(); // For customers
   final String _selectedRole = 'admin';
   bool _isLoading = false;
@@ -32,6 +34,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _referralCodeController.dispose();
@@ -67,17 +70,20 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       }
     }
 
+    final phone = _phoneController.text.trim();
+    final Map<String, dynamic> extraData = {
+      if (phone.isNotEmpty) 'phone': phone,
+      if (linkedAppName != null) 'linkedAppName': linkedAppName,
+      if (linkedAppName != null)
+        'referralCode': _referralCodeController.text.trim(),
+    };
+
     final result = await AuthStateService.instance.registerUser(
       name: _nameController.text.trim(),
       email: _emailController.text.trim(),
       password: _passwordController.text.trim(),
       role: _selectedRole,
-      additionalData: linkedAppName != null
-          ? {
-              'linkedAppName': linkedAppName,
-              'referralCode': _referralCodeController.text.trim(),
-            }
-          : null,
+      additionalData: extraData.isNotEmpty ? extraData : null,
     );
 
     if (!mounted) return;
@@ -338,6 +344,23 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           ),
           const SizedBox(height: 24),
           _buildFormTextField(
+            label: 'Phone Number',
+            controller: _phoneController,
+            icon: Icons.phone_outlined,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Enter phone number';
+              if (v.length != 10)
+                return 'Phone number must be exactly 10 digits';
+              return null;
+            },
+          ),
+          const SizedBox(height: 24),
+          _buildFormTextField(
             label: 'Secure Password',
             controller: _passwordController,
             icon: Icons.lock_outline,
@@ -373,6 +396,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     bool obscureText = false,
     Widget? suffixIcon,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) {
     return Column(
@@ -391,6 +415,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           validator: validator,
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: Colors.black87),

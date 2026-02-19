@@ -24,6 +24,7 @@ import 'package:flutter/services.dart';
 
 import 'package:subscription_rooks_app/backend/screens/admin_dashboard.dart';
 import 'package:subscription_rooks_app/services/notification_service.dart';
+import 'package:subscription_rooks_app/subscription/branding_customization_screen.dart';
 
 class admindashboard extends StatefulWidget {
   const admindashboard({super.key});
@@ -59,6 +60,18 @@ class _admindashboardState extends State<admindashboard> {
     _initStreams();
     _loadAdminData();
     NotificationService.instance.initialize();
+    // Listen to ThemeService changes so colors/appName update reactively
+    ThemeService.instance.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    ThemeService.instance.removeListener(_onThemeChanged);
+    super.dispose();
   }
 
   void _initStreams() {
@@ -449,7 +462,7 @@ class _admindashboardState extends State<admindashboard> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            'Welcome backs,',
+                            ThemeService.instance.appName,
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.8),
                               fontSize: 14,
@@ -828,10 +841,11 @@ class _admindashboardState extends State<admindashboard> {
                   subtitle: 'Manage your profile',
                   onTap: () {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Profile management coming soon!'),
-                        behavior: SnackBarBehavior.floating,
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const BrandingCustomizationScreen(isEditMode: true),
                       ),
                     );
                   },

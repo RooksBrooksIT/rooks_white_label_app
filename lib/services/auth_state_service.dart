@@ -7,6 +7,7 @@ import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_dashboard.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_dashboard_page.dart';
+import 'package:subscription_rooks_app/subscription/subscription_plans_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/amc_main_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_login_page.dart';
@@ -101,6 +102,7 @@ class AuthStateService extends ChangeNotifier {
         'role': role,
         'registeredAt': FieldValue.serverTimestamp(),
         'isApproved': role == 'admin' ? true : false,
+        'active': false, // User starts inactive until subscription is completed
         'tenantId': targetScope, // Store the tenant ID or scope
         ...?additionalData,
       };
@@ -243,6 +245,25 @@ class AuthStateService extends ChangeNotifier {
 
       final userData = doc.data() as Map<String, dynamic>;
       final role = userData['role'] ?? 'user';
+
+      // For admin users, check if they have an active subscription
+      // (non-admin users like engineers and customers don't need subscriptions)
+      if (role == 'admin' || role == 'Owner') {
+        // Use the appName from metadata as the appId — subscriptions are stored
+        // under {tenantId}/{appName}/subscriptions/{uid}
+        final appId = metadata?['appName'] as String?;
+        final hasSubscription = await FirestoreService.instance
+            .hasActiveSubscription(uid: uid, tenantId: scope, appId: appId);
+        if (!hasSubscription) {
+          // Return success but flag that subscription is needed
+          return {
+            'success': true,
+            'userData': userData,
+            'needsSubscription': true,
+          };
+        }
+      }
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_kIsRegistered, true); // Ensure this is set
       await prefs.setString(_kUserRole, role);
@@ -339,6 +360,20 @@ class AuthStateService extends ChangeNotifier {
               await prefs.setString('appName', metadata['name'] ?? '');
             }
 
+            // Check subscription before allowing dashboard access
+            // appId must match the app name used when saving the subscription
+            final effectiveTenant =
+                tenantId ?? ThemeService.instance.databaseName;
+            final appId = metadata['appName'] as String?;
+            final hasSubscription = await FirestoreService.instance
+                .hasActiveSubscription(
+                  uid: user.uid,
+                  tenantId: effectiveTenant,
+                  appId: appId,
+                );
+            if (!hasSubscription) {
+              return const SubscriptionPlansScreen();
+            }
             return const admindashboard();
           } else if (role == 'engineer') {
             final name = metadata['name'] ?? metadata['Username'] ?? '';
@@ -360,6 +395,22 @@ class AuthStateService extends ChangeNotifier {
         if (adminTenantId != null) {
           // Sync branding for the found session
           await FirestoreService.instance.syncBranding(adminTenantId);
+
+          // Check subscription before allowing dashboard access
+          // appId must match the app name used when saving the subscription
+          final uid = auth.currentUser?.uid;
+          final appId = prefs.getString('appName');
+          if (uid != null) {
+            final hasSubscription = await FirestoreService.instance
+                .hasActiveSubscription(
+                  uid: uid,
+                  tenantId: adminTenantId,
+                  appId: appId,
+                );
+            if (!hasSubscription) {
+              return const SubscriptionPlansScreen();
+            }
+          }
         }
         return const admindashboard();
       }

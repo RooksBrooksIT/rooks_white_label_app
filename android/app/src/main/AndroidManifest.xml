@@ -16,6 +16,7 @@
         android:label="subscription_rooks_app"
         android:name="${applicationName}"
         android:enableOnBackInvokedCallback="true"
+        android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher">
 
         <!-- Default Notification Channel Metadata -->
@@ -68,6 +69,23 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- UPI Intent Queries (needed for Android 11+) -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="upi"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="tez"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="phonepe"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="paytm"/>
         </intent>
     </queries>
 </manifest>

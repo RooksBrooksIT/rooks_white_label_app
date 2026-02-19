@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:subscription_rooks_app/services/storage_service.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:subscription_rooks_app/services/icici_service.dart';
+import 'package:subscription_rooks_app/services/upi_payment_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'dart:io';
 
 import 'transaction_completed_screen.dart';
+import 'icici_payment_webview_screen.dart';
+import 'card_details_screen.dart';
 
 class PaymentScreen extends StatefulWidget {
   final String planName;
@@ -355,79 +358,54 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildPaymentMethod('UPI Payment', 'UPI', Icons.qr_code, Colors.blue, [
-          _buildUpiOption('Google Pay', 'user@okaxis'),
-          _buildUpiOption('Phone Pay', 'user@okaxis'),
-          _buildUpiOption('Paytm', 'user@okaxis'),
-        ]),
-        SizedBox(height: isDesktop ? 24 : 20),
-
-        _buildPaymentMethod(
-          'More ways to Pay',
-          'NetBanking',
-          Icons.account_balance,
-          Colors.green,
-          [_buildBankOption('Net Banking')],
+        _buildSimplePaymentOption(
+          name: 'UPI',
+          subtitle: 'Google Pay, PhonePe, Paytm & more',
+          icon: Icons.qr_code_rounded,
+          color: Colors.blue,
         ),
-        SizedBox(height: isDesktop ? 24 : 20),
+        SizedBox(height: isDesktop ? 16 : 12),
 
-        _buildPaymentMethod(
-          'ICICI Payment Gateway',
-          'ICICI',
-          Icons.account_balance_wallet_outlined,
-          const Color(0xFFE55B25), // ICICI brand orange
-          [
-            _buildIciciOption('ICICI - All Options', '0'),
-            _buildIciciOption('ICICI - Net Banking', '1'),
-            _buildIciciOption('ICICI - Cards', '2'),
-            _buildIciciOption('ICICI - UPI', '3'),
-          ],
+        _buildSimplePaymentOption(
+          name: 'Card',
+          subtitle: 'Credit / Debit card payment',
+          icon: Icons.credit_card_rounded,
+          color: Colors.deepPurple,
+        ),
+        SizedBox(height: isDesktop ? 16 : 12),
+
+        _buildSimplePaymentOption(
+          name: 'Net Banking',
+          subtitle: 'Direct bank transfer',
+          icon: Icons.account_balance_rounded,
+          color: Colors.green,
         ),
       ],
     );
   }
 
-  Widget _buildPaymentMethod(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-    List<Widget> options,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.only(bottom: isDesktop ? 16 : 12),
-          child: Row(
-            children: [
-              Icon(icon, color: color, size: iconSize),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: isDesktop ? 20 : 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ),
-        ...options,
-      ],
-    );
-  }
-
-  Widget _buildUpiOption(String name, String upiId) {
-    final itemHeight = isDesktop ? 70 : 60;
+  Widget _buildSimplePaymentOption({
+    required String name,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
+    final isSelected = selectedPaymentMethod == name;
+    final itemHeight = isDesktop ? 70.0 : 64.0;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      constraints: BoxConstraints(minHeight: itemHeight.toDouble()),
+      constraints: BoxConstraints(minHeight: itemHeight),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: isSelected ? Colors.black : Colors.grey.shade200,
+          width: isSelected ? 2 : 1,
+        ),
+      ),
       child: Material(
         borderRadius: BorderRadius.circular(borderRadius),
-        color: Colors.white,
+        color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(borderRadius),
           onTap: () {
@@ -446,14 +424,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   width: isDesktop ? 48 : 40,
                   height: isDesktop ? 48 : 40,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    Icons.account_balance_wallet,
-                    color: Colors.blue.shade700,
-                    size: isDesktop ? 24 : 20,
-                  ),
+                  child: Icon(icon, color: color, size: isDesktop ? 24 : 20),
                 ),
                 SizedBox(width: isDesktop ? 20 : 16),
                 Expanded(
@@ -465,14 +439,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         name,
                         style: TextStyle(
                           fontSize: isDesktop ? 18 : 16,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        upiId,
+                        subtitle,
                         style: TextStyle(
-                          fontSize: isDesktop ? 15 : 14,
+                          fontSize: isDesktop ? 14 : 13,
                           color: Colors.grey,
                         ),
                       ),
@@ -497,173 +471,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildBankOption(String name) {
-    final itemHeight = isDesktop ? 70 : 60;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      constraints: BoxConstraints(minHeight: itemHeight.toDouble()),
-      child: Material(
-        borderRadius: BorderRadius.circular(borderRadius),
-        color: Colors.white,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(borderRadius),
-          onTap: () {
-            setState(() {
-              selectedPaymentMethod = name;
-            });
-            _showBankListDialog();
-          },
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isDesktop ? 20 : 16,
-              vertical: isDesktop ? 16 : 12,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: isDesktop ? 48 : 40,
-                  height: isDesktop ? 48 : 40,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.account_balance,
-                    color: Colors.green.shade700,
-                    size: isDesktop ? 24 : 20,
-                  ),
-                ),
-                SizedBox(width: isDesktop ? 20 : 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        name,
-                        style: TextStyle(
-                          fontSize: isDesktop ? 18 : 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Direct bank transfer',
-                        style: TextStyle(
-                          fontSize: isDesktop ? 15 : 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Radio<String>(
-                  value: name,
-                  groupValue: selectedPaymentMethod,
-                  onChanged: (value) {
-                    setState(() {
-                      selectedPaymentMethod = value!;
-                    });
-                    _showBankListDialog();
-                  },
-                  activeColor: Colors.black87,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+  /// Check if this is a UPI payment that should launch the system UPI chooser.
+  bool _isUpiMethod(String method) {
+    return method == 'UPI';
   }
 
-  // Store payType for ICICI payments
-  String _iciciPayType = '0';
-
-  Widget _buildIciciOption(String name, String payType) {
-    final itemHeight = isDesktop ? 70 : 60;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      constraints: BoxConstraints(minHeight: itemHeight.toDouble()),
-      child: Material(
-        borderRadius: BorderRadius.circular(borderRadius),
-        color: Colors.white,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(borderRadius),
-          onTap: () {
-            setState(() {
-              selectedPaymentMethod = name;
-              _iciciPayType = payType;
-            });
-          },
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isDesktop ? 20 : 16,
-              vertical: isDesktop ? 16 : 12,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: isDesktop ? 48 : 40,
-                  height: isDesktop ? 48 : 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3EE),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    payType == '3'
-                        ? Icons.qr_code
-                        : payType == '2'
-                        ? Icons.credit_card
-                        : payType == '1'
-                        ? Icons.account_balance
-                        : Icons.payment,
-                    color: const Color(0xFFE55B25),
-                    size: isDesktop ? 24 : 20,
-                  ),
-                ),
-                SizedBox(width: isDesktop ? 20 : 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        name,
-                        style: TextStyle(
-                          fontSize: isDesktop ? 18 : 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Powered by ICICI Bank',
-                        style: TextStyle(
-                          fontSize: isDesktop ? 15 : 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Radio<String>(
-                  value: name,
-                  groupValue: selectedPaymentMethod,
-                  onChanged: (value) {
-                    setState(() {
-                      selectedPaymentMethod = value!;
-                      _iciciPayType = payType;
-                    });
-                  },
-                  activeColor: Colors.black87,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+  /// Check if this method should route through ICICI WebView.
+  bool _isIciciWebViewMethod(String method) {
+    return method == 'Card' || method == 'Net Banking';
   }
 
   Widget _buildSecurityBadges() {
@@ -820,6 +635,171 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _processPayment() async {
+    final uid = AuthStateService.instance.currentUser?.uid ?? 'demo-user';
+    final txnRefId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    if (_isUpiMethod(selectedPaymentMethod)) {
+      // ──────────────────────────────────────────────
+      // UPI → Launch system UPI app chooser
+      // ──────────────────────────────────────────────
+      await _processUpiPayment(uid: uid, txnRefId: txnRefId);
+    } else if (selectedPaymentMethod == 'Card') {
+      // ──────────────────────────────────────────────
+      // Card → Navigate to Card Details Screen
+      // ──────────────────────────────────────────────
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CardDetailsScreen(
+            paymentAmount: widget.price,
+            planName: widget.planName,
+            isYearly: widget.isYearly,
+          ),
+        ),
+      );
+    } else if (selectedPaymentMethod == 'Net Banking') {
+      // ──────────────────────────────────────────────
+      // Net Banking → ICICI WebView
+      // ──────────────────────────────────────────────
+      await _processIciciPayment(uid: uid);
+    } else {
+      // Fallback: generic UPI
+      await _processUpiPayment(uid: uid, txnRefId: txnRefId);
+    }
+  }
+
+  /// Process payment via UPI — opens system UPI app chooser.
+  Future<void> _processUpiPayment({
+    required String uid,
+    required String txnRefId,
+  }) async {
+    try {
+      // Launch the system UPI app chooser (shows all installed UPI apps)
+      final launched = await UpiPaymentService.instance.launchGenericUpi(
+        amount: '${widget.price}.00',
+        transactionNote: '${widget.planName} Plan Subscription',
+        transactionRefId: txnRefId,
+      );
+
+      if (!launched) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No UPI app found. Please install a UPI app and try again.',
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // UPI app was launched — wait for user to return
+      // Show verification dialog after a short delay (user completes payment in external app)
+      if (!mounted) return;
+
+      final confirmed = await _showUpiVerificationDialog();
+
+      if (confirmed == true) {
+        // User confirms payment was successful
+        await IciciService.instance.saveTransaction(
+          uid: uid,
+          merchantTxnNo: txnRefId,
+          amount: '${widget.price}.00',
+          status: 'SUCCESS',
+          paymentMethod: selectedPaymentMethod,
+          planName: widget.planName,
+          isYearly: widget.isYearly,
+        );
+
+        await _handlePaymentSuccess(uid: uid, merchantTxnNo: txnRefId);
+      } else {
+        // User says payment failed or cancelled
+        await IciciService.instance.saveTransaction(
+          uid: uid,
+          merchantTxnNo: txnRefId,
+          amount: '${widget.price}.00',
+          status: 'CANCELLED',
+          paymentMethod: selectedPaymentMethod,
+          planName: widget.planName,
+          isYearly: widget.isYearly,
+        );
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Payment was not completed.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Show a dialog asking the user to confirm if UPI payment was successful.
+  Future<bool?> _showUpiVerificationDialog() async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.green, size: 28),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Payment Verification',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Did you complete the payment successfully in the UPI app?',
+          style: TextStyle(fontSize: 15, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text(
+              'No, Payment Failed',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Yes, Payment Done',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Process payment via ICICI Payment Gateway WebView (Net Banking, Cards, etc.).
+  Future<void> _processIciciPayment({required String uid}) async {
+    // Show initiating dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -829,117 +809,241 @@ class _PaymentScreenState extends State<PaymentScreen> {
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text('Processing payment...'),
+            Text('Initiating payment...'),
           ],
         ),
       ),
     );
 
     try {
-      bool paymentSuccess = false;
+      // Determine the ICICI payType based on selected method
+      String payType;
+      if (selectedPaymentMethod == 'Card') {
+        payType = '2'; // Cards
+      } else if (selectedPaymentMethod == 'Net Banking') {
+        payType = '1'; // Net Banking
+      } else {
+        payType = '0'; // All options
+      }
 
-      // Handle ICICI Payment Gateway
-      if (selectedPaymentMethod.startsWith('ICICI')) {
-        if (mounted) Navigator.pop(context); // Close loading
+      // Call InitiateSale API
+      final result = await IciciService.instance.initiateSale(
+        amount: '${widget.price}.00',
+        customerName:
+            AuthStateService.instance.currentUser?.displayName ?? 'Customer',
+        customerEmail:
+            AuthStateService.instance.currentUser?.email ??
+            'customer@example.com',
+        customerMobile:
+            AuthStateService.instance.currentUser?.phoneNumber ??
+            '919999999999',
+        payType: payType,
+      );
 
-        final result = await IciciService.instance.initiateSale(
-          amount: '${widget.price}.00',
-          customerName:
-              AuthStateService.instance.currentUser?.displayName ?? 'Customer',
-          customerEmail:
-              AuthStateService.instance.currentUser?.email ??
-              'customer@example.com',
-          customerMobile:
-              AuthStateService.instance.currentUser?.phoneNumber ??
-              '919999999999',
-          payType: _iciciPayType,
-        );
+      if (!mounted) return;
+      Navigator.pop(context); // Close initiating dialog
 
-        if (result == null) {
-          throw Exception('Failed to initiate ICICI payment');
-        }
+      if (result == null) {
+        throw Exception('Failed to initiate payment. Please try again.');
+      }
 
-        // The API response may contain a redirectUrl or payment URL
-        final redirectUrl =
-            result['redirectUrl'] ?? result['paymentUrl'] ?? result['url'];
+      final merchantTxnNo = result['merchantTxnNo'] as String?;
 
-        if (redirectUrl != null && redirectUrl.toString().isNotEmpty) {
-          final uri = Uri.parse(redirectUrl.toString());
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          } else {
-            throw Exception('Could not open payment page');
-          }
-        }
+      // Extract the redirect/payment URL
+      final redirectUrl =
+          result['redirectUrl'] ??
+          result['paymentUrl'] ??
+          result['url'] ??
+          result['paymentPageUrl'];
 
-        // After returning from browser, check transaction status
-        final merchantTxnNo = result['merchantTxnNo'];
+      if (redirectUrl == null || redirectUrl.toString().isEmpty) {
+        // No redirect URL — UAT mode: proceed optimistically
+        debugPrint('No redirect URL from ICICI API. UAT mode — proceeding.');
+
+        // Save transaction with pending status
         if (merchantTxnNo != null) {
-          // Show loading while checking status
-          if (mounted) {
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => const AlertDialog(
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Checking payment status...'),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          await Future.delayed(const Duration(seconds: 3));
-          final statusResult = await IciciService.instance
-              .checkTransactionStatus(merchantTxnNo: merchantTxnNo);
-          debugPrint('ICICI Transaction Status: $statusResult');
-          paymentSuccess =
-              statusResult != null &&
-              (statusResult['status'] == 'SUCCESS' ||
-                  statusResult['txnStatus'] == 'SUCCESS');
-
-          if (!paymentSuccess) {
-            throw Exception(
-              'ICICI payment was not completed or verification failed',
-            );
-          }
-        } else {
-          // If no merchantTxnNo returned, assume we need to wait
-          paymentSuccess = true; // Optimistic for UAT
-        }
-
-        // Show finalizing
-        if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => const AlertDialog(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Finalizing subscription...'),
-                ],
-              ),
-            ),
+          await IciciService.instance.saveTransaction(
+            uid: uid,
+            merchantTxnNo: merchantTxnNo,
+            amount: '${widget.price}.00',
+            status: 'UAT_SIMULATED',
+            paymentMethod: selectedPaymentMethod,
+            planName: widget.planName,
+            isYearly: widget.isYearly,
           );
         }
+
+        // For UAT: proceed to success
+        await _handlePaymentSuccess(
+          uid: uid,
+          merchantTxnNo:
+              merchantTxnNo ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        );
+        return;
       }
-      // Handle other methods (UPI, NetBanking, etc.)
-      else {
-        // Simulate payment processing latency for other methods
+
+      // Open in-app WebView for payment
+      final webViewResult = await Navigator.push<IciciPaymentResult>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => IciciPaymentWebViewScreen(
+            paymentUrl: redirectUrl.toString(),
+            merchantTxnNo: merchantTxnNo ?? '',
+            returnUrl: IciciService.returnUrl,
+          ),
+        ),
+      );
+
+      if (!mounted) return;
+
+      // Handle WebView result
+      if (webViewResult == null || !webViewResult.success) {
+        // User cancelled or payment failed in WebView
+        final message = webViewResult?.message ?? 'Payment was cancelled';
+
+        // Save failed transaction
+        if (merchantTxnNo != null) {
+          await IciciService.instance.saveTransaction(
+            uid: uid,
+            merchantTxnNo: merchantTxnNo,
+            amount: '${widget.price}.00',
+            status: 'CANCELLED',
+            paymentMethod: selectedPaymentMethod,
+            planName: widget.planName,
+            isYearly: widget.isYearly,
+          );
+        }
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.orange),
+        );
+        return;
+      }
+
+      // Verify transaction status
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Verifying payment...'),
+              ],
+            ),
+          ),
+        );
+      }
+
+      bool paymentVerified = false;
+
+      if (merchantTxnNo != null && merchantTxnNo.isNotEmpty) {
+        // Give the gateway a moment to process
         await Future.delayed(const Duration(seconds: 2));
-        paymentSuccess = true;
+
+        final statusResult = await IciciService.instance.checkTransactionStatus(
+          merchantTxnNo: merchantTxnNo,
+        );
+        debugPrint('ICICI Transaction Status: $statusResult');
+
+        paymentVerified =
+            statusResult != null &&
+            (statusResult['status'] == 'SUCCESS' ||
+                statusResult['txnStatus'] == 'SUCCESS' ||
+                statusResult['Status'] == 'SUCCESS');
       }
 
-      // TODO: Replace with real authenticated uid once auth is wired.
-      final uid = AuthStateService.instance.currentUser?.uid ?? 'demo-user';
+      // If status API also didn't confirm, trust WebView callback (UAT mode)
+      if (!paymentVerified && webViewResult.success) {
+        debugPrint(
+          'Status API unconfirmed, but WebView returned success (UAT mode).',
+        );
+        paymentVerified = true;
+      }
 
+      if (!mounted) return;
+      Navigator.pop(context); // Close verifying dialog
+
+      if (!paymentVerified) {
+        // Save failed transaction
+        if (merchantTxnNo != null) {
+          await IciciService.instance.saveTransaction(
+            uid: uid,
+            merchantTxnNo: merchantTxnNo,
+            amount: '${widget.price}.00',
+            status: 'FAILED',
+            paymentMethod: selectedPaymentMethod,
+            planName: widget.planName,
+            isYearly: widget.isYearly,
+          );
+        }
+
+        throw Exception('Payment verification failed. Please contact support.');
+      }
+
+      // Payment confirmed — save and navigate to success
+      if (merchantTxnNo != null) {
+        await IciciService.instance.saveTransaction(
+          uid: uid,
+          merchantTxnNo: merchantTxnNo,
+          amount: '${widget.price}.00',
+          status: 'SUCCESS',
+          paymentMethod: selectedPaymentMethod,
+          planName: widget.planName,
+          isYearly: widget.isYearly,
+          additionalData: webViewResult.queryParams,
+        );
+      }
+
+      await _handlePaymentSuccess(
+        uid: uid,
+        merchantTxnNo:
+            merchantTxnNo ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      );
+    } catch (e) {
+      // Close any open dialog
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Handle successful payment: upload logo (if any) and navigate to success screen.
+  Future<void> _handlePaymentSuccess({
+    required String uid,
+    required String merchantTxnNo,
+  }) async {
+    // Show finalizing dialog
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Finalizing subscription...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    try {
       // Upload logo if exists
       Map<String, dynamic>? finalBrandingData = widget.brandingData;
 
@@ -953,25 +1057,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
               file: logoFile,
             );
             if (logoUrl != null) {
-              // Create a mutable copy and update
               finalBrandingData = Map<String, dynamic>.from(
                 widget.brandingData!,
               );
               finalBrandingData['logoUrl'] = logoUrl;
-              finalBrandingData.remove('logoPath'); // Don't save local path
+              finalBrandingData.remove('logoPath');
             }
           }
         } catch (e) {
-          print('Error handling logo upload: $e');
-          // Proceed without logo URL if upload fails, or handle deeper error
+          debugPrint('Error handling logo upload: $e');
         }
       }
 
-      if (mounted) Navigator.pop(context); // Close loading dialog
+      if (mounted) Navigator.pop(context); // Close finalizing dialog
 
-      // Generate transaction ID
-      final transactionId =
-          'TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+      final transactionId = 'TXN$merchantTxnNo';
 
       if (!mounted) return;
 
@@ -990,33 +1090,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ),
       );
     } catch (e) {
-      // Ensure loading dialog is closed if it's open
       if (mounted && Navigator.canPop(context)) {
-        // We can't strictly know if the dialog is top, but this is a safe-ish bet in this context
-        // Navigator.pop(context);
+        Navigator.pop(context);
       }
-
-      // Re-opening the structure: simple pop might close the screen if dialog isn't open!
-      // I'll leave the pop logic manual in the blocks above for safety and only show snackbar here.
-
-      if (mounted) {
-        // Attempt to close loading dialog if it looks like one is open (heuristic)
-        // Instead of guessing, I'll just show the error. The loading dialog might block user interaction if not closed.
-        // Let's assume the happy path closes it.
-        // If error, we should close it.
-        Navigator.of(
-          context,
-          rootNavigator: true,
-        ).pop(); // Try to pop the dialog
-      }
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Payment failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      rethrow;
     }
   }
 

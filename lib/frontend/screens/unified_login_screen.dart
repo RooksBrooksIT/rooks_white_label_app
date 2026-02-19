@@ -4,6 +4,7 @@ import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/frontend/screens/app_main_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_dashboard.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_dashboard_page.dart';
+import 'package:subscription_rooks_app/subscription/subscription_plans_screen.dart';
 
 class UnifiedLoginScreen extends StatefulWidget {
   const UnifiedLoginScreen({super.key});
@@ -43,6 +44,15 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
     if (result['success']) {
       final role = result['userData']['role'];
 
+      // If loginUser already determined subscription is needed, go there directly
+      if (result['needsSubscription'] == true) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const SubscriptionPlansScreen()),
+        );
+        return;
+      }
+
       Widget nextScreen;
       switch (role) {
         case 'admin':
@@ -59,6 +69,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
           nextScreen = const AppMainPage();
       }
 
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => nextScreen),

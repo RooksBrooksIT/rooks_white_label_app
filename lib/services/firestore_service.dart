@@ -132,6 +132,58 @@ class FirestoreService {
     ).doc(uid).set(data, SetOptions(merge: true));
   }
 
+  /// Check if a user has an active subscription within a tenant
+  /// Also checks if the subscription has expired based on nextBillingAt
+  Future<bool> hasActiveSubscription({
+    required String uid,
+    required String tenantId,
+    String? appId,
+  }) async {
+    try {
+      final doc = await subscriptionsRef(
+        tenantId: tenantId,
+        appId: appId,
+      ).doc(uid).get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        if (data['status'] != 'active') return false;
+
+        // Check if subscription has expired
+        final nextBillingStr = data['nextBillingAt'] as String?;
+        if (nextBillingStr != null) {
+          final nextBilling = DateTime.tryParse(nextBillingStr);
+          if (nextBilling != null && DateTime.now().isAfter(nextBilling)) {
+            // Subscription has expired — mark as expired and deactivate user
+            await subscriptionsRef(
+              tenantId: tenantId,
+              appId: appId,
+            ).doc(uid).update({'status': 'expired'});
+            await setUserActiveStatus(
+              uid: uid,
+              tenantId: tenantId,
+              active: false,
+            );
+            return false;
+          }
+        }
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  /// Set the active status flag on a user document
+  Future<void> setUserActiveStatus({
+    required String uid,
+    required String tenantId,
+    required bool active,
+  }) async {
+    await collection(
+      'users',
+      tenantId: tenantId,
+    ).doc(uid).update({'active': active});
+  }
+
   // Stream subscription for a specific user within a tenant
   Stream<Map<String, dynamic>?> streamSubscription(
     String uid,
