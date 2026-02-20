@@ -14,6 +14,7 @@ import 'package:google_fonts/google_fonts.dart';
 class BrandingCustomizationScreen extends StatefulWidget {
   final String? planName;
   final bool? isYearly;
+  final bool? isSixMonths;
   final int? price;
   final int? originalPrice;
   final String? paymentMethod;
@@ -24,6 +25,7 @@ class BrandingCustomizationScreen extends StatefulWidget {
     super.key,
     this.planName,
     this.isYearly,
+    this.isSixMonths = false,
     this.price,
     this.originalPrice,
     this.paymentMethod,
@@ -1028,6 +1030,7 @@ class _BrandingCustomizationScreenState
                 appId: _appNameController.text,
                 planName: widget.planName!,
                 isYearly: widget.isYearly!,
+                isSixMonths: widget.isSixMonths ?? false,
                 price: widget.price!,
                 originalPrice: widget.originalPrice,
                 paymentMethod: widget.paymentMethod!,

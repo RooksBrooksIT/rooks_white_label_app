@@ -99,20 +99,25 @@ class FirestoreService {
     required String tenantId,
     required String planName,
     required bool isYearly,
+    bool isSixMonths = false,
     required int price,
     int? originalPrice,
     String paymentMethod = 'unknown',
     Map<String, dynamic>? brandingData,
     String? appId,
+    String? customerMobile, // stored for future payment lookups
   }) async {
     final now = DateTime.now();
     final nextBilling = isYearly
         ? DateTime(now.year + 1, now.month, now.day)
-        : DateTime(now.year, now.month + 1, now.day);
+        : (isSixMonths
+              ? DateTime(now.year, now.month + 6, now.day)
+              : DateTime(now.year, now.month + 1, now.day));
 
-    final data = {
+    final data = <String, dynamic>{
       'planName': planName,
       'isYearly': isYearly,
+      'isSixMonths': isSixMonths,
       'price': price,
       'originalPrice': originalPrice,
       'paymentMethod': paymentMethod,
@@ -120,6 +125,8 @@ class FirestoreService {
       'startedAt': now.toIso8601String(),
       'nextBillingAt': nextBilling.toIso8601String(),
       'updatedAt': FieldValue.serverTimestamp(),
+      if (customerMobile != null && customerMobile.isNotEmpty)
+        'customerMobile': customerMobile,
     };
 
     if (brandingData != null) {

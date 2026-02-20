@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:subscription_rooks_app/frontend/screens/admin_Engineer_reports.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_assign_tickets.dart';
@@ -20,11 +22,14 @@ import 'package:subscription_rooks_app/frontend/screens/barcode_identifier.dart'
 import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/services/storage_service.dart';
 import 'package:flutter/services.dart';
 
 import 'package:subscription_rooks_app/backend/screens/admin_dashboard.dart';
 import 'package:subscription_rooks_app/services/notification_service.dart';
 import 'package:subscription_rooks_app/subscription/branding_customization_screen.dart';
+import 'package:subscription_rooks_app/subscription/subscription_plans_screen.dart';
+import 'package:subscription_rooks_app/services/firestore_service.dart';
 
 class admindashboard extends StatefulWidget {
   const admindashboard({super.key});
@@ -43,6 +48,7 @@ class _admindashboardState extends State<admindashboard> {
   String adminEmail = '';
   String referralCode = '';
   DateTime? _lastBackPressed;
+  bool _isUploadingQR = false;
 
   // Dynamic Color Palette from ThemeService
   late Color primaryColor;
@@ -850,6 +856,24 @@ class _admindashboardState extends State<admindashboard> {
                     );
                   },
                 ),
+                _buildDrawerItem(
+                  icon: Icons.workspace_premium_rounded,
+                  title: 'Change Plan',
+                  subtitle: 'Upgrade or switch subscription',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _navigateToChangePlan();
+                  },
+                ),
+                _buildDrawerItem(
+                  icon: Icons.qr_code_2_rounded,
+                  title: 'QR Code Upload',
+                  subtitle: 'Upload payment QR code',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showQRUploadDialog();
+                  },
+                ),
                 const Divider(indent: 20, endIndent: 20),
                 _buildDrawerItem(
                   icon: Icons.logout_rounded,
@@ -972,6 +996,275 @@ class _admindashboardState extends State<admindashboard> {
       trailing: trailing,
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+    );
+  }
+
+  /// Fetches the admin's current plan from Firestore and navigates to the
+  /// SubscriptionPlansScreen with the plan name pre-highlighted.
+  Future<void> _navigateToChangePlan() async {
+    String? currentPlanName;
+    try {
+      final uid = AuthStateService.instance.currentUser?.uid;
+      final tenantId = ThemeService.instance.databaseName;
+      final appId = ThemeService.instance.appName;
+      if (uid != null) {
+        final doc = await FirestoreService.instance
+            .subscriptionsRef(tenantId: tenantId, appId: appId)
+            .doc(uid)
+            .get();
+        if (doc.exists && doc.data() != null) {
+          currentPlanName = doc.data()!['planName'] as String?;
+        }
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SubscriptionPlansScreen(
+          currentPlanName: currentPlanName,
+          hideTrial: true,
+        ),
+      ),
+    );
+  }
+
+  void _showQRUploadDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: !_isUploadingQR,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.qr_code_2_rounded,
+                            color: primaryColor,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'QR Code Upload',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: textColor,
+                                ),
+                              ),
+                              Text(
+                                'Upload a payment QR code for engineers',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: textLightColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Current QR preview
+                    FutureBuilder<String?>(
+                      future: StorageService.instance.getQRCodeUrl(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Container(
+                            height: 180,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: primaryColor,
+                              ),
+                            ),
+                          );
+                        }
+                        if (snapshot.hasData && snapshot.data != null) {
+                          return Column(
+                            children: [
+                              Text(
+                                'Current QR Code',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: textLightColor,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  snapshot.data!,
+                                  height: 180,
+                                  width: 180,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => Icon(
+                                    Icons.broken_image_outlined,
+                                    size: 60,
+                                    color: textLightColor,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Tap below to replace',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: textLightColor,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                        return Container(
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.grey.shade300,
+                              style: BorderStyle.solid,
+                            ),
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.upload_file_outlined,
+                                  size: 40,
+                                  color: textLightColor,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'No QR code uploaded yet',
+                                  style: TextStyle(
+                                    color: textLightColor,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    // Upload button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isUploadingQR
+                            ? null
+                            : () async {
+                                final picker = ImagePicker();
+                                final picked = await picker.pickImage(
+                                  source: ImageSource.gallery,
+                                  imageQuality: 90,
+                                );
+                                if (picked == null) return;
+
+                                setDialogState(() {});
+                                setState(() => _isUploadingQR = true);
+
+                                final file = File(picked.path);
+                                final url = await StorageService.instance
+                                    .uploadQRCode(file: file);
+
+                                setState(() => _isUploadingQR = false);
+
+                                if (context.mounted) {
+                                  Navigator.pop(dialogContext);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        url != null
+                                            ? 'QR code uploaded successfully!'
+                                            : 'Upload failed. Please try again.',
+                                      ),
+                                      backgroundColor: url != null
+                                          ? Colors.green
+                                          : errorColor,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              },
+                        icon: _isUploadingQR
+                            ? SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.upload_rounded,
+                                color: Colors.white,
+                              ),
+                        label: Text(
+                          _isUploadingQR ? 'Uploading...' : 'Upload QR Code',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: textLightColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

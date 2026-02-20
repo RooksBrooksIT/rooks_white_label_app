@@ -1,20 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'transaction_completed_screen.dart';
+import 'icici_payment_webview_screen.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
-
+import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
+import 'package:subscription_rooks_app/services/icici_service.dart';
+import 'package:subscription_rooks_app/services/storage_service.dart';
+import 'dart:io';
 
 class CardDetailsScreen extends StatefulWidget {
   final int paymentAmount;
   final String planName;
   final bool isYearly;
+  final int? originalPrice;
+  final Map<String, dynamic>? brandingData;
 
   const CardDetailsScreen({
     super.key,
     required this.paymentAmount,
     required this.planName,
-    this.isYearly =
-        false, // Default to false if not passed (simplify for now, or require it)
+    this.isYearly = false,
+    this.originalPrice,
+    this.brandingData,
   });
 
   @override
@@ -30,6 +38,7 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
   String _cardNumber = '0000 0000 0000 0000';
   String _expiryDate = 'MM/YY';
   String _cardHolderName = 'CARD HOLDER';
+  bool _isProcessing = false;
 
   @override
   void initState() {
@@ -444,41 +453,312 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
           ),
           elevation: 2,
         ),
-        onPressed: () {
-          // Simulate Payment
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Processing payment...')),
-          );
-
-          Future.delayed(const Duration(seconds: 2), () {
-            if (mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TransactionCompletedScreen(
-                    planName: widget.planName,
-                    isYearly: widget.isYearly,
-                    amountPaid: widget.paymentAmount,
-                    paymentMethod: 'Card',
-                    transactionId:
-                        'TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}',
-                    timestamp: DateTime.now(),
-                  ),
+        onPressed: _isProcessing ? null : _submitCardPayment,
+        child: _isProcessing
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
                 ),
-              );
-            }
-          });
-        },
-        child: Text(
-          'Pay ₹${widget.paymentAmount}',
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+              )
+            : Text(
+                'Pay ₹${widget.paymentAmount}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+      ),
+    );
+  }
+
+  bool _isValidLuhn(String cardNumber) {
+    cardNumber = cardNumber.replaceAll(' ', '');
+    if (cardNumber.isEmpty) return false;
+    int sum = 0;
+    bool alternate = false;
+    for (int i = cardNumber.length - 1; i >= 0; i--) {
+      int n = int.parse(cardNumber[i]);
+      if (alternate) {
+        n *= 2;
+        if (n > 9) n -= 9;
+      }
+      sum += n;
+      alternate = !alternate;
+    }
+    return sum % 10 == 0;
+  }
+
+  bool _isValidExpiry(String expiry) {
+    if (!expiry.contains('/')) return false;
+    final parts = expiry.split('/');
+    if (parts.length != 2) return false;
+    final month = int.tryParse(parts[0]);
+    final year = int.tryParse(parts[1]);
+    if (month == null || year == null) return false;
+    if (month < 1 || month > 12) return false;
+
+    final now = DateTime.now();
+    final currentYear = now.year % 100;
+    final currentMonth = now.month;
+
+    if (year < currentYear) return false;
+    if (year == currentYear && month < currentMonth) return false;
+
+    return true;
+  }
+
+  Future<void> _submitCardPayment() async {
+    // Basic validation
+    final cardDigits = _cardNumberController.text.replaceAll(' ', '');
+    if (cardDigits.length < 16) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid 16-digit card number'),
+        ),
+      );
+      return;
+    }
+
+    if (!_isValidLuhn(cardDigits)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid card number. Please check.')),
+      );
+      return;
+    }
+
+    if (_cardHolderController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter the card holder name')),
+      );
+      return;
+    }
+
+    if (!_isValidExpiry(_expiryController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid future expiry date (MM/YY)'),
+        ),
+      );
+      return;
+    }
+
+    if (_cvvController.text.length < 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid 3 or 4-digit CVV')),
+      );
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+
+    try {
+      final uid = AuthStateService.instance.currentUser?.uid;
+      if (uid == null) throw Exception('User not logged in');
+
+      // Fetch real customer name and phone from user profile
+      final tenantId = ThemeService.instance.databaseName;
+      final customerData = await IciciService.instance.fetchCustomerData(
+        uid,
+        tenantId,
+      );
+      final customerName = customerData['name'] ?? 'Customer';
+      final customerPhone = customerData['phone'] ?? '919999999999';
+
+      // 1. Call InitiateSale API with payType '2' for Cards
+      final result = await IciciService.instance.initiateSale(
+        amount: '${widget.paymentAmount}.00',
+        customerName: customerName,
+        customerEmail:
+            AuthStateService.instance.currentUser?.email ??
+            'customer@example.com',
+        customerMobile: customerPhone,
+        payType: '2', // Card
+        uid: uid,
+        tenantId: tenantId,
+      );
+
+      if (!mounted) return;
+
+      if (result == null) {
+        throw Exception('Failed to initiate card payment. Please try again.');
+      }
+
+      final merchantTxnNo = result['merchantTxnNo'] as String?;
+
+      // Save initial state to nested payment_transactions
+      if (merchantTxnNo != null) {
+        await IciciService.instance.saveTransaction(
+          uid: uid,
+          merchantTxnNo: merchantTxnNo,
+          amount: '${widget.paymentAmount}.00',
+          status: 'INITIATED',
+          paymentMethod: 'Card',
+          planName: widget.planName,
+          isYearly: widget.isYearly,
+          tenantId: tenantId,
+          appId: ThemeService.instance.appName,
+        );
+      }
+      final redirectUrl =
+          result['redirectUrl'] ??
+          result['paymentUrl'] ??
+          result['url'] ??
+          result['paymentPageUrl'];
+
+      // If no redirect URL, handle as UAT simulated like PaymentScreen
+      if (redirectUrl == null || redirectUrl.toString().isEmpty) {
+        debugPrint('UAT simulated Card success');
+        await _finalizeCardPayment(
+          uid: uid,
+          merchantTxnNo:
+              merchantTxnNo ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        );
+        return;
+      }
+
+      // 2. Open WebView
+      final webViewResult = await Navigator.push<IciciPaymentResult>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => IciciPaymentWebViewScreen(
+            paymentUrl: redirectUrl.toString(),
+            merchantTxnNo: merchantTxnNo ?? '',
+            returnUrl: IciciService.returnUrl,
           ),
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (webViewResult == null || !webViewResult.success) {
+        throw Exception(webViewResult?.message ?? 'Payment was cancelled');
+      }
+
+      // 3. Finalize on success
+      await _finalizeCardPayment(
+        uid: uid,
+        merchantTxnNo: merchantTxnNo ?? '',
+        queryParams: webViewResult.queryParams,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _finalizeCardPayment({
+    required String uid,
+    required String merchantTxnNo,
+    Map<String, String>? queryParams,
+  }) async {
+    // Show finalizing dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Finalizing subscription...'),
+          ],
         ),
       ),
     );
+
+    try {
+      // Handle logo upload if present
+      Map<String, dynamic>? finalBrandingData = widget.brandingData;
+      if (widget.brandingData != null &&
+          widget.brandingData!['logoPath'] != null) {
+        try {
+          final File logoFile = File(widget.brandingData!['logoPath']);
+          if (await logoFile.exists()) {
+            final logoUrl = await StorageService.instance.uploadLogo(
+              userId: uid,
+              file: logoFile,
+            );
+            if (logoUrl != null) {
+              finalBrandingData = Map<String, dynamic>.from(
+                widget.brandingData!,
+              );
+              finalBrandingData['logoUrl'] = logoUrl;
+              finalBrandingData.remove('logoPath');
+            }
+          }
+        } catch (e) {
+          debugPrint('Logo upload error in CardDetailsScreen: $e');
+        }
+      }
+
+      final tenantId = ThemeService.instance.databaseName;
+      final appId = ThemeService.instance.appName;
+
+      // Save subscription to Firestore
+      await FirestoreService.instance.upsertSubscription(
+        uid: uid,
+        tenantId: tenantId,
+        planName: widget.planName,
+        isYearly: widget.isYearly,
+        price: widget.paymentAmount,
+        originalPrice: widget.originalPrice,
+        paymentMethod: 'Card',
+        brandingData: finalBrandingData,
+        appId: appId,
+      );
+
+      // Mark user as active
+      await FirestoreService.instance.setUserActiveStatus(
+        uid: uid,
+        tenantId: tenantId,
+        active: true,
+      );
+
+      // Save transaction record
+      await IciciService.instance.saveTransaction(
+        uid: uid,
+        merchantTxnNo: merchantTxnNo,
+        amount: '${widget.paymentAmount}.00',
+        status: 'SUCCESS',
+        paymentMethod: 'Card',
+        planName: widget.planName,
+        isYearly: widget.isYearly,
+        tenantId: tenantId,
+        appId: appId,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close finalizing dialog
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => TransactionCompletedScreen(
+            planName: widget.planName,
+            isYearly: widget.isYearly,
+            amountPaid: widget.paymentAmount,
+            paymentMethod: 'Card',
+            transactionId: 'TXN$merchantTxnNo',
+            timestamp: DateTime.now(),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) Navigator.pop(context); // Close finalizing dialog
+      rethrow;
+    }
   }
 }
 

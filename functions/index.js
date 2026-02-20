@@ -68,7 +68,7 @@ async function sendNotification(role, userId, payload) {
 }
 
 // 1. Notify Engineer when a ticket is assigned
-exports.onAssignmentCreated = onDocumentUpdated("Admin_details/{bookingId}", async (event) => {
+exports.onAssignmentCreatedV2 = onDocumentUpdated("Admin_details/{bookingId}", async (event) => {
     const newData = event.data.after.data();
     const oldData = event.data.before.data();
 
@@ -114,7 +114,7 @@ exports.onAssignmentCreated = onDocumentUpdated("Admin_details/{bookingId}", asy
 });
 
 // 2. Notify Admin when a new ticket is raised
-exports.onTicketRaised = onDocumentCreated("Admin_details/{bookingId}", async (event) => {
+exports.onTicketRaisedV2 = onDocumentCreated("Admin_details/{bookingId}", async (event) => {
     const ticketData = event.data.data();
     console.log(`New ticket raised: ${event.params.bookingId}`);
 
@@ -185,7 +185,7 @@ exports.onTicketRaised = onDocumentCreated("Admin_details/{bookingId}", async (e
 });
 
 // 3. Notify Customer when ticket status is updated
-exports.onStatusUpdated = onDocumentUpdated("Admin_details/{bookingId}", async (event) => {
+exports.onStatusUpdatedV2 = onDocumentUpdated("Admin_details/{bookingId}", async (event) => {
     const newData = event.data.after.data();
     const oldData = event.data.before.data();
 
@@ -214,5 +214,61 @@ exports.onStatusUpdated = onDocumentUpdated("Admin_details/{bookingId}", async (
         } else {
             console.warn(`Cannot notify customer of status update: Missing 'id' field in Admin_details/${event.params.bookingId}`);
         }
+    }
+});
+
+// 4. Send Email Trigger when a document is created in the "mail" collection
+exports.sendEmailTrigger = onDocumentCreated("mail/{docId}", async (event) => {
+    const data = event.data.data();
+    if (!data || !data.to) {
+        console.error("Skipping email trigger: Missing 'to' field.");
+        return;
+    }
+
+    const nodemailer = require("nodemailer");
+
+    // SMTP configuration
+    // IMPORTANT: The user needs to provide a valid App Password for this to work with Gmail.
+    const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            user: "rookssoftservices@gmail.com",
+            pass: "YOUR_GMAIL_APP_PASSWORD", // ACTION REQUIRED: Replace with real password or App Password
+        },
+    });
+
+    const mailOptions = {
+        from: '"Rooks App" <rookssoftservices@gmail.com>',
+        to: data.to,
+        subject: data.message.subject,
+        html: data.message.html,
+        attachments: (data.message.attachments || []).map((att) => ({
+            filename: att.filename,
+            content: att.content,
+            encoding: "base64",
+        })),
+    };
+
+    try {
+        console.log(`Attempting to send email to ${data.to}...`);
+        await transporter.sendMail(mailOptions);
+        console.log(`Email sent successfully to ${data.to}`);
+
+        // Update status in Firestore
+        return event.data.ref.update({
+            status: {
+                state: "SENT",
+                sentAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+        });
+    } catch (error) {
+        console.error("Error sending email:", error);
+        return event.data.ref.update({
+            status: {
+                state: "ERROR",
+                error: error.message,
+                failedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+        });
     }
 });

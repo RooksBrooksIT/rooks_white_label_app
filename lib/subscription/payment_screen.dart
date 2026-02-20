@@ -3,7 +3,10 @@ import 'package:subscription_rooks_app/services/storage_service.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:subscription_rooks_app/services/icici_service.dart';
 import 'package:subscription_rooks_app/services/upi_payment_service.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/services/receipt_service.dart';
+import 'package:subscription_rooks_app/services/email_service.dart';
 
 import 'dart:io';
 
@@ -14,6 +17,7 @@ import 'card_details_screen.dart';
 class PaymentScreen extends StatefulWidget {
   final String planName;
   final bool isYearly;
+  final bool isSixMonths;
   final int price;
   final int? originalPrice;
 
@@ -21,6 +25,7 @@ class PaymentScreen extends StatefulWidget {
     super.key,
     required this.planName,
     required this.isYearly,
+    this.isSixMonths = false,
     required this.price,
     this.originalPrice,
     this.brandingData,
@@ -109,9 +114,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
       MediaQuery.of(context).size.width <= 1200;
   bool get isMobile => MediaQuery.of(context).size.width <= 768;
 
-  // Get next billing date (12 months from now)
+  // Get next billing date
   DateTime getNextBillingDate() {
-    return DateTime.now().add(const Duration(days: 365));
+    if (widget.isYearly) {
+      return DateTime.now().add(const Duration(days: 365));
+    } else if (widget.isSixMonths) {
+      // Best way to add 6 months:
+      final now = DateTime.now();
+      return DateTime(now.year, now.month + 6, now.day);
+    } else {
+      return DateTime.now().add(const Duration(days: 30));
+    }
   }
 
   // Format date as "Mon YYYY"
@@ -283,7 +296,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         Text(
                           widget.price == 0
                               ? '7 Days Free Trial'
-                              : 'Billed For ${widget.isYearly ? '12 Months' : '1 Month'}',
+                              : 'Billed For ${widget.isYearly ? '12 Months' : (widget.isSixMonths ? '6 Months' : '1 Month')}',
                           style: TextStyle(
                             fontSize: isDesktop ? 16 : 14,
                             color: Colors.grey.shade600,
@@ -654,6 +667,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             paymentAmount: widget.price,
             planName: widget.planName,
             isYearly: widget.isYearly,
+            originalPrice: widget.originalPrice,
+            brandingData: widget.brandingData,
           ),
         ),
       );
@@ -723,6 +738,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
           paymentMethod: selectedPaymentMethod,
           planName: widget.planName,
           isYearly: widget.isYearly,
+          tenantId: ThemeService.instance.databaseName,
+          appId: ThemeService.instance.appName,
         );
 
         if (!mounted) return;
@@ -826,18 +843,26 @@ class _PaymentScreenState extends State<PaymentScreen> {
         payType = '0'; // All options
       }
 
+      // Fetch real customer name and phone from user profile
+      final tenantId = ThemeService.instance.databaseName;
+      final customerData = await IciciService.instance.fetchCustomerData(
+        uid,
+        tenantId,
+      );
+      final customerName = customerData['name'] ?? 'Customer';
+      final customerPhone = customerData['phone'] ?? '919999999999';
+
       // Call InitiateSale API
       final result = await IciciService.instance.initiateSale(
         amount: '${widget.price}.00',
-        customerName:
-            AuthStateService.instance.currentUser?.displayName ?? 'Customer',
+        customerName: customerName,
         customerEmail:
             AuthStateService.instance.currentUser?.email ??
             'customer@example.com',
-        customerMobile:
-            AuthStateService.instance.currentUser?.phoneNumber ??
-            '919999999999',
+        customerMobile: customerPhone,
         payType: payType,
+        uid: uid,
+        tenantId: tenantId,
       );
 
       if (!mounted) return;
@@ -848,6 +873,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
 
       final merchantTxnNo = result['merchantTxnNo'] as String?;
+
+      // Save initial state to nested payment_transactions
+      if (merchantTxnNo != null) {
+        await IciciService.instance.saveTransaction(
+          uid: uid,
+          merchantTxnNo: merchantTxnNo,
+          amount: '${widget.price}.00',
+          status: 'INITIATED',
+          paymentMethod: selectedPaymentMethod,
+          planName: widget.planName,
+          isYearly: widget.isYearly,
+          tenantId: ThemeService.instance.databaseName,
+          appId: ThemeService.instance.appName,
+        );
+      }
 
       // Extract the redirect/payment URL
       final redirectUrl =
@@ -870,6 +910,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             paymentMethod: selectedPaymentMethod,
             planName: widget.planName,
             isYearly: widget.isYearly,
+            tenantId: ThemeService.instance.databaseName,
+            appId: ThemeService.instance.appName,
           );
         }
 
@@ -911,6 +953,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             paymentMethod: selectedPaymentMethod,
             planName: widget.planName,
             isYearly: widget.isYearly,
+            tenantId: ThemeService.instance.databaseName,
+            appId: ThemeService.instance.appName,
           );
         }
 
@@ -979,6 +1023,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             paymentMethod: selectedPaymentMethod,
             planName: widget.planName,
             isYearly: widget.isYearly,
+            tenantId: ThemeService.instance.databaseName,
+            appId: ThemeService.instance.appName,
           );
         }
 
@@ -995,6 +1041,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
           paymentMethod: selectedPaymentMethod,
           planName: widget.planName,
           isYearly: widget.isYearly,
+          tenantId: ThemeService.instance.databaseName,
+          appId: ThemeService.instance.appName,
           additionalData: webViewResult.queryParams,
         );
       }
@@ -1068,6 +1116,76 @@ class _PaymentScreenState extends State<PaymentScreen> {
           debugPrint('Error handling logo upload: $e');
         }
       }
+
+      // ── Save subscription to Firestore ──────────────────────────────────
+      final tenantId = ThemeService.instance.databaseName;
+      final appId = ThemeService.instance.appName;
+      try {
+        await FirestoreService.instance.upsertSubscription(
+          uid: uid,
+          tenantId: tenantId,
+          planName: widget.planName,
+          isYearly: widget.isYearly,
+          price: widget.price,
+          originalPrice: widget.originalPrice,
+          paymentMethod: selectedPaymentMethod,
+          brandingData: finalBrandingData,
+          appId: appId,
+        );
+        await FirestoreService.instance.setUserActiveStatus(
+          uid: uid,
+          tenantId: tenantId,
+          active: true,
+        );
+      } catch (e) {
+        debugPrint('Error saving subscription to Firestore: $e');
+      }
+
+      // ── Generate and Email Receipt ─────────────────────────────────────
+      try {
+        final user = AuthStateService.instance.currentUser;
+        if (user != null && user.email != null) {
+          final logoUrl = finalBrandingData?['logoUrl'] as String?;
+          final appName = finalBrandingData?['appName'] ?? 'Rooks App';
+
+          debugPrint('Generating receipt for ${user.email}...');
+
+          final receiptFile = await ReceiptService.generateReceipt(
+            planName: widget.planName,
+            isYearly: widget.isYearly,
+            isSixMonths: widget.isSixMonths,
+            amount: widget.price,
+            transactionId: merchantTxnNo,
+            paymentMethod: selectedPaymentMethod,
+            logoUrl: logoUrl,
+            appName: appName,
+          );
+
+          debugPrint('Sending receipt email to ${user.email}...');
+
+          await EmailService.sendReceiptWithAttachment(
+            recipientEmail: user.email!,
+            recipientName: user.displayName ?? 'Customer',
+            subject: 'Payment Receipt - ${widget.planName} Plan',
+            htmlContent:
+                '''
+              <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <h2>Payment Successful!</h2>
+                <p>Hello,</p>
+                <p>Thank you for subscribing to the <strong>${widget.planName} Plan</strong>. Your payment has been successfully processed.</p>
+                <p>Please find your payment receipt attached to this email.</p>
+                <br>
+                <p>Best Regards,<br>Rooks App Team</p>
+              </div>
+            ''',
+            attachment: receiptFile,
+            attachmentName: 'receipt_$merchantTxnNo.pdf',
+          );
+        }
+      } catch (e) {
+        debugPrint('Error generating or sending receipt: $e');
+      }
+      // ────────────────────────────────────────────────────────────────────
 
       if (mounted) Navigator.pop(context); // Close finalizing dialog
 

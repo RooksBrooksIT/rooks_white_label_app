@@ -4,14 +4,24 @@ import 'payment_screen.dart';
 import 'branding_customization_screen.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
-  const SubscriptionPlansScreen({super.key});
+  /// Optionally pass the admin's current plan name to highlight it on the screen.
+  final String? currentPlanName;
+
+  /// When true, hides the Free Trial tab (used when admin is changing an existing plan).
+  final bool hideTrial;
+
+  const SubscriptionPlansScreen({
+    super.key,
+    this.currentPlanName,
+    this.hideTrial = false,
+  });
 
   @override
   State<SubscriptionPlansScreen> createState() =>
       _SubscriptionPlansScreenState();
 }
 
-enum PlanType { freeTrial, monthly, yearly }
+enum PlanType { freeTrial, monthly, sixMonths, yearly }
 
 class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   PlanType selectedPlanType = PlanType.monthly;
@@ -23,8 +33,10 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       'name': 'Silver Plan',
       'monthlyPrice': 199,
       'monthlyOriginalPrice': 299,
+      'sixMonthPrice': 999,
+      'sixMonthOriginalPrice': 1794,
       'yearlyPrice': 1990,
-      'yearlyOriginalPrice': 2990,
+      'yearlyOriginalPrice': 3588,
       'subtitle': 'Best for small teams & basic usage',
       'features': ['0-30 Customers', '0-5 Engineers', 'Web support'],
       'color': const Color(0xFFE0E0E0),
@@ -33,8 +45,10 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       'name': 'Gold Plan',
       'monthlyPrice': 399,
       'monthlyOriginalPrice': 499,
+      'sixMonthPrice': 1990,
+      'sixMonthOriginalPrice': 2994,
       'yearlyPrice': 3990,
-      'yearlyOriginalPrice': 4990,
+      'yearlyOriginalPrice': 5988,
       'subtitle': 'Ideal for growing businesses',
       'features': [
         '0-100 Customers',
@@ -49,8 +63,10 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       'name': 'Platinum Plan',
       'monthlyPrice': 999,
       'monthlyOriginalPrice': 1499,
+      'sixMonthPrice': 4990,
+      'sixMonthOriginalPrice': 8994,
       'yearlyPrice': 9990,
-      'yearlyOriginalPrice': 14990,
+      'yearlyOriginalPrice': 17988,
       'subtitle': 'Best for enterprises & unlimited usage',
       'features': [
         'Unlimited Customers',
@@ -118,8 +134,8 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                           ),
                           Expanded(
                             child: Column(
-                              children: const [
-                                Text(
+                              children: [
+                                const Text(
                                   'CHOOSE WHAT FITS YOU',
                                   style: TextStyle(
                                     fontSize: 18,
@@ -127,14 +143,38 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                                     letterSpacing: 0.5,
                                   ),
                                 ),
-                                SizedBox(height: 4),
-                                Text(
+                                const SizedBox(height: 4),
+                                const Text(
                                   'Choose the plan that suits your Workflow best',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.black54,
                                   ),
                                 ),
+                                if (widget.currentPlanName != null) ...[
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.shade50,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.blue.shade200,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Active: ${widget.currentPlanName}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.blue.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -156,8 +196,10 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                     ),
                     child: Row(
                       children: [
-                        _buildTab(PlanType.freeTrial, 'Free Trial'),
+                        if (!widget.hideTrial)
+                          _buildTab(PlanType.freeTrial, 'Free Trial'),
                         _buildTab(PlanType.monthly, 'Monthly'),
+                        _buildTab(PlanType.sixMonths, '6 Months'),
                         _buildTab(PlanType.yearly, 'Yearly'),
                       ],
                     ),
@@ -173,6 +215,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                         : _buildMainCard(
                             plans[selectedPlanIndex],
                             isYearly: selectedPlanType == PlanType.yearly,
+                            isSixMonths: selectedPlanType == PlanType.sixMonths,
                           ),
                   ),
                 ),
@@ -215,6 +258,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                             context,
                             plans[selectedPlanIndex],
                             isYearly: selectedPlanType == PlanType.yearly,
+                            isSixMonths: selectedPlanType == PlanType.sixMonths,
                           );
                         }
                       },
@@ -284,27 +328,44 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   Widget _buildMainCard(
     Map<String, dynamic> plan, {
     bool isYearly = false,
+    bool isSixMonths = false,
     bool isTrial = false,
   }) {
     final price = isTrial
         ? plan['price']
-        : (isYearly ? plan['yearlyPrice'] : plan['monthlyPrice']);
+        : (isYearly
+              ? plan['yearlyPrice']
+              : (isSixMonths ? plan['sixMonthPrice'] : plan['monthlyPrice']));
     final originalPrice = isTrial
         ? plan['originalPrice']
         : (isYearly
               ? plan['yearlyOriginalPrice']
-              : plan['monthlyOriginalPrice']);
-    final durationLabel = isTrial ? '/7 Days' : (isYearly ? '/Year' : '/Month');
+              : (isSixMonths
+                    ? plan['sixMonthOriginalPrice']
+                    : plan['monthlyOriginalPrice']));
+    final durationLabel = isTrial
+        ? '/7 Days'
+        : (isYearly ? '/Year' : (isSixMonths ? '/6 Months' : '/Month'));
+    final isCurrentPlan =
+        widget.currentPlanName != null &&
+        plan['name'] == widget.currentPlanName;
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
+        border: Border.all(
+          color: isCurrentPlan
+              ? Colors.blue.shade300
+              : Colors.grey.withOpacity(0.2),
+          width: isCurrentPlan ? 2 : 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color.fromARGB(255, 235, 235, 235),
+            color: isCurrentPlan
+                ? Colors.blue.shade100
+                : const Color.fromARGB(255, 235, 235, 235),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -314,6 +375,27 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
+            if (isCurrentPlan)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade600,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  '✓  Your Current Plan',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
             Text(
               plan['name'],
               style: TextStyle(
@@ -357,7 +439,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
             Text(
               isTrial
                   ? 'No credit card required'
-                  : 'Applicable for ${isYearly ? 'annual' : 'monthly'} billing',
+                  : 'Applicable for ${isYearly ? 'annual' : (isSixMonths ? '6-month' : 'monthly')} billing',
               style: const TextStyle(fontSize: 10, color: Colors.grey),
             ),
             const SizedBox(height: 30),
@@ -407,7 +489,14 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     final plan = plans[index];
     final isSelected = selectedPlanIndex == index;
     final isYearly = selectedPlanType == PlanType.yearly;
-    final price = isYearly ? plan['yearlyPrice'] : plan['monthlyPrice'];
+    final isSixMonths = selectedPlanType == PlanType.sixMonths;
+
+    final price = isYearly
+        ? plan['yearlyPrice']
+        : (isSixMonths ? plan['sixMonthPrice'] : plan['monthlyPrice']);
+    final isCurrentPlan =
+        widget.currentPlanName != null &&
+        plan['name'] == widget.currentPlanName;
 
     return GestureDetector(
       onTap: () {
@@ -423,7 +512,11 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           color: isSelected ? Colors.white : Colors.grey[50],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? Colors.black : Colors.transparent,
+            color: isSelected
+                ? Colors.black
+                : isCurrentPlan
+                ? Colors.blue.shade300
+                : Colors.transparent,
             width: 1.5,
           ),
           boxShadow: isSelected
@@ -439,11 +532,30 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (isCurrentPlan)
+              Container(
+                margin: const EdgeInsets.only(bottom: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade600,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Current',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 7,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
             Text(
               plan['name'],
               style: TextStyle(
                 fontSize: 10,
-                color: Colors.grey.shade700,
+                color: isCurrentPlan
+                    ? Colors.blue.shade700
+                    : Colors.grey.shade700,
                 fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
@@ -458,7 +570,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               ),
             ),
             Text(
-              isYearly ? '/Year' : '/Month',
+              isYearly ? '/Year' : (isSixMonths ? '/6 Months' : '/Month'),
               style: const TextStyle(fontSize: 8, color: Colors.black54),
             ),
           ],
@@ -471,18 +583,23 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     BuildContext context,
     Map<String, dynamic> selectedPlan, {
     bool isYearly = false,
+    bool isSixMonths = false,
     bool isTrial = false,
   }) {
     final price = isTrial
         ? selectedPlan['price']
         : (isYearly
               ? selectedPlan['yearlyPrice']
-              : selectedPlan['monthlyPrice']);
+              : (isSixMonths
+                    ? selectedPlan['sixMonthPrice']
+                    : selectedPlan['monthlyPrice']));
     final originalPrice = isTrial
         ? selectedPlan['originalPrice']
         : (isYearly
               ? selectedPlan['yearlyOriginalPrice']
-              : selectedPlan['monthlyOriginalPrice']);
+              : (isSixMonths
+                    ? selectedPlan['sixMonthOriginalPrice']
+                    : selectedPlan['monthlyOriginalPrice']));
 
     if (isTrial) {
       // Bypass Payment and Go directly to Customization
@@ -494,6 +611,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
             price: price,
             originalPrice: originalPrice,
             isYearly: isYearly,
+            isSixMonths: isSixMonths,
             paymentMethod: 'Free Trial',
             transactionId: 'trial_${DateTime.now().millisecondsSinceEpoch}',
           ),
@@ -511,6 +629,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           price: price,
           originalPrice: originalPrice,
           isYearly: isYearly,
+          isSixMonths: isSixMonths,
         ),
       ),
     );

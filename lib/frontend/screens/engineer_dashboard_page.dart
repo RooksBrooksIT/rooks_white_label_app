@@ -3611,17 +3611,12 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
     showDialog(
       context: context,
       builder: (context) {
-        // Get the screen size
         final size = MediaQuery.of(context).size;
-        final maxWidth = size.width * 0.85; // 85% of screen width
-        final maxHeight = size.height * 0.85; // 85% of screen height
-
-        // Calculate QR code size (maximum 300px, minimum 200px)
+        final maxWidth = size.width * 0.85;
+        final maxHeight = size.height * 0.85;
         final qrSize = maxWidth < 400
             ? (maxWidth * 0.6).clamp(200.0, 300.0)
             : 300.0;
-
-        // Calculate padding based on screen size
         final padding = size.width < 400 ? 16.0 : 24.0;
 
         return Dialog(
@@ -3639,7 +3634,7 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Icon container with responsive size
+                    // Icon header
                     Container(
                       width: qrSize * 0.2,
                       height: qrSize * 0.2,
@@ -3647,7 +3642,6 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
                         color: ProfessionalTheme.primary(
                           context,
                         ).withValues(alpha: 0.1),
-
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -3675,21 +3669,145 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
                       ),
                     ),
                     SizedBox(height: padding),
-                    // QR Code container with responsive size
-                    Container(
-                      width: qrSize,
-                      height: qrSize,
-                      decoration: BoxDecoration(
-                        color: ProfessionalTheme.surfaceElevated(context),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: ProfessionalTheme.borderLight(context),
-                        ),
-                        image: const DecorationImage(
-                          image: AssetImage('assets/QR_Code.jpg'),
-                          fit: BoxFit.contain,
-                        ),
-                      ),
+                    // Dynamic QR from Firebase Storage
+                    FutureBuilder<String?>(
+                      future: StorageService.instance.getQRCodeUrl(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Container(
+                            width: qrSize,
+                            height: qrSize,
+                            decoration: BoxDecoration(
+                              color: ProfessionalTheme.surfaceElevated(context),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: ProfessionalTheme.borderLight(context),
+                              ),
+                            ),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: ProfessionalTheme.primary(context),
+                              ),
+                            ),
+                          );
+                        }
+
+                        if (snapshot.hasData && snapshot.data != null) {
+                          return Container(
+                            width: qrSize,
+                            height: qrSize,
+                            decoration: BoxDecoration(
+                              color: ProfessionalTheme.surfaceElevated(context),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: ProfessionalTheme.borderLight(context),
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                snapshot.data!,
+                                fit: BoxFit.contain,
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          color: ProfessionalTheme.primary(
+                                            context,
+                                          ),
+                                          value:
+                                              loadingProgress
+                                                      .expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                        .cumulativeBytesLoaded /
+                                                    loadingProgress
+                                                        .expectedTotalBytes!
+                                              : null,
+                                        ),
+                                      );
+                                    },
+                                errorBuilder: (_, __, ___) => Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.broken_image_outlined,
+                                        size: 48,
+                                        color: ProfessionalTheme.textTertiary(
+                                          context,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Failed to load QR code',
+                                        style: TextStyle(
+                                          color:
+                                              ProfessionalTheme.textSecondary(
+                                                context,
+                                              ),
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        // No QR uploaded yet
+                        return Container(
+                          width: qrSize,
+                          height: qrSize,
+                          decoration: BoxDecoration(
+                            color: ProfessionalTheme.surfaceElevated(context),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: ProfessionalTheme.borderLight(context),
+                            ),
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.qr_code_2_outlined,
+                                  size: 56,
+                                  color: ProfessionalTheme.textTertiary(
+                                    context,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No QR code available.',
+                                  style: TextStyle(
+                                    color: ProfessionalTheme.textSecondary(
+                                      context,
+                                    ),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Please ask admin to upload one.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: ProfessionalTheme.textTertiary(
+                                      context,
+                                    ),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     SizedBox(height: padding),
                     SizedBox(

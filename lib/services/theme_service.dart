@@ -6,8 +6,8 @@ class ThemeService extends ChangeNotifier {
   ThemeService._();
   static final ThemeService instance = ThemeService._();
 
-  Color _primaryColor = Colors.deepPurple;
-  Color _secondaryColor = Colors.amber;
+  Color _primaryColor = Colors.black;
+  Color _secondaryColor = Colors.grey;
   Color _backgroundColor = Colors.white;
   bool _isDarkMode = false;
   String _fontFamily = 'Roboto';
@@ -51,8 +51,8 @@ class ThemeService extends ChangeNotifier {
 
   /// Default Rooks & Brooks theme for subscription screens
   ThemeData get defaultTheme {
-    const primary = Colors.deepPurple;
-    const secondary = Colors.amber;
+    const primary = Colors.black;
+    const secondary = Colors.grey;
     const background = Colors.white;
     const fontFamily = 'Roboto';
 
@@ -179,8 +179,8 @@ class ThemeService extends ChangeNotifier {
   }
 
   void resetToDefault() {
-    _primaryColor = Colors.deepPurple;
-    _secondaryColor = Colors.amber;
+    _primaryColor = Colors.black;
+    _secondaryColor = Colors.grey;
     _backgroundColor = Colors.white;
     _isDarkMode = false;
     _fontFamily = 'Roboto';

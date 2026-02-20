@@ -43,6 +43,33 @@ class StorageService {
     }
   }
 
+  Future<String?> uploadQRCode({required File file}) async {
+    try {
+      final tenantId = ThemeService.instance.databaseName;
+      final path = 'images/$tenantId/qr_code/payment_qr.png';
+
+      if (!await file.exists()) return null;
+
+      final ref = _storage.ref().child(path);
+      final uploadTask = ref.putFile(file);
+      final snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      print('StorageService: Error uploading QR code: $e');
+      return null;
+    }
+  }
+
+  Future<String?> getQRCodeUrl() async {
+    try {
+      final tenantId = ThemeService.instance.databaseName;
+      final path = 'images/$tenantId/qr_code/payment_qr.png';
+      return await _storage.ref().child(path).getDownloadURL();
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<String?> uploadWorkerImage({
     required String userName,
     required File file,
