@@ -16,9 +16,11 @@ class CustomerDashboardBackend {
 
   static Future<void> saveFcmToken(String id, String email) async {
     try {
-      if (id.isNotEmpty) {
-        await NotificationService.instance.registerToken('customer', id, email);
-      }
+      await NotificationService.instance.registerToken(
+        role: 'customer',
+        userId: id,
+        email: email,
+      );
     } catch (e) {
       print('Error saving FCM token: $e');
     }

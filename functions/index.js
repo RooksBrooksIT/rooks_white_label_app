@@ -1,4 +1,5 @@
-const { onDocumentUpdated, onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentUpdated, onDocumentCreated, onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { onRequest } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -6,15 +7,19 @@ admin.initializeApp();
 /**
  * Sends a notification to a specific user based on their role and ID.
  */
-async function sendNotification(role, userId, payload) {
+async function sendNotification(tenantId, appId, role, userId, payload) {
     if (!userId) {
-        console.error(`Skipping notification: Missing userId for role ${role}`);
+        console.error(`[ERROR] Skipping notification: Missing userId for role ${role}`);
         return;
     }
 
     try {
-        console.log(`Attempting to fetch token for ${role}/${userId}`);
+        const path = `${tenantId}/${appId}/notifications_tokens/${role}/tokens/${userId}`;
+        console.log(`[DEBUG] Token lookup for ${role}: ${path}`);
+
         const tokenDoc = await admin.firestore()
+            .collection(tenantId)
+            .doc(appId)
             .collection("notifications_tokens")
             .doc(role)
             .collection("tokens")
@@ -22,18 +27,18 @@ async function sendNotification(role, userId, payload) {
             .get();
 
         if (!tokenDoc.exists) {
-            console.warn(`No token doc found for user ${userId} with role ${role} at path notifications_tokens/${role}/tokens/${userId}`);
+            console.warn(`[WARN] No token found at path: ${path}`);
             return;
         }
 
         const data = tokenDoc.data();
         if (!data || !data.token) {
-            console.warn(`Token field missing in doc for user ${userId} with role ${role}`);
+            console.warn(`[WARN] Token field missing in doc for ${userId}`);
             return;
         }
 
         const registrationToken = data.token;
-        console.log(`Found token: ${registrationToken.substring(0, 10)}... for user ${userId}`);
+        console.log(`[DEBUG] Found token for ${userId}: ${registrationToken.substring(0, 10)}...`);
 
         const message = {
             token: registrationToken,
@@ -57,88 +62,133 @@ async function sendNotification(role, userId, payload) {
             },
         };
 
-        await admin.messaging().send(message);
-        console.log(`Successfully sent notification to ${userId} (${role})`);
-    } catch (error) {
-        console.error(`Error sending notification to ${userId} (${role}):`, error);
-        if (error.code === 'messaging/registration-token-not-registered') {
-            console.warn(`Token for ${userId} is invalid/expired. Consider removing it.`);
+        try {
+            const response = await admin.messaging().send(message);
+            console.log(`[SUCCESS] Notification sent to ${userId} (${role}). Response: ${response}`);
+        } catch (fcmError) {
+            console.error(`[FCM ERROR] Failed to send to ${userId}:`, fcmError);
         }
+    } catch (error) {
+        console.error(`[SYSTEM ERROR] sendNotification failed:`, error);
     }
 }
 
-// 1. Notify Engineer when a ticket is assigned
-exports.onAssignmentCreatedV2 = onDocumentUpdated("Admin_details/{bookingId}", async (event) => {
-    const newData = event.data.after.data();
-    const oldData = event.data.before.data();
+// 1. HTTP Test Function: Send notification to any user
+// Usage: https://<region>-<project>.cloudfunctions.net/testNotify?tenantId=white-label-app-33300&appId=data&role=engineer&userId=JohnDoe
+exports.testNotify = onRequest(async (req, res) => {
+    const { tenantId, appId, role, userId } = req.query;
+    if (!tenantId || !appId || !role || !userId) {
+        return res.status(400).send("Missing query params: tenantId, appId, role, userId");
+    }
 
-    // Trigger if assigned employee changed (assignment)
-    // Note: Flutter app uses 'assignedEmployee', Cloud Function used 'engineerName'
-    if (newData.assignedEmployee && newData.assignedEmployee !== oldData.assignedEmployee) {
-        console.log(`Assignment detected for booking ${event.params.bookingId}. Engineer: ${newData.assignedEmployee}`);
+    const payload = {
+        notification: {
+            title: "Test Notification",
+            body: `This is a test notification from Cloud Functions for ${userId}`,
+        },
+        data: {
+            type: "test",
+            sender: "system",
+        },
+    };
+
+    console.log(`[HTTP TEST] Triggered for ${userId} in ${tenantId}/${appId}`);
+    await sendNotification(tenantId, appId, role, userId, payload);
+    res.send(`Attempted to send notification to ${userId}. Check functions logs for results.`);
+});
+
+// 2. Main Trigger for Assignment
+async function handleAssignment(event) {
+    const newData = event.data.after ? event.data.after.data() : event.data.data();
+    const oldData = event.data.before ? event.data.before.data() : null;
+    const { tenantId, appId, bookingId } = event.params;
+
+    if (!newData) return;
+
+    // Trigger if newly assigned or assignment changed
+    const isNewAssignment = newData.assignedEmployee && (!oldData || newData.assignedEmployee !== oldData.assignedEmployee);
+
+    if (isNewAssignment) {
+        console.log(`[DEBUG] Assignment triggered in ${tenantId}/${appId} for ${bookingId}. Engineer: ${newData.assignedEmployee}`);
 
         // 1. Notify Engineer
         const engineerPayload = {
             notification: {
                 title: "New Assignment",
-                body: `You have been assigned a new task: ${event.params.bookingId}`,
+                body: `You have been assigned a new task: ${bookingId}`,
             },
             data: {
                 type: "new_assignment",
-                bookingId: event.params.bookingId,
+                bookingId: bookingId,
             },
         };
-        // Normalize engineer name if needed (e.g., trim)
         const engineerId = newData.assignedEmployee.trim();
-        await sendNotification("engineer", engineerId, engineerPayload);
+        await sendNotification(tenantId, appId, "engineer", engineerId, engineerPayload);
 
         // 2. Notify Customer
         if (newData.id) {
-            console.log(`Notifying customer ${newData.id} about new assignment.`);
             const customerPayload = {
                 notification: {
                     title: "Ticket Assigned",
-                    body: `Your ticket (${event.params.bookingId}) has been assigned to ${newData.assignedEmployee}`,
+                    body: `Your ticket (${bookingId}) has been assigned to ${newData.assignedEmployee}`,
                 },
                 data: {
                     type: "ticket_assigned",
-                    bookingId: event.params.bookingId,
+                    bookingId: bookingId,
                     engineerName: newData.assignedEmployee,
                 },
             };
-            await sendNotification("customer", newData.id, customerPayload);
-        } else {
-            console.warn(`Cannot notify customer for assignment: Missing 'id' field in Admin_details/${event.params.bookingId}`);
+            await sendNotification(tenantId, appId, "customer", newData.id, customerPayload);
+
+            // Also create an in-app notification document for the banner
+            await admin.firestore()
+                .collection(tenantId)
+                .doc(appId)
+                .collection("notifications")
+                .add({
+                    customerId: newData.id,
+                    customerName: newData.customerName || "",
+                    bookingId: bookingId,
+                    title: "Ticket Assigned",
+                    body: `Your ticket (${bookingId}) has been assigned to ${newData.assignedEmployee}`,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    seen: false,
+                    type: "ticket_assigned"
+                });
         }
     }
-});
+}
 
-// 2. Notify Admin when a new ticket is raised
-exports.onTicketRaisedV2 = onDocumentCreated("Admin_details/{bookingId}", async (event) => {
+exports.onAssignmentWritten = onDocumentWritten("{tenantId}/{appId}/Admin_details/{bookingId}", handleAssignment);
+
+// 3. Notify Admin when a new ticket is raised
+exports.onTicketRaised = onDocumentCreated("{tenantId}/{appId}/Admin_details/{bookingId}", async (event) => {
     const ticketData = event.data.data();
-    console.log(`New ticket raised: ${event.params.bookingId}`);
+    const { tenantId, appId, bookingId } = event.params;
+    console.log(`[DEBUG] New ticket raised in ${tenantId}/${appId}: ${bookingId}`);
 
-    // Find all registered admins to notify
     try {
         const adminsSnapshot = await admin.firestore()
+            .collection(tenantId)
+            .doc(appId)
             .collection("notifications_tokens")
             .doc("admin")
             .collection("tokens")
             .get();
 
         if (adminsSnapshot.empty) {
-            console.log("No admins found in notifications_tokens/admin/tokens to notify");
+            console.log("[DEBUG] No admins found to notify");
             return;
         }
 
         const payload = {
             notification: {
                 title: "New Ticket Raised",
-                body: `A new ticket (${ticketData.bookingId}) has been raised by ${ticketData.customerName || "a customer"}`,
+                body: `A new ticket (${bookingId}) has been raised by ${ticketData.customerName || "a customer"}`,
             },
             data: {
                 type: "new_ticket",
-                bookingId: ticketData.bookingId || "",
+                bookingId: bookingId || "",
             },
         };
 
@@ -168,51 +218,60 @@ exports.onTicketRaisedV2 = onDocumentCreated("Admin_details/{bookingId}", async 
                 },
             };
             return admin.messaging().send(message).catch(error => {
-                console.error(`Error sending to admin token ${doc.id}:`, error);
-                // Delete invalid tokens if needed
-                if (error.code === 'messaging/registration-token-not-registered') {
-                    // Optional: doc.ref.delete(); 
-                }
-                return null; // Continue despite error
+                console.error(`[FCM ERROR] Failed to notify admin ${doc.id}:`, error);
+                return null;
             });
         });
 
         await Promise.all(promises);
-        console.log(`Notified ${adminsSnapshot.size} admin devices of new ticket`);
+        console.log(`[SUCCESS] Notified ${adminsSnapshot.size} admin devices`);
     } catch (e) {
-        console.error("Error in onTicketRaised:", e);
+        console.error("[SYSTEM ERROR] onTicketRaised failed:", e);
     }
 });
 
-// 3. Notify Customer when ticket status is updated
-exports.onStatusUpdatedV2 = onDocumentUpdated("Admin_details/{bookingId}", async (event) => {
+// 4. Notify Customer when ticket status is updated
+exports.onStatusUpdated = onDocumentUpdated("{tenantId}/{appId}/Admin_details/{bookingId}", async (event) => {
     const newData = event.data.after.data();
     const oldData = event.data.before.data();
+    const { tenantId, appId, bookingId } = event.params;
 
-    // Trigger if status updated (either engineer status or admin status)
     const statusChanged = (newData.engineerStatus !== oldData.engineerStatus) ||
         (newData.adminStatus !== oldData.adminStatus);
 
     if (statusChanged) {
         const currentStatus = newData.engineerStatus || newData.adminStatus || "Updated";
-        console.log(`Status update detected for ${event.params.bookingId}: ${currentStatus}`);
+        console.log(`[DEBUG] Status update in ${tenantId}/${appId} for ${bookingId}: ${currentStatus}`);
 
         const payload = {
             notification: {
                 title: "Ticket Update",
-                body: `Your ticket (${event.params.bookingId}) status is now: ${currentStatus}`,
+                body: `Your ticket (${bookingId}) status is now: ${currentStatus}`,
             },
             data: {
                 type: "status_update",
-                bookingId: event.params.bookingId,
+                bookingId: bookingId,
                 status: currentStatus,
             },
         };
-        // Use 'id' field which is the customerId
         if (newData.id) {
-            await sendNotification("customer", newData.id, payload);
-        } else {
-            console.warn(`Cannot notify customer of status update: Missing 'id' field in Admin_details/${event.params.bookingId}`);
+            await sendNotification(tenantId, appId, "customer", newData.id, payload);
+
+            // Also create an in-app notification document for the banner
+            await admin.firestore()
+                .collection(tenantId)
+                .doc(appId)
+                .collection("notifications")
+                .add({
+                    customerId: newData.id,
+                    customerName: newData.customerName || "",
+                    bookingId: bookingId,
+                    title: "Ticket Update",
+                    body: `Your ticket (${bookingId}) status is now: ${currentStatus}`,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    seen: false,
+                    type: "status_update"
+                });
         }
     }
 });

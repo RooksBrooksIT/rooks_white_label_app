@@ -200,21 +200,21 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
 
     firestore.Query<Map<String, dynamic>> query;
 
-    if (_currentTrackingId != null && _currentTrackingId!.isNotEmpty) {
-      // If an engineer is selected, track their latest record
-      query = FirestoreService.instance
-          .collection('Admin_details')
-          .where('assignedEmployee', isEqualTo: _currentTrackingId)
-          .orderBy('timestamp', descending: true)
-          .limit(1);
-    } else if (widget.bookingDocId != null && widget.bookingDocId!.isNotEmpty) {
-      // Fallback to specific doc ID if provided at start
+    if (widget.bookingDocId != null && widget.bookingDocId!.isNotEmpty) {
+      // If we have a specific booking, prioritize listening to it
       query = FirestoreService.instance
           .collection('Admin_details')
           .where(
             firestore.FieldPath.documentId,
             isEqualTo: widget.bookingDocId,
           );
+    } else if (_currentTrackingId != null && _currentTrackingId!.isNotEmpty) {
+      // Otherwise, track the latest record for the selected engineer
+      query = FirestoreService.instance
+          .collection('Admin_details')
+          .where('assignedEmployee', isEqualTo: _currentTrackingId)
+          .orderBy('timestamp', descending: true)
+          .limit(1);
     } else {
       return;
     }
@@ -235,6 +235,37 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
         final String? adminStatus = data['adminStatus']?.toString();
 
         if (mounted) {
+          // If the assigned employee changes in the booking document, update tracking
+          if (assignedEmployee != null &&
+              assignedEmployee.isNotEmpty &&
+              assignedEmployee != _currentTrackingId) {
+            debugPrint(
+              'AdminGeoLocationScreen: assignedEmployee changed from $_currentTrackingId to $assignedEmployee',
+            );
+            setState(() {
+              _currentTrackingId = assignedEmployee;
+              _currentTrackingName = assignedEmployee;
+              _lastLocation = null;
+              _pathHistory.clear();
+              _updateCount = 0;
+              _isOnline = false;
+              _lastUpdateTime = null;
+              _lastRTDBUpdateTime = null;
+            });
+
+            // Restart the engineer location listener
+            _listenToEngineerLocation();
+
+            // Notify user of the change
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Auto-switched tracking to: $assignedEmployee'),
+                duration: const Duration(seconds: 3),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+
           setState(() {
             _assignedEmployeeName = assignedEmployee;
             _currentTicketStatus = adminStatus;
@@ -275,6 +306,7 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
   }
 
   void _listenToEngineerLocation() {
+    _engineerSubscription?.cancel();
     if (_currentTrackingId == null || _currentTrackingId!.isEmpty) return;
     final sanitizedId = _sanitizePath(_currentTrackingId!);
     final tenantId = ThemeService.instance.databaseName;

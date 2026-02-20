@@ -481,7 +481,7 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
               mobileNumber: getField(data, ['mobileNumber', 'MobileNumber']),
               jobType: getField(data, ['jobType', 'JobType']),
               amount: getField(data, ['amount']),
-              customerid: getField(data, ['customerid']),
+              customerid: getField(data, ['customerid', 'id', 'Id']),
             );
             String statusRaw = getField(data, [
               'engineerStatus',
@@ -636,19 +636,21 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
                       color: isAMC
                           ? const Color(0xFFFFF8E1)
                           : statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(getProportionalSize(12)),
+                      borderRadius: BorderRadius.circular(
+                        getProportionalSize(12),
+                      ),
                     ),
                     child: Center(
                       child: Icon(
                         isAMC
                             ? Icons.star_rounded
                             : isCompleted
-                                ? Icons.check_circle_outline
-                                : isCanceled
-                                    ? Icons.cancel_outlined
-                                    : isAppointment
-                                        ? Icons.calendar_today_rounded
-                                        : Icons.build_circle_outlined,
+                            ? Icons.check_circle_outline
+                            : isCanceled
+                            ? Icons.cancel_outlined
+                            : isAppointment
+                            ? Icons.calendar_today_rounded
+                            : Icons.build_circle_outlined,
                         color: isAMC ? const Color(0xFFFFD700) : statusColor,
                         size: getProportionalSize(24),
                       ),
@@ -673,11 +675,9 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
                           customer.customerName,
                           style: TextStyle(
                             fontSize: getProportionalSize(14),
-                            color: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.color
-                                ?.withOpacity(0.7),
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color?.withOpacity(0.7),
                             fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
@@ -694,7 +694,9 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
                     ),
                     decoration: BoxDecoration(
                       color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(getProportionalSize(20)),
+                      borderRadius: BorderRadius.circular(
+                        getProportionalSize(20),
+                      ),
                     ),
                     child: Text(
                       status,
@@ -708,9 +710,12 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
                 ],
               ),
             ),
-            
-            Divider(height: 1, color: Theme.of(context).dividerColor.withOpacity(0.1)),
-            
+
+            Divider(
+              height: 1,
+              color: Theme.of(context).dividerColor.withOpacity(0.1),
+            ),
+
             // Details Section
             Padding(
               padding: EdgeInsets.all(getProportionalSize(16)),
@@ -720,55 +725,91 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                        Icon(Icons.location_on_outlined, size: getProportionalSize(16), color: Theme.of(context).hintColor),
-                        SizedBox(width: getProportionalSize(10)),
-                        Expanded(child: Text(customer.address, style: TextStyle(
-                            fontSize: getProportionalSize(13), 
-                            color: Theme.of(context).textTheme.bodyMedium?.color,
-                            height: 1.3),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis)),
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: getProportionalSize(16),
+                        color: Theme.of(context).hintColor,
+                      ),
+                      SizedBox(width: getProportionalSize(10)),
+                      Expanded(
+                        child: Text(
+                          customer.address,
+                          style: TextStyle(
+                            fontSize: getProportionalSize(13),
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                   SizedBox(height: getProportionalSize(8)),
                   // Mobile
                   Row(
                     children: [
-                        Icon(Icons.phone_outlined, size: getProportionalSize(16), color: Theme.of(context).hintColor),
-                        SizedBox(width: getProportionalSize(10)),
-                        Text(customer.mobileNumber, style: TextStyle(
-                            fontSize: getProportionalSize(13), 
-                            color: Theme.of(context).textTheme.bodyMedium?.color)),
+                      Icon(
+                        Icons.phone_outlined,
+                        size: getProportionalSize(16),
+                        color: Theme.of(context).hintColor,
+                      ),
+                      SizedBox(width: getProportionalSize(10)),
+                      Text(
+                        customer.mobileNumber,
+                        style: TextStyle(
+                          fontSize: getProportionalSize(13),
+                          color: Theme.of(context).textTheme.bodyMedium?.color,
+                        ),
+                      ),
                     ],
                   ),
                   SizedBox(height: getProportionalSize(8)),
                   // Device
                   Row(
                     children: [
-                        Icon(Icons.devices_other, size: getProportionalSize(16), color: Theme.of(context).hintColor),
-                        SizedBox(width: getProportionalSize(10)),
-                        Text('${customer.deviceBrand} - ${customer.deviceType}', style: TextStyle(
-                            fontSize: getProportionalSize(13), 
-                            color: Theme.of(context).textTheme.bodyMedium?.color)),
+                      Icon(
+                        Icons.devices_other,
+                        size: getProportionalSize(16),
+                        color: Theme.of(context).hintColor,
+                      ),
+                      SizedBox(width: getProportionalSize(10)),
+                      Text(
+                        '${customer.deviceBrand} - ${customer.deviceType}',
+                        style: TextStyle(
+                          fontSize: getProportionalSize(13),
+                          color: Theme.of(context).textTheme.bodyMedium?.color,
+                        ),
+                      ),
                     ],
                   ),
                   if (assignedEmployee != 'Not Assigned') ...[
                     SizedBox(height: getProportionalSize(8)),
                     Row(
-                        children: [
-                            Icon(Icons.person_outline, size: getProportionalSize(16), color: Theme.of(context).hintColor),
-                            SizedBox(width: getProportionalSize(10)),
-                            Text('Assigned to: $assignedEmployee', style: TextStyle(
-                                fontSize: getProportionalSize(13), 
-                                color: const Color(0xFF2196F3),
-                                fontWeight: FontWeight.w500)),
-                        ],
+                      children: [
+                        Icon(
+                          Icons.person_outline,
+                          size: getProportionalSize(16),
+                          color: Theme.of(context).hintColor,
+                        ),
+                        SizedBox(width: getProportionalSize(10)),
+                        Text(
+                          'Assigned to: $assignedEmployee',
+                          style: TextStyle(
+                            fontSize: getProportionalSize(13),
+                            color: const Color(0xFF2196F3),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ],
               ),
             ),
-            
+
             // Replaced Footer logic with new footer
             Container(
               padding: EdgeInsets.symmetric(
@@ -777,14 +818,16 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
               ),
               child: Row(
                 children: [
-                   Icon(
+                  Icon(
                     Icons.calendar_today,
                     size: getProportionalSize(14),
                     color: Theme.of(context).hintColor,
                   ),
                   SizedBox(width: getProportionalSize(6)),
                   Text(
-                    DateFormat('dd MMM yyyy').format(customer.timestamp.toDate()),
+                    DateFormat(
+                      'dd MMM yyyy',
+                    ).format(customer.timestamp.toDate()),
                     style: TextStyle(
                       fontSize: getProportionalSize(12),
                       color: Theme.of(context).hintColor,
@@ -796,14 +839,18 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
                     Icon(
                       Icons.access_time,
                       size: getProportionalSize(14),
-                      color: (durationInfo['color'] as Color?) ?? Theme.of(context).primaryColor,
+                      color:
+                          (durationInfo['color'] as Color?) ??
+                          Theme.of(context).primaryColor,
                     ),
                     SizedBox(width: getProportionalSize(6)),
                     Text(
                       (durationInfo['label'] as String?) ?? '',
                       style: TextStyle(
                         fontSize: getProportionalSize(12),
-                        color: (durationInfo['color'] as Color?) ?? Theme.of(context).primaryColor,
+                        color:
+                            (durationInfo['color'] as Color?) ??
+                            Theme.of(context).primaryColor,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -811,7 +858,7 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
                 ],
               ),
             ),
-  
+
             // Customer cancellation message
             if (isCanceledByCustomer)
               Padding(

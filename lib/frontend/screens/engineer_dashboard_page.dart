@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:intl/intl.dart';
+import 'package:subscription_rooks_app/frontend/screens/engineer_attendance_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_barcode_identifier.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_barcode_scanner_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
@@ -13,12 +14,17 @@ import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:subscription_rooks_app/services/location_service.dart';
 import 'package:subscription_rooks_app/services/notification_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/services/storage_service.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
 class ProfessionalTheme {
   static Color primary(BuildContext context) => Theme.of(context).primaryColor;
@@ -508,6 +514,20 @@ class ProfessionalNavigationDrawer extends StatelessWidget {
                       );
                     },
                   ),
+                  // _buildMenuItem(
+                  //   context: context,
+                  //   icon: Icons.qr_code_2_rounded,
+                  //   title: 'Engineer Attendance',
+                  //   onTap: () {
+                  //     Navigator.pop(context);
+                  //     Navigator.push(
+                  //       context,
+                  //       MaterialPageRoute(
+                  //         builder: (context) => EngineerAttendanceScreen(),
+                  //       ),
+                  //     );
+                  //   },
+                  // ),
                   const Spacer(),
                   _buildMenuItem(
                     context: context,
@@ -619,9 +639,9 @@ class _EngineerPageState extends State<EngineerPage> {
     super.initState();
 
     NotificationService.instance.registerToken(
-      'engineer',
-      widget.userName,
-      widget.userEmail,
+      role: 'engineer',
+      userId: widget.userName,
+      email: widget.userEmail,
     );
 
     _handleInitialNotification();
@@ -644,7 +664,7 @@ class _EngineerPageState extends State<EngineerPage> {
           .collection('notifications')
           .where('engineerName', isEqualTo: widget.userName)
           .where('audience', isEqualTo: 'engineer')
-          .orderBy('timestamp', descending: true)
+          .where('processed', isEqualTo: false)
           .snapshots();
 
       _notificationSubscription = query.listen(
@@ -654,10 +674,10 @@ class _EngineerPageState extends State<EngineerPage> {
               final data = change.doc.data();
               if (data == null) continue;
 
-              // Check if the ticket is still in "Assigned" status
+              final docId = change.doc.id;
               final bookingId = data['bookingId']?.toString() ?? '';
               if (bookingId.isNotEmpty) {
-                _checkTicketStatusAndNotify(bookingId, data);
+                _checkTicketStatusAndNotify(bookingId, data, docId);
               }
             }
           }
@@ -674,6 +694,7 @@ class _EngineerPageState extends State<EngineerPage> {
   Future<void> _checkTicketStatusAndNotify(
     String bookingId,
     Map<String, dynamic> data,
+    String docId,
   ) async {
     try {
       final doc = await FirestoreService.instance
@@ -700,7 +721,7 @@ class _EngineerPageState extends State<EngineerPage> {
           try {
             FirestoreService.instance
                 .collection('notifications')
-                .doc(data['id'] ?? '')
+                .doc(docId)
                 .update({'processed': true});
           } catch (e) {
             // ignore
@@ -969,6 +990,9 @@ class _EngineerPageState extends State<EngineerPage> {
     if (mounted) {
       Navigator.pop(context);
     }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('engineerEmail');
+    await prefs.remove('engineerName');
     await AuthStateService.instance.logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
@@ -1097,73 +1121,6 @@ class _EngineerPageState extends State<EngineerPage> {
                 ),
               ),
               actions: [
-                // Live Location Toggle
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.bug_report_outlined,
-                        color: Colors.white70,
-                        size: 18,
-                      ),
-                      tooltip: 'Test Connection',
-                      onPressed: () {
-                        LocationService.instance.testConnection(
-                          widget.userName,
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Connection test triggered. Check your logs.',
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    Text(
-                      LocationService.instance.isTracking
-                          ? 'ONLINE'
-                          : 'OFFLINE',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Switch(
-                      value: LocationService.instance.isTracking,
-                      onChanged: (value) async {
-                        if (value) {
-                          bool success = await LocationService.instance
-                              .startTracking(widget.userName);
-                          if (!success && mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Please enable location permissions to go online',
-                                ),
-                              ),
-                            );
-                          }
-                        } else {
-                          await LocationService.instance.stopTracking(
-                            widget.userName,
-                          );
-                        }
-                        setState(() {});
-                      },
-                      activeThumbColor: ProfessionalTheme.success,
-                      activeTrackColor: ProfessionalTheme.success.withOpacity(
-                        0.5,
-                      ),
-                      inactiveThumbColor: Colors.grey[400],
-                      inactiveTrackColor: Colors.white.withOpacity(0.2),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 8),
                 Container(
                   margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
@@ -1641,28 +1598,25 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
   List<Map<String, dynamic>> _payments = [];
   double? _capturedLat;
   double? _capturedLng;
+  DateTime? _capturedTimestamp;
+  bool _isLoadingLocation = false;
 
-  Future<void> _startLocationTracking({bool isOrderTaken = false}) async {
-    bool success = await LocationService.instance.startTracking(
-      widget.userName,
-      bookingId: widget.booking.bookingId,
-    );
-    if (success && mounted) {
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Live location tracking started'),
-          backgroundColor: ProfessionalTheme.success,
-          behavior: SnackBarBehavior.floating,
-        ),
+  Future<void> _logManualLocation() async {
+    setState(() => _isLoadingLocation = true);
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
       );
-    }
-  }
-
-  Future<void> _stopLocationTracking() async {
-    await LocationService.instance.stopTracking(widget.userName);
-    if (mounted) {
-      setState(() {});
+      setState(() {
+        _capturedLat = position.latitude;
+        _capturedLng = position.longitude;
+        _capturedTimestamp = DateTime.now();
+      });
+      _showSnackBar('Location captured!', ProfessionalTheme.success);
+    } catch (e) {
+      _showSnackBar('Error capturing location: $e', ProfessionalTheme.error);
+    } finally {
+      setState(() => _isLoadingLocation = false);
     }
   }
 
@@ -1982,8 +1936,6 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
             'lastUpdated': FieldValue.serverTimestamp(),
             'PaymentType': paymentTypeToSave,
             'lastUpdatedBy': widget.userName,
-            'lat': _capturedLat,
-            'lng': _capturedLng,
           };
 
           // Payments: Use Timestamp.now() for nested timestamps
@@ -2629,17 +2581,6 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
                       setState(() {
                         _currentStatus = newValue;
                       });
-
-                      // Trigger location tracking based on status
-                      final statusLower = newValue.toLowerCase();
-                      if (statusLower == 'order taken') {
-                        _startLocationTracking(isOrderTaken: true);
-                      } else if (statusLower == 'order received') {
-                        _startLocationTracking(isOrderTaken: false);
-                      } else if (statusLower == 'completed' ||
-                          statusLower == 'cancelled') {
-                        _stopLocationTracking();
-                      }
                     }
                   },
           ),
@@ -2801,123 +2742,6 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
       ],
     );
   }
-
-  Future<void> _logManualLocation() async {
-    setState(() {
-      _isLoadingLocation = true;
-    });
-
-    try {
-      // 1. Check if location services are enabled
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        _showSnackBar(
-          'Location services are disabled. Please enable GPS.',
-          ProfessionalTheme.error,
-        );
-        setState(() => _isLoadingLocation = false);
-        return;
-      }
-
-      // 2. Check permissions
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          _showSnackBar('Location permission denied', ProfessionalTheme.error);
-          setState(() => _isLoadingLocation = false);
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        _showSnackBar(
-          'Location permissions are permanently denied',
-          ProfessionalTheme.error,
-        );
-        setState(() => _isLoadingLocation = false);
-        return;
-      }
-
-      // 3. Get Position
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      // 4. Parse booking ID safely with trim()
-      dynamic orderId = widget.booking.bookingId.trim();
-      if (int.tryParse(orderId) != null) {
-        orderId = int.parse(orderId);
-      }
-
-      // 5. Send to Firebase (Firestore)
-      // Switch to Firestore to avoid RTDB strict schema/permission issues
-      // await FirestoreService.instance.collection('manual_location_logs').add({
-      //   "orderId": orderId,
-      //   "lat": position.latitude,
-      //   "lng": position.longitude,
-      //   "timestamp": DateTime.now().toIso8601String(),
-      //   "engineerName": widget.userName,
-      //   "createdAt": FieldValue.serverTimestamp(),
-      // });
-
-      // 7. Sync to Firestore (Admin_details) immediately
-      try {
-        await FirestoreService.instance
-            .collection('Admin_details')
-            .doc(widget.booking.bookingId)
-            .update({
-              'lat': position.latitude,
-              'lng': position.longitude,
-              'lastUpdated': FieldValue.serverTimestamp(),
-              "orderId": orderId,
-              "timestamp": DateTime.now().toIso8601String(),
-              "engineerName": widget.userName,
-              "createdAt": FieldValue.serverTimestamp(),
-            });
-      } catch (e) {
-        debugPrint('Error syncing to Firestore Admin_details: $e');
-      }
-
-      _showSnackBar(
-        'Location logged to Firebase successfully!',
-        ProfessionalTheme.success,
-      );
-
-      // 6. Update local state
-      if (mounted) {
-        setState(() {
-          _capturedLat = position.latitude;
-          _capturedLng = position.longitude;
-        });
-      }
-
-      // 8. Sync to RTDB for live tracking
-      try {
-        await LocationService.instance.updateDatabase(
-          widget.userName,
-          position,
-          bookingId: widget.booking.bookingId,
-        );
-      } catch (e) {
-        debugPrint('Error syncing to RTDB: $e');
-      }
-    } on FirebaseException catch (e) {
-      debugPrint('Firebase Error: ${e.code} - ${e.message}');
-      _showSnackBar('Database Error: ${e.message}', ProfessionalTheme.error);
-    } catch (e) {
-      debugPrint('Error logging location: $e');
-      _showSnackBar('Failed: $e', ProfessionalTheme.error);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingLocation = false;
-        });
-      }
-    }
-  }
-
-  bool _isLoadingLocation = false;
 
   Widget _buildDescriptionSection() {
     return Column(

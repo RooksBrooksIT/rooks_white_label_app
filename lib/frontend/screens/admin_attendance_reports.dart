@@ -18,10 +18,10 @@ class AdminAttendanceReportsPage extends StatefulWidget {
 
 class _AdminAttendanceReportsPageState
     extends State<AdminAttendanceReportsPage> {
-  String? _selectedEngineer;
+  String? _selectedEngineerId;
   DateTimeRange? _selectedDateRange;
   DateTime? _selectedMonth; // For month-wise filtering
-  List<String> _engineers = ['All Engineers'];
+  List<Map<String, dynamic>> _engineers = [];
   bool _isLoadingEngineers = true;
 
   final List<String> _months = [
@@ -49,10 +49,7 @@ class _AdminAttendanceReportsPageState
     try {
       final engineersData = await AttendanceBackend.getEngineers();
       setState(() {
-        _engineers = [
-          'All Engineers',
-          ...engineersData.map((e) => e['username'] as String),
-        ];
+        _engineers = engineersData;
         _isLoadingEngineers = false;
       });
     } catch (e) {
@@ -90,7 +87,7 @@ class _AdminAttendanceReportsPageState
 
   void _clearFilters() {
     setState(() {
-      _selectedEngineer = null;
+      _selectedEngineerId = null;
       _selectedDateRange = null;
       _selectedMonth = null;
     });
@@ -160,18 +157,26 @@ class _AdminAttendanceReportsPageState
                             vertical: 12,
                           ),
                         ),
-                        initialValue: _selectedEngineer ?? 'All Engineers',
-                        items: _engineers.map((eng) {
-                          return DropdownMenuItem(
-                            value: eng,
-                            child: Text(eng.toUpperCase()),
-                          );
-                        }).toList(),
+                        initialValue: _selectedEngineerId,
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: null,
+                            child: Text('ALL ENGINEERS'),
+                          ),
+                          ..._engineers.map((eng) {
+                            return DropdownMenuItem<String>(
+                              value: eng['uid'] as String,
+                              child: Text(
+                                (eng['username'] ?? 'Unknown')
+                                    .toString()
+                                    .toUpperCase(),
+                              ),
+                            );
+                          }).toList(),
+                        ],
                         onChanged: (val) {
                           setState(() {
-                            _selectedEngineer = val == 'All Engineers'
-                                ? null
-                                : val;
+                            _selectedEngineerId = val;
                           });
                         },
                       ),
@@ -232,7 +237,7 @@ class _AdminAttendanceReportsPageState
               ),
             ],
           ),
-          if (_selectedEngineer != null ||
+          if (_selectedEngineerId != null ||
               _selectedDateRange != null ||
               _selectedMonth != null)
             Padding(
@@ -248,33 +253,27 @@ class _AdminAttendanceReportsPageState
     );
   }
 
-  DateTime _parseDateKey(String key) {
-    try {
-      final parts = key.split('/');
-      if (parts.length == 3) {
-        return DateTime(
-          int.parse(parts[2]),
-          int.parse(parts[1]),
-          int.parse(parts[0]),
-        );
-      }
-    } catch (e) {
-      print('Error parsing date key $key: $e');
-    }
-    return DateTime.now();
-  }
-
   Widget _buildAttendanceList() {
-    Stream<QuerySnapshot> stream;
-    if (_selectedEngineer != null) {
+    Stream<List<Map<String, dynamic>>> stream;
+    if (_selectedEngineerId != null) {
+      DateTime? from, to;
+      if (_selectedMonth != null) {
+        from = DateTime(_selectedMonth!.year, _selectedMonth!.month, 1);
+        to = DateTime(_selectedMonth!.year, _selectedMonth!.month + 1, 0);
+      } else {
+        from = _selectedDateRange?.start;
+        to = _selectedDateRange?.end;
+      }
       stream = AttendanceBackend.getEngineerAttendanceHistory(
-        _selectedEngineer!,
+        _selectedEngineerId!,
+        fromDate: from,
+        toDate: to,
       );
     } else {
       stream = AttendanceBackend.getAllAttendanceHistory();
     }
 
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<List<Map<String, dynamic>>>(
       stream: stream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -284,63 +283,39 @@ class _AdminAttendanceReportsPageState
           return Center(child: Text('Error: ${snapshot.error}'));
         }
 
-        final docs = snapshot.data?.docs ?? [];
-        List<Map<String, dynamic>> entries = [];
+        var list = snapshot.data ?? [];
 
-        for (var doc in docs) {
-          final data = doc.data() as Map<String, dynamic>;
-          final docUsername = data['engineerUsername'] as String?;
+        // Concept: Engineer is marked as present for each and everyday until marked otherwise.
+        // We fill in the gaps for the selected range/month if a specific engineer is selected.
+        if (_selectedEngineerId != null) {
+          // Sort descending
+          list.sort(
+            (a, b) =>
+                (b['date'] as Timestamp).compareTo(a['date'] as Timestamp),
+          );
+        } else if (_selectedEngineerId == null) {
+          // If "All Engineers" is selected, just filter the existing list by date
+          DateTime? start, end;
+          if (_selectedMonth != null) {
+            start = DateTime(_selectedMonth!.year, _selectedMonth!.month, 1);
+            end = DateTime(_selectedMonth!.year, _selectedMonth!.month + 1, 0);
+          } else if (_selectedDateRange != null) {
+            start = _selectedDateRange!.start;
+            end = _selectedDateRange!.end;
+          }
 
-          data.forEach((key, value) {
-            if (value is Map<String, dynamic> && value.containsKey('status')) {
-              final entry = Map<String, dynamic>.from(value);
-              final date = _parseDateKey(key);
-              entry['date'] = Timestamp.fromDate(date);
-
-              // Apply Filters
-              bool matchesEngineer =
-                  _selectedEngineer == null ||
-                  docUsername == _selectedEngineer!.toLowerCase();
-
-              DateTime? start, end;
-              if (_selectedMonth != null) {
-                start = DateTime(
-                  _selectedMonth!.year,
-                  _selectedMonth!.month,
-                  1,
-                );
-                end = DateTime(
-                  _selectedMonth!.year,
-                  _selectedMonth!.month + 1,
-                  0,
-                );
-              } else if (_selectedDateRange != null) {
-                start = _selectedDateRange!.start;
-                end = _selectedDateRange!.end;
-              }
-
-              bool matchesDate = true;
-              if (start != null && end != null) {
-                matchesDate =
-                    (date.isAfter(start.subtract(const Duration(days: 1))) ||
-                        date.isAtSameMomentAs(start)) &&
-                    (date.isBefore(end.add(const Duration(days: 1))) ||
-                        date.isAtSameMomentAs(end));
-              }
-
-              if (matchesEngineer && matchesDate) {
-                entries.add(entry);
-              }
-            }
-          });
+          if (start != null && end != null) {
+            list = list.where((data) {
+              final date = _parseTimestamp(data['date']).toDate();
+              return (date.isAfter(start!.subtract(const Duration(days: 1))) ||
+                      date.isAtSameMomentAs(start)) &&
+                  (date.isBefore(end!.add(const Duration(days: 1))) ||
+                      date.isAtSameMomentAs(end));
+            }).toList();
+          }
         }
 
-        // Sort by date descending
-        entries.sort(
-          (a, b) => (b['date'] as Timestamp).compareTo(a['date'] as Timestamp),
-        );
-
-        if (entries.isEmpty) {
+        if (list.isEmpty) {
           return const Center(child: Text('No attendance records found.'));
         }
 
@@ -348,20 +323,28 @@ class _AdminAttendanceReportsPageState
         int presentCount = 0;
         int absentCount = 0;
         int leaveCount = 0;
-        for (var entry in entries) {
-          final status = entry['status'];
+        int otCount = 0;
+        int halfDayCount = 0;
+
+        for (var data in list) {
+          final status = data['status'];
           if (status == 'Present') {
             presentCount++;
           } else if (status == 'Absent') {
             absentCount++;
           } else if (status == 'Leave') {
             leaveCount++;
+          } else if (status == 'OT') {
+            otCount++;
+          } else if (status == 'HalfDay' || status == 'Half Day') {
+            halfDayCount++;
           }
         }
 
-        int totalDays = entries.length;
+        int totalDays = list.length;
         double attendancePercentage = totalDays > 0
-            ? (presentCount / totalDays) * 100
+            ? ((presentCount + otCount + (halfDayCount * 0.5)) / totalDays) *
+                  100
             : 0.0;
 
         return Column(
@@ -370,6 +353,8 @@ class _AdminAttendanceReportsPageState
               presentCount,
               absentCount,
               leaveCount,
+              otCount,
+              halfDayCount,
               totalDays,
               attendancePercentage,
             ),
@@ -387,10 +372,12 @@ class _AdminAttendanceReportsPageState
                   ),
                   ElevatedButton.icon(
                     onPressed: () => _generateProfessionalPDF(
-                      entries,
+                      list,
                       presentCount,
                       absentCount,
                       leaveCount,
+                      otCount,
+                      halfDayCount,
                       totalDays,
                       attendancePercentage,
                     ),
@@ -410,9 +397,9 @@ class _AdminAttendanceReportsPageState
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.only(bottom: 20),
-                itemCount: entries.length,
+                itemCount: list.length,
                 itemBuilder: (context, index) {
-                  final data = entries[index];
+                  final data = list[index];
                   return _buildReportItem(data);
                 },
               ),
@@ -427,6 +414,8 @@ class _AdminAttendanceReportsPageState
     int present,
     int absent,
     int leave,
+    int ot,
+    int halfDay,
     int total,
     double percentage,
   ) {
@@ -439,7 +428,8 @@ class _AdminAttendanceReportsPageState
             children: [
               _summaryCard('Present', present, Colors.green),
               _summaryCard('Absent', absent, Colors.red),
-              _summaryCard('Leave', leave, Colors.orange),
+              _summaryCard('Half Day', halfDay, Colors.orangeAccent),
+              _summaryCard('OT', ot, Colors.blue),
             ],
           ),
           const SizedBox(height: 12),
@@ -546,11 +536,15 @@ class _AdminAttendanceReportsPageState
     final date = _parseTimestamp(data['date']).toDate();
     final status = data['status'] as String;
     final username = data['engineerUsername'] as String;
-    final remarks = data['remarks'] ?? '';
+    // Strictly use 'comment' as that is where data is saved.
+    final remarks = data['comment'] ?? '';
 
     Color statusColor = Colors.green;
     if (status == 'Absent') statusColor = Colors.red;
     if (status == 'Leave') statusColor = Colors.orange;
+    if (status == 'OT') statusColor = Colors.blue;
+    if (status == 'HalfDay' || status == 'Half Day')
+      statusColor = Colors.purple;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -636,10 +630,12 @@ class _AdminAttendanceReportsPageState
   }
 
   Future<void> _generateProfessionalPDF(
-    List<Map<String, dynamic>> entries,
+    List<dynamic> list,
     int present,
     int absent,
     int leave,
+    int ot,
+    int halfDay,
     int total,
     double percentage,
   ) async {
@@ -702,7 +698,7 @@ class _AdminAttendanceReportsPageState
                         style: const pw.TextStyle(fontSize: 10),
                       ),
                       pw.Text(
-                        'Engineer: ${_selectedEngineer?.toUpperCase() ?? "All Engineers"}',
+                        'Engineer: ${_selectedEngineerId != null ? _engineers.firstWhere((e) => e['uid'] == _selectedEngineerId)['username']?.toString().toUpperCase() : "All Engineers"}',
                         style: const pw.TextStyle(fontSize: 10),
                       ),
                     ],
@@ -726,10 +722,11 @@ class _AdminAttendanceReportsPageState
                   ),
                   _pdfSummaryBox('Absent', absent.toString(), PdfColors.red700),
                   _pdfSummaryBox(
-                    'Leave',
-                    leave.toString(),
+                    'Half Day',
+                    halfDay.toString(),
                     PdfColors.orange700,
                   ),
+                  _pdfSummaryBox('OT', ot.toString(), PdfColors.blue700),
                 ],
               ),
               pw.SizedBox(height: 10),
@@ -769,9 +766,8 @@ class _AdminAttendanceReportsPageState
                   3: pw.Alignment.centerLeft,
                 },
                 headers: ['Engineer Name', 'Date', 'Status', 'Remarks'],
-                data: entries.map((entry) {
+                data: list.map((d) {
                   try {
-                    final d = entry;
                     final username =
                         d['engineerUsername']?.toString().toUpperCase() ??
                         'N/A';
@@ -787,7 +783,7 @@ class _AdminAttendanceReportsPageState
                       username,
                       dateStr,
                       d['status']?.toString() ?? 'N/A',
-                      d['remarks']?.toString() ?? '-',
+                      d['comment']?.toString() ?? '-',
                     ];
                   } catch (e) {
                     return ['Error', '-', '-', '-'];
@@ -837,7 +833,8 @@ class _AdminAttendanceReportsPageState
 
       await Printing.layoutPdf(
         onLayout: (PdfPageFormat format) async => bytes,
-        name: 'Attendance_Report_${_selectedEngineer ?? "All"}.pdf',
+        name:
+            'Attendance_Report_${_selectedEngineerId != null ? _engineers.firstWhere((e) => e['uid'] == _selectedEngineerId, orElse: () => {})['username'] ?? "Unknown" : "All"}.pdf',
       );
     } catch (e) {
       debugPrint('CRITICAL PDF ERROR: $e');

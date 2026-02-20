@@ -230,7 +230,11 @@ class NotificationService {
     );
   }
 
-  Future<void> registerToken(String role, String userId, String email) async {
+  Future<void> registerToken({
+    required String role,
+    required String userId,
+    String email = '',
+  }) async {
     try {
       if (Platform.isWindows) {
         print("Skipping FCM token registration on Windows (not supported).");
@@ -249,6 +253,9 @@ class NotificationService {
       }
 
       print("Registering FCM token for $role ($userId): $token");
+      final docPath =
+          "${FirestoreService.instance.collection('notifications_tokens').doc(role).collection('tokens').doc(userId).path}";
+      print("Full Firestore Path: $docPath");
 
       await FirestoreService.instance
           .collection('notifications_tokens')
@@ -261,8 +268,11 @@ class NotificationService {
             'lastUpdated': FieldValue.serverTimestamp(),
             'platform': Platform.operatingSystem,
           }, SetOptions(merge: true))
-          .then((_) => print("Token write to Firestore successful for $userId"))
-          .catchError((e) => print("Error writing token to Firestore: $e"));
+          .then((_) => print("Token registered SUCCESSFULLY at $docPath"))
+          .catchError((e) {
+            print("Token registration FAILED: $e");
+            return null;
+          });
 
       print("Token registration initiated for $userId");
 

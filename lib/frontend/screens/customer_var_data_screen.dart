@@ -132,7 +132,7 @@ class Customer {
     return Timestamp.now();
   }
 
-  String? get id => null;
+  String? get id => customerid;
 
   Null get status => null;
 

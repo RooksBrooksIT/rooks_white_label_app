@@ -90,9 +90,9 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
       final user = FirebaseAuth.instance.currentUser;
       final email = user?.email ?? '';
       NotificationService.instance.registerToken(
-        'customer',
-        widget.customerId,
-        email,
+        role: 'customer',
+        userId: widget.customerId,
+        email: email,
       );
     }
   }

@@ -15,6 +15,7 @@ import 'package:subscription_rooks_app/frontend/screens/admin_customer_report_pa
 import 'package:subscription_rooks_app/frontend/screens/admin_deliverytickets_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_device_config_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_geo_location_screen.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_shift_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_view_barcode_details.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_view_engineer_updates.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_tickets_overview.dart';
@@ -107,9 +108,9 @@ class _admindashboardState extends State<admindashboard> {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         NotificationService.instance.registerToken(
-          'admin',
-          user.uid, // Use UID instead of name
-          adminEmail,
+          role: 'admin',
+          userId: user.uid, // Use UID instead of name
+          email: adminEmail,
         );
       }
     }
@@ -379,6 +380,18 @@ class _admindashboardState extends State<admindashboard> {
                           );
                         },
                       ),
+                      // _buildMenuCard(
+                      //   title: 'Shift',
+                      //   subtitle: 'Comprehensive asset info',
+                      //   icon: Icons.location_pin,
+                      //   color: const Color(0xFF483785),
+                      //   onTap: () => Navigator.push(
+                      //     context,
+                      //     MaterialPageRoute(
+                      //       builder: (context) => const Engineershiftscreen(),
+                      //     ),
+                      //   ),
+                      // ),
                     ]),
                     const SizedBox(height: 48),
                   ],

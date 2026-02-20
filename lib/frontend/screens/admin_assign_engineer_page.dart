@@ -572,6 +572,7 @@ class _AssignEngineerPageState extends State<AssignEngineerPage> {
           .collection('Admin_details')
           .doc(widget.customer.bookingId)
           .set({
+            'id': widget.customer.customerid, // Ensure id is passed for notifications
             'assignedEmployee': engineerName.trim(),
             'customerName': widget.customer.customerName,
             'bookingId': widget.customer.bookingId,
@@ -598,10 +599,12 @@ class _AssignEngineerPageState extends State<AssignEngineerPage> {
           'engineerName': engineerName,
           'type': 'new_assignment',
           'bookingId': widget.customer.bookingId,
-          'body': 'You have been assigned a new task',
+          'body': 'You have been assigned a new task: ${widget.customer.bookingId}',
           'audience': 'engineer',
           'timestamp': FieldValue.serverTimestamp(),
           'processed': false,
+          'status': 'pending',
+          'customerName': widget.customer.customerName,
         });
       } catch (e) {
         // non-fatal - assignment already persisted; log for debugging
