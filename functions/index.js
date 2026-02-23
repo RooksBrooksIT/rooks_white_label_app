@@ -2,6 +2,8 @@ const { onDocumentUpdated, onDocumentCreated, onDocumentWritten } = require("fir
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
+const BRAND_BLUE = "#1A237E";
+const BRAND_BLUE_LIGHT = "#EBF5FF";
 
 admin.initializeApp();
 
@@ -426,7 +428,7 @@ exports.processPaymentSuccess = onDocumentWritten(
 
             // ── 5. Generate Professional PDF ───────────────────────────────
             const PDFDocument = require("pdfkit");
-            const BRAND_COLOR = "#565866ff";   // Deep indigo
+            const BRAND_COLOR = BRAND_BLUE;
             const LIGHT_BG = "#F9FAFB";
             const TEXT_DARK = "#515861ff";
             const TEXT_MID = "#4B5563";
@@ -547,8 +549,8 @@ exports.processPaymentSuccess = onDocumentWritten(
 
                 // Success Badge
                 doc.save();
-                doc.roundedRect(mid + 50, y + 5, 120, 25, 5).fill("#EBF5FF");
-                doc.font("Helvetica-Bold").fontSize(9).fillColor("#1E429F")
+                doc.roundedRect(mid + 50, y + 5, 120, 25, 5).fill(BRAND_BLUE_LIGHT);
+                doc.font("Helvetica-Bold").fontSize(9).fillColor(BRAND_BLUE)
                     .text("✔ PAID SUCCESS", mid + 65, y + 12);
                 doc.restore();
 
@@ -596,7 +598,7 @@ exports.processPaymentSuccess = onDocumentWritten(
           <td style="padding:32px 40px 0;">
             <p style="font-size:16px;color:#212121;margin:0 0 8px;">Hello, <strong>${userName}</strong>!</p>
             <p style="font-size:14px;color:#616161;margin:0 0 24px;line-height:1.6;">
-              Your subscription payment was <strong style="color:#2E7D32;">successful</strong>.
+              Your subscription payment was <strong style="color:${BRAND_BLUE};">successful</strong>.
               Please find your official invoice attached to this email as a PDF.
             </p>
           </td>
@@ -800,10 +802,10 @@ exports.checkSubscriptionExpiryReminders = onSchedule("0 0 * * *", async (event)
                 <style>
                     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
                     .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; }
-                    .header { background-color: #262e86; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+                    .header { background-color: ${BRAND_BLUE}; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
                     .content { padding: 30px; }
                     .footer { text-align: center; font-size: 12px; color: #999; margin-top: 20px; }
-                    .button { display: inline-block; padding: 12px 24px; background-color: #262e86; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 20px; }
+                    .button { display: inline-block; padding: 12px 24px; background-color: ${BRAND_BLUE}; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 20px; }
                 </style>
             </head>
             <body>

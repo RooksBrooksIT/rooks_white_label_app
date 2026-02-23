@@ -36,6 +36,7 @@ class PaymentScreen extends StatefulWidget {
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
+  static const Color brandBlue = Color(0xFF1A237E);
   String selectedPaymentMethod = 'UPI';
 
   // Responsive values based on screen width
@@ -147,10 +148,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Theme(
       data: ThemeData.light().copyWith(
         scaffoldBackgroundColor: Colors.white,
-        primaryColor: Colors.black,
+        primaryColor: brandBlue,
         colorScheme: const ColorScheme.light(
-          primary: Colors.black,
-          secondary: Colors.blueAccent,
+          primary: brandBlue,
+          secondary: brandBlue,
           surface: Colors.white,
         ),
       ),
@@ -368,7 +369,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           name: 'UPI',
           subtitle: 'Google Pay, PhonePe, Paytm & more',
           icon: Icons.qr_code_rounded,
-          color: Colors.blue,
+          color: brandBlue,
         ),
         SizedBox(height: isDesktop ? 16 : 12),
 
@@ -376,7 +377,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           name: 'Card',
           subtitle: 'Credit / Debit card payment',
           icon: Icons.credit_card_rounded,
-          color: Colors.deepPurple,
+          color: brandBlue.withOpacity(0.8),
         ),
         SizedBox(height: isDesktop ? 16 : 12),
 
@@ -384,7 +385,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           name: 'Net Banking',
           subtitle: 'Direct bank transfer',
           icon: Icons.account_balance_rounded,
-          color: Colors.green,
+          color: brandBlue.withOpacity(0.9),
         ),
       ],
     );
@@ -500,14 +501,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget _buildSecurityBadge(String text, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: Colors.green.shade600, size: isDesktop ? 40 : 32),
+        Icon(icon, color: brandBlue, size: isDesktop ? 40 : 32),
         const SizedBox(height: 8),
         Text(
           text,
           style: TextStyle(
             fontSize: isDesktop ? 14 : 12,
             fontWeight: FontWeight.bold,
-            color: Colors.green.shade800,
+            color: brandBlue,
           ),
           textAlign: TextAlign.center,
         ),
@@ -714,7 +715,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.check_circle_outline, color: Colors.green, size: 28),
+            Icon(Icons.check_circle_outline, color: brandBlue, size: 28),
             SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -740,7 +741,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
+              backgroundColor: brandBlue,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),

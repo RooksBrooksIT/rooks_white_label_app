@@ -230,7 +230,7 @@ class _IciciPaymentWebViewScreenState extends State<IciciPaymentWebViewScreen> {
                     value: _loadingProgress,
                     backgroundColor: Colors.grey.shade200,
                     valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFFE55B25), // ICICI Orange
+                      Color(0xFF1A237E), // Brand Blue
                     ),
                   ),
                 )
@@ -244,7 +244,7 @@ class _IciciPaymentWebViewScreenState extends State<IciciPaymentWebViewScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(color: Color(0xFFE55B25)),
+                    CircularProgressIndicator(color: Color(0xFF1A237E)),
                     SizedBox(height: 16),
                     Text(
                       'Loading payment page...',

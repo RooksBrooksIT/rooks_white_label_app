@@ -147,7 +147,7 @@ class ReceiptService {
                       style: pw.TextStyle(
                         fontSize: 18,
                         fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blue700,
+                        color: PdfColor.fromInt(0xFF1A237E),
                       ),
                     ),
                   ],
