@@ -13,6 +13,8 @@ class ReceiptService {
     required int amount,
     required String transactionId,
     required String paymentMethod,
+    String? userName,
+    String? userEmail,
     String? logoUrl,
     String appName = 'Rooks White Label',
   }) async {
@@ -28,6 +30,11 @@ class ReceiptService {
     final duration = isYearly
         ? '12 Months'
         : (isSixMonths ? '6 Months' : '1 Month');
+
+    // Calculate GST (18%)
+    final gstRate = 0.18;
+    final baseAmount = (amount / (1 + gstRate)).round();
+    final gstAmount = (amount - baseAmount).round();
 
     pdf.addPage(
       pw.Page(
@@ -78,6 +85,23 @@ class ReceiptService {
                 pw.Divider(),
                 pw.SizedBox(height: 20),
 
+                // User Details
+                if (userName != null || userEmail != null) ...[
+                  pw.Text(
+                    'Customer Details',
+                    style: pw.TextStyle(
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 10),
+                  if (userName != null) _buildRow('Name', userName),
+                  if (userEmail != null) _buildRow('Email', userEmail),
+                  pw.SizedBox(height: 20),
+                  pw.Divider(),
+                  pw.SizedBox(height: 20),
+                ],
+
                 // Subscription Details
                 pw.Text(
                   'Subscription Details',
@@ -94,7 +118,20 @@ class ReceiptService {
                 pw.Divider(),
                 pw.SizedBox(height: 20),
 
-                // Amount
+                // Amount Breakdown
+                pw.Text(
+                  'Payment Summary',
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 10),
+                _buildRow('Subtotal (ex-GST)', 'INR $baseAmount.00'),
+                _buildRow('GST (18%)', 'INR $gstAmount.00'),
+                pw.SizedBox(height: 10),
+                pw.Divider(),
+                pw.SizedBox(height: 10),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
@@ -110,7 +147,7 @@ class ReceiptService {
                       style: pw.TextStyle(
                         fontSize: 18,
                         fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blue700,
+                        color: PdfColor.fromInt(0xFF1A237E),
                       ),
                     ),
                   ],

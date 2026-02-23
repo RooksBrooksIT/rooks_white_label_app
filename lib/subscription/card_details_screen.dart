@@ -146,7 +146,7 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -163,7 +163,7 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -175,7 +175,7 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -318,7 +318,7 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
                             width: 30,
                             height: 30,
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.8),
+                              color: Colors.red.withValues(alpha: 0.8),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -328,7 +328,7 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
                               width: 30,
                               height: 30,
                               decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.8),
+                                color: Colors.orange.withValues(alpha: 0.8),
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -633,6 +633,7 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
       }
 
       // 2. Open WebView
+      if (!mounted) return;
       final webViewResult = await Navigator.push<IciciPaymentResult>(
         context,
         MaterialPageRoute(

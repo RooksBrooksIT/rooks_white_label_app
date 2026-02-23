@@ -162,7 +162,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
             end: Alignment.bottomRight,
             colors: [
               Colors.grey.shade100,
-              Colors.blue.shade50.withOpacity(0.5),
+              Colors.blue.shade50.withValues(alpha: 0.5),
               Colors.grey.shade200,
             ],
           ),
@@ -181,7 +181,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                         horizontal: 16,
                         vertical: 12,
                       ),
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       child: Row(
                         children: [
                           IconButton(
@@ -247,7 +247,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                   child: Container(
                     height: 50,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(25),
                     ),
                     child: Row(
@@ -414,7 +414,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         border: Border.all(
           color: isCurrentPlan
               ? Colors.blue.shade300
-              : Colors.grey.withOpacity(0.2),
+              : Colors.grey.withValues(alpha: 0.2),
           width: isCurrentPlan ? 2 : 1,
         ),
         boxShadow: [
