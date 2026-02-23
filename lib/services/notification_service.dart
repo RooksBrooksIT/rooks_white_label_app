@@ -254,7 +254,7 @@ class NotificationService {
 
       print("Registering FCM token for $role ($userId): $token");
       final docPath =
-          "${FirestoreService.instance.collection('notifications_tokens').doc(role).collection('tokens').doc(userId).path}";
+          FirestoreService.instance.collection('notifications_tokens').doc(role).collection('tokens').doc(userId).path;
       print("Full Firestore Path: $docPath");
 
       await FirestoreService.instance

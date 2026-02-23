@@ -172,7 +172,7 @@ class _AdminAttendanceReportsPageState
                                     .toUpperCase(),
                               ),
                             );
-                          }).toList(),
+                          }),
                         ],
                         onChanged: (val) {
                           setState(() {
@@ -543,8 +543,9 @@ class _AdminAttendanceReportsPageState
     if (status == 'Absent') statusColor = Colors.red;
     if (status == 'Leave') statusColor = Colors.orange;
     if (status == 'OT') statusColor = Colors.blue;
-    if (status == 'HalfDay' || status == 'Half Day')
+    if (status == 'HalfDay' || status == 'Half Day') {
       statusColor = Colors.purple;
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),

@@ -148,7 +148,7 @@ class _EngineershiftscreenState extends State<Engineershiftscreen> {
           children: [
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Select Engineer'),
-              value: _selectedEngineerId,
+              initialValue: _selectedEngineerId,
               items: _engineers.map((eng) {
                 return DropdownMenuItem(
                   value: eng['uid'] as String,
@@ -180,7 +180,7 @@ class _EngineershiftscreenState extends State<Engineershiftscreen> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     decoration: const InputDecoration(labelText: 'Shift'),
-                    value: _selectedShift,
+                    initialValue: _selectedShift,
                     items: _shifts
                         .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                         .toList(),

@@ -517,9 +517,9 @@ class _AMCTrackMyServiceState extends State<AMCTrackMyService> {
   Widget _buildStatusTracker(String currentStatus) {
     final status = currentStatus.toLowerCase().trim();
     int currentStep = 0;
-    if (status == 'assigned')
+    if (status == 'assigned') {
       currentStep = 1;
-    else if (status == 'in progress')
+    } else if (status == 'in progress')
       currentStep = 2;
     else if (status == 'completed')
       currentStep = 3;

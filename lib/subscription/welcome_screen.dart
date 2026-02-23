@@ -354,8 +354,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ],
             validator: (v) {
               if (v == null || v.isEmpty) return 'Enter phone number';
-              if (v.length != 10)
+              if (v.length != 10) {
                 return 'Phone number must be exactly 10 digits';
+              }
               return null;
             },
           ),

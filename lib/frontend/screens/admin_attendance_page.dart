@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:subscription_rooks_app/backend/attendance_backend.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_attendance_reports.dart';
-import 'package:intl/intl.dart';
 
 class AdminAttendancePage extends StatefulWidget {
   const AdminAttendancePage({super.key});

@@ -1054,8 +1054,9 @@ class _admindashboardState extends State<admindashboard> {
     final name = planName.toLowerCase();
     if (name.contains('silver')) return Colors.grey.shade300;
     if (name.contains('gold')) return const Color(0xFFFFD700); // Gold
-    if (name.contains('platinum'))
+    if (name.contains('platinum')) {
       return const Color(0xFFE5E4E2); // Platinum color
+    }
     if (name.contains('trial')) return Colors.lightBlueAccent;
     return Colors.white;
   }

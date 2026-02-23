@@ -14,7 +14,7 @@ class EngineerAttendanceScreen extends StatefulWidget {
 
 class _EngineerAttendanceScreenState extends State<EngineerAttendanceScreen> {
   late String _engineerId;
-  DateTime _today = DateTime.now();
+  final DateTime _today = DateTime.now();
   bool _isLoading = false;
 
   @override
@@ -354,7 +354,7 @@ class _EngineerAttendanceScreenState extends State<EngineerAttendanceScreen> {
                               child: SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
                                 child: DataTable(
-                                  headingRowColor: MaterialStateProperty.all(
+                                  headingRowColor: WidgetStateProperty.all(
                                     Colors.grey.shade200,
                                   ),
                                   columns: const [
