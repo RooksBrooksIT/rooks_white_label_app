@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
 import 'package:subscription_rooks_app/frontend/screens/admin_dashboard.dart';
-=======
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:intl/intl.dart';
 import 'package:subscription_rooks_app/services/receipt_service.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
-import 'branding_customization_screen.dart';
->>>>>>> origin/abishek/dev
 
 class TransactionCompletedScreen extends StatelessWidget {
   final String planName;

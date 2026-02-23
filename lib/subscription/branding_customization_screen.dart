@@ -250,15 +250,9 @@ class _BrandingCustomizationScreenState
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-<<<<<<< HEAD
-              Colors.grey.shade50,
-              Colors.blue.shade50,
-              Colors.purple.shade50,
-=======
               Colors.grey.shade100,
               Colors.blue.shade50.withValues(alpha: 0.5),
               Colors.grey.shade200,
->>>>>>> origin/abishek/dev
             ],
           ),
         ),
@@ -266,7 +260,6 @@ class _BrandingCustomizationScreenState
           backgroundColor: Colors.transparent,
           extendBodyBehindAppBar: true,
           appBar: AppBar(
-<<<<<<< HEAD
             title: Text(
               widget.isEditMode ? 'Edit Branding' : 'Customize Branding',
               style: const TextStyle(
@@ -274,13 +267,8 @@ class _BrandingCustomizationScreenState
                 letterSpacing: 0.5,
               ),
             ),
-            backgroundColor: Colors.white.withOpacity(0.8),
-            foregroundColor: Colors.black87,
-=======
-            title: const Text('Customize Branding'),
             backgroundColor: Colors.white.withValues(alpha: 0.2),
             foregroundColor: Colors.black,
->>>>>>> origin/abishek/dev
             elevation: 0,
             flexibleSpace: ClipRRect(
               child: BackdropFilter(
@@ -1077,15 +1065,9 @@ class _BrandingCustomizationScreenState
               border: Border.all(color: Colors.grey.shade300, width: 8),
               boxShadow: [
                 BoxShadow(
-<<<<<<< HEAD
-                  color: Colors.black.withOpacity(0.15),
-                  blurRadius: 30,
-                  offset: const Offset(0, 15),
-=======
                   color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
->>>>>>> origin/abishek/dev
                 ),
               ],
             ),
@@ -1096,8 +1078,16 @@ class _BrandingCustomizationScreenState
                   // Mock Status Bar
                   Container(
                     height: 44,
-                    color: _backgroundColor,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: _backgroundColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 5,
+                        ),
+                      ],
+                    ),
                     child: Row(
                       children: [
                         Text(
@@ -1135,15 +1125,6 @@ class _BrandingCustomizationScreenState
                         ),
                       ],
                     ),
-<<<<<<< HEAD
-=======
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 5,
-                      ),
-                    ],
->>>>>>> origin/abishek/dev
                   ),
                   // Mock App Bar
                   Container(
@@ -1222,7 +1203,6 @@ class _BrandingCustomizationScreenState
                       ],
                     ),
                   ),
-<<<<<<< HEAD
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -1313,22 +1293,23 @@ class _BrandingCustomizationScreenState
                             ],
                           ),
                         ],
-=======
-                ),
-                // Mock Tab Bar
-                Container(
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: _backgroundColor,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(17),
-                      bottomRight: Radius.circular(17),
+                      ),
                     ),
-                    border: Border(
-                      top: BorderSide(
-                        color: Colors.grey.withValues(alpha: 0.2),
-                        width: 1,
->>>>>>> origin/abishek/dev
+                  ),
+                  // Mock Tab Bar
+                  Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: _backgroundColor,
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(17),
+                        bottomRight: Radius.circular(17),
+                      ),
+                      border: Border(
+                        top: BorderSide(
+                          color: Colors.grey.withOpacity(0.2),
+                          width: 1,
+                        ),
                       ),
                     ),
                   ),
