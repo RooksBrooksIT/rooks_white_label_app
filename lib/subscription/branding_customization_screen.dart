@@ -143,8 +143,9 @@ class _BrandingCustomizationScreenState
     // Try to find if current colors match a preset
     _selectedThemeIndex = _presetThemes.length; // Default to Custom
     for (int i = 0; i < _presetThemes.length; i++) {
-      if (_presetThemes[i]['primary']?.value == _primaryColor.value &&
-          _presetThemes[i]['secondary']?.value == _secondaryColor.value) {
+      if (_presetThemes[i]['primary']?.toARGB32() == _primaryColor.toARGB32() &&
+          _presetThemes[i]['secondary']?.toARGB32() ==
+              _secondaryColor.toARGB32()) {
         _selectedThemeIndex = i;
         break;
       }
@@ -169,6 +170,7 @@ class _BrandingCustomizationScreenState
       }
     } catch (e) {
       // Handle permission errors, etc.
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
@@ -208,7 +210,7 @@ class _BrandingCustomizationScreenState
                 }
               });
             },
-            showLabel: true,
+            labelTypes: const [ColorLabelType.hsl],
             pickerAreaHeightPercent: 0.8,
           ),
         ),
@@ -237,7 +239,7 @@ class _BrandingCustomizationScreenState
             end: Alignment.bottomRight,
             colors: [
               Colors.grey.shade100,
-              Colors.blue.shade50.withOpacity(0.5),
+              Colors.blue.shade50.withValues(alpha: 0.5),
               Colors.grey.shade200,
             ],
           ),
@@ -247,7 +249,7 @@ class _BrandingCustomizationScreenState
           extendBodyBehindAppBar: true,
           appBar: AppBar(
             title: const Text('Customize Branding'),
-            backgroundColor: Colors.white.withOpacity(0.2),
+            backgroundColor: Colors.white.withValues(alpha: 0.2),
             foregroundColor: Colors.black,
             elevation: 0,
             flexibleSpace: ClipRRect(
@@ -737,7 +739,7 @@ class _BrandingCustomizationScreenState
               border: Border.all(color: Colors.grey.shade300, width: 8),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -756,7 +758,7 @@ class _BrandingCustomizationScreenState
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 5,
                       ),
                     ],
@@ -856,7 +858,7 @@ class _BrandingCustomizationScreenState
                     ),
                     border: Border(
                       top: BorderSide(
-                        color: Colors.grey.withOpacity(0.2),
+                        color: Colors.grey.withValues(alpha: 0.2),
                         width: 1,
                       ),
                     ),
@@ -917,9 +919,9 @@ class _BrandingCustomizationScreenState
             // Prepare branding data
             final brandingData = {
               'appName': _appNameController.text,
-              'primaryColor': _primaryColor.value,
-              'secondaryColor': _secondaryColor.value,
-              'backgroundColor': _backgroundColor.value,
+              'primaryColor': _primaryColor.toARGB32(),
+              'secondaryColor': _secondaryColor.toARGB32(),
+              'backgroundColor': _backgroundColor.toARGB32(),
               'useDarkMode': _useDarkMode,
               'fontFamily': _selectedFont,
               'databaseName': ThemeService.instance.databaseName,
@@ -929,14 +931,18 @@ class _BrandingCustomizationScreenState
             final uid =
                 AuthStateService.instance.currentUser?.uid ?? 'demo-user';
 
-            print(
+            debugPrint(
               'BrandingCustomizationScreen: uid=$uid, appName=${_appNameController.text}',
             );
-            print('BrandingCustomizationScreen: logoFile=${_logoFile?.path}');
+            debugPrint(
+              'BrandingCustomizationScreen: logoFile=${_logoFile?.path}',
+            );
 
             // Upload logo if a new file was picked
             if (_logoFile != null) {
-              print('BrandingCustomizationScreen: Starting logo upload...');
+              debugPrint(
+                'BrandingCustomizationScreen: Starting logo upload...',
+              );
               final logoUrl = await StorageService.instance.uploadLogo(
                 userId: uid,
                 file: _logoFile!,

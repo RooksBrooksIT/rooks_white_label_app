@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:intl/intl.dart';
+import 'package:subscription_rooks_app/services/receipt_service.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'branding_customization_screen.dart';
 
 class TransactionCompletedScreen extends StatelessWidget {
@@ -52,7 +58,7 @@ class TransactionCompletedScreen extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -97,10 +103,12 @@ class TransactionCompletedScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                    border: Border.all(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
+                        color: Colors.black.withValues(alpha: 0.03),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -176,6 +184,31 @@ class TransactionCompletedScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
+                // View Receipt Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: OutlinedButton(
+                    onPressed: () => _viewReceipt(context),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.black87, width: 2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text(
+                      'VIEW RECEIPT',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.black87,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 // Secondary Action Button
               ],
             ),
@@ -241,5 +274,44 @@ class TransactionCompletedScreen extends StatelessWidget {
     final minute = dt.minute.toString().padLeft(2, '0');
 
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}, $hour:$minute $ampm';
+  }
+
+  Future<void> _viewReceipt(BuildContext context) async {
+    try {
+      // Get current user info
+      final user = AuthStateService.instance.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('User not found')));
+        return;
+      }
+
+      // Generate PDF receipt
+      final pdfFile = await ReceiptService.generateReceipt(
+        planName: planName,
+        isYearly: isYearly,
+        isSixMonths: false, // Assuming not 6 months for now
+        amount: amountPaid,
+        transactionId: transactionId,
+        paymentMethod: paymentMethod,
+        userName: user.displayName,
+        userEmail: user.email,
+        appName: 'Rooks White Label',
+      );
+
+      // Display PDF using printing package
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async {
+          final bytes = await pdfFile.readAsBytes();
+          return bytes;
+        },
+        name: 'Receipt_${transactionId}.pdf',
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error generating receipt: $e')));
+    }
   }
 }

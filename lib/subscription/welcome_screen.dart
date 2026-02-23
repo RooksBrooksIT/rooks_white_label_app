@@ -63,6 +63,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           .validateGlobalReferralCode(code);
       if (linkedAppName == null) {
         setState(() => _isLoading = false);
+        if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Invalid Referral Code.')));
@@ -354,8 +355,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ],
             validator: (v) {
               if (v == null || v.isEmpty) return 'Enter phone number';
-              if (v.length != 10)
+              if (v.length != 10) {
                 return 'Phone number must be exactly 10 digits';
+              }
               return null;
             },
           ),
@@ -448,7 +450,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withAlpha(26),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -477,7 +479,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             'Our platform is designed to scale with your business while maintaining a premium brand experience.',
             style: GoogleFonts.inter(
               fontSize: 15,
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withAlpha(179),
               height: 1.5,
             ),
           ),
@@ -553,7 +555,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withAlpha(51),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),

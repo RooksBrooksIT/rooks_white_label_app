@@ -5,8 +5,6 @@ import 'package:subscription_rooks_app/services/icici_service.dart';
 import 'package:subscription_rooks_app/services/upi_payment_service.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
-import 'package:subscription_rooks_app/services/receipt_service.dart';
-import 'package:subscription_rooks_app/services/email_service.dart';
 
 import 'dart:io';
 
@@ -39,11 +37,6 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> {
   String selectedPaymentMethod = 'UPI';
-  final TextEditingController upiController = TextEditingController(
-    text: 'user@okaxis',
-  );
-
-  final TextEditingController nameController = TextEditingController();
 
   // Responsive values based on screen width
   double get titleFontSize {
@@ -437,7 +430,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   width: isDesktop ? 48 : 40,
                   height: isDesktop ? 48 : 40,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withAlpha(26),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: color, size: isDesktop ? 24 : 20),
@@ -466,15 +459,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     ],
                   ),
                 ),
-                Radio<String>(
-                  value: name,
-                  groupValue: selectedPaymentMethod,
-                  onChanged: (value) {
-                    setState(() {
-                      selectedPaymentMethod = value!;
-                    });
-                  },
-                  activeColor: Colors.black87,
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? Colors.black87 : Colors.grey.shade400,
+                      width: isSelected ? 6 : 2,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -487,11 +482,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   /// Check if this is a UPI payment that should launch the system UPI chooser.
   bool _isUpiMethod(String method) {
     return method == 'UPI';
-  }
-
-  /// Check if this method should route through ICICI WebView.
-  bool _isIciciWebViewMethod(String method) {
-    return method == 'Card' || method == 'Net Banking';
   }
 
   Widget _buildSecurityBadges() {
@@ -599,54 +589,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  void _showBankListDialog() {
-    final banks = [
-      'State Bank of India',
-      'HDFC Bank',
-      'ICICI Bank',
-      'Axis Bank',
-      'Kotak Mahindra Bank',
-      'Punjab National Bank',
-      'Bank of Baroda',
-      'Canara Bank',
-    ];
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Your Bank'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: banks.length,
-            itemBuilder: (context, index) {
-              return ListTile(
-                leading: const Icon(Icons.account_balance),
-                title: Text(banks[index]),
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Selected ${banks[index]}'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _processPayment() async {
     final uid = AuthStateService.instance.currentUser?.uid ?? 'demo-user';
     final txnRefId = DateTime.now().millisecondsSinceEpoch.toString();
@@ -725,6 +667,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
           paymentMethod: selectedPaymentMethod,
           planName: widget.planName,
           isYearly: widget.isYearly,
+          tenantId: ThemeService.instance.databaseName,
+          appId: ThemeService.instance.appName,
         );
 
         await _handlePaymentSuccess(uid: uid, merchantTxnNo: txnRefId);
@@ -906,7 +850,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             uid: uid,
             merchantTxnNo: merchantTxnNo,
             amount: '${widget.price}.00',
-            status: 'UAT_SIMULATED',
+            status: 'SUCCESS', // Trigger receipt even in UAT simulation
             paymentMethod: selectedPaymentMethod,
             planName: widget.planName,
             isYearly: widget.isYearly,
@@ -923,6 +867,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
         );
         return;
       }
+
+      if (!mounted) return;
 
       // Open in-app WebView for payment
       final webViewResult = await Navigator.push<IciciPaymentResult>(
@@ -1141,51 +1087,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         debugPrint('Error saving subscription to Firestore: $e');
       }
 
-      // ── Generate and Email Receipt ─────────────────────────────────────
-      try {
-        final user = AuthStateService.instance.currentUser;
-        if (user != null && user.email != null) {
-          final logoUrl = finalBrandingData?['logoUrl'] as String?;
-          final appName = finalBrandingData?['appName'] ?? 'Rooks App';
-
-          debugPrint('Generating receipt for ${user.email}...');
-
-          final receiptFile = await ReceiptService.generateReceipt(
-            planName: widget.planName,
-            isYearly: widget.isYearly,
-            isSixMonths: widget.isSixMonths,
-            amount: widget.price,
-            transactionId: merchantTxnNo,
-            paymentMethod: selectedPaymentMethod,
-            logoUrl: logoUrl,
-            appName: appName,
-          );
-
-          debugPrint('Sending receipt email to ${user.email}...');
-
-          await EmailService.sendReceiptWithAttachment(
-            recipientEmail: user.email!,
-            recipientName: user.displayName ?? 'Customer',
-            subject: 'Payment Receipt - ${widget.planName} Plan',
-            htmlContent:
-                '''
-              <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <h2>Payment Successful!</h2>
-                <p>Hello,</p>
-                <p>Thank you for subscribing to the <strong>${widget.planName} Plan</strong>. Your payment has been successfully processed.</p>
-                <p>Please find your payment receipt attached to this email.</p>
-                <br>
-                <p>Best Regards,<br>Rooks App Team</p>
-              </div>
-            ''',
-            attachment: receiptFile,
-            attachmentName: 'receipt_$merchantTxnNo.pdf',
-          );
-        }
-      } catch (e) {
-        debugPrint('Error generating or sending receipt: $e');
-      }
-      // ────────────────────────────────────────────────────────────────────
+      // ── Subscription processed successfully. Cloud Function will handle receipt. ──
 
       if (mounted) Navigator.pop(context); // Close finalizing dialog
 
@@ -1213,15 +1115,5 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
       rethrow;
     }
-  }
-
-  @override
-  void dispose() {
-    upiController.dispose();
-    // cardNumberController.dispose(); // Removed
-    // expiryController.dispose(); // Removed
-    // cvvController.dispose(); // Removed
-    nameController.dispose();
-    super.dispose();
   }
 }

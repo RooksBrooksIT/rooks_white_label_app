@@ -13,7 +13,7 @@ Future<void> main() async {
 
   // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-
+  
   // Initialize Notification Service
   await NotificationService.instance.initialize();
 
