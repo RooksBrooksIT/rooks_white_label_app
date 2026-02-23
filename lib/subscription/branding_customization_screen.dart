@@ -21,6 +21,13 @@ class BrandingCustomizationScreen extends StatefulWidget {
   final String? transactionId;
   final bool isEditMode;
 
+  // New fields for plan limits and features
+  final Map<String, dynamic>? limits;
+  final bool? geoLocation;
+  final bool? attendance;
+  final bool? barcode;
+  final bool? reportExport;
+
   const BrandingCustomizationScreen({
     super.key,
     this.planName,
@@ -31,6 +38,11 @@ class BrandingCustomizationScreen extends StatefulWidget {
     this.paymentMethod,
     this.transactionId,
     this.isEditMode = false,
+    this.limits,
+    this.geoLocation,
+    this.attendance,
+    this.barcode,
+    this.reportExport,
   });
 
   @override
@@ -53,71 +65,71 @@ class _BrandingCustomizationScreenState
     text: 'My Awesome App',
   );
 
-  // Preset Themes
+  // Preset Themes - Modern color combinations
   final List<Map<String, Color>> _presetThemes = [
-    // Row 1
+    // Modern Blues
     {
-      'primary': const Color(0xFF0D47A1),
-      'secondary': const Color(0xFF90CAF9),
-    }, // Blue
+      'primary': const Color(0xFF2563EB),
+      'secondary': const Color(0xFF7C3AED),
+    }, // Electric Blue to Purple
     {
-      'primary': const Color(0xFF424242),
-      'secondary': const Color(0xFF90CAF9),
-    }, // Grey/Blue
+      'primary': const Color(0xFF0891B2),
+      'secondary': const Color(0xFF2D6A4F),
+    }, // Cyan to Green
     {
-      'primary': const Color(0xFF1565C0),
-      'secondary': const Color(0xFF78909C),
-    }, // Navy/BlueGrey
+      'primary': const Color(0xFF7C3AED),
+      'secondary': const Color(0xFFDB2777),
+    }, // Purple to Pink
     {
-      'primary': const Color(0xFF37474F),
-      'secondary': const Color(0xFFB0BEC5),
-    }, // DarkBlueGrey
+      'primary': const Color(0xFFDC2626),
+      'secondary': const Color(0xFFF59E0B),
+    }, // Red to Amber
     {
-      'primary': const Color(0xFF263238),
-      'secondary': const Color(0xFFB2DFDB),
-    }, // TealGrey
+      'primary': const Color(0xFF059669),
+      'secondary': const Color(0xFF10B981),
+    }, // Emerald
     {
-      'primary': const Color(0xFF00695C),
-      'secondary': const Color(0xFF80CBC4),
-    }, // Teal
-    // Row 2
+      'primary': const Color(0xFF9333EA),
+      'secondary': const Color(0xFFF472B6),
+    }, // Purple to Pink
+    // Warm Tones
     {
-      'primary': const Color(0xFF1B5E20),
-      'secondary': const Color(0xFFA5D6A7),
-    }, // Forest
+      'primary': const Color(0xFFEA580C),
+      'secondary': const Color(0xFFFBBF24),
+    }, // Orange to Yellow
     {
-      'primary': const Color(0xFF33691E),
-      'secondary': const Color(0xFFC5E1A5),
-    }, // Olive
+      'primary': const Color(0xFF1E40AF),
+      'secondary': const Color(0xFF3B82F6),
+    }, // Navy to Blue
     {
-      'primary': const Color(0xFF827717),
-      'secondary': const Color(0xFFE6EE9C),
-    }, // Gold
+      'primary': const Color(0xFFBE185D),
+      'secondary': const Color(0xFFEC4899),
+    }, // Rose to Pink
     {
-      'primary': const Color(0xFFE65100),
-      'secondary': const Color(0xFFFFCC80),
-    }, // Orange
+      'primary': const Color(0xFF4F46E5),
+      'secondary': const Color(0xFF818CF8),
+    }, // Indigo
     {
-      'primary': const Color(0xFF5D4037),
-      'secondary': const Color(0xFFD7CCC8),
-    }, // Brown
+      'primary': const Color(0xFFB45309),
+      'secondary': const Color(0xFFF59E0B),
+    }, // Amber
     {
-      'primary': const Color(0xFF880E4F),
-      'secondary': const Color(0xFFF48FB1),
-    }, // Maroon
-    // Row 3
+      'primary': const Color(0xFF065F46),
+      'secondary': const Color(0xFF34D399),
+    }, // Dark Green to Light Green
+    // Professional Tones
     {
-      'primary': const Color(0xFF4E342E),
-      'secondary': const Color(0xFFD7CCC8),
-    }, // Coffee
+      'primary': const Color(0xFF1F2937),
+      'secondary': const Color(0xFF4B5563),
+    }, // Gray Scale
     {
-      'primary': const Color(0xFF880E4F),
-      'secondary': const Color(0xFFF06292),
-    }, // Magenta
+      'primary': const Color(0xFF8B5CF6),
+      'secondary': const Color(0xFFC4B5FD),
+    }, // Violet
     {
-      'primary': const Color(0xFF4A148C),
-      'secondary': const Color(0xFFCE93D8),
-    }, // Purple
+      'primary': const Color(0xFFB91C1C),
+      'secondary': const Color(0xFFFCA5A5),
+    }, // Red
   ];
 
   int _selectedThemeIndex = 0;
@@ -213,8 +225,8 @@ class _BrandingCustomizationScreenState
           ),
         ),
         actions: <Widget>[
-          ElevatedButton(
-            child: const Text('Got it'),
+          TextButton(
+            child: const Text('Done'),
             onPressed: () {
               Navigator.of(context).pop();
             },
@@ -236,9 +248,9 @@ class _BrandingCustomizationScreenState
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.grey.shade100,
-              Colors.blue.shade50.withOpacity(0.5),
-              Colors.grey.shade200,
+              Colors.grey.shade50,
+              Colors.blue.shade50,
+              Colors.purple.shade50,
             ],
           ),
         ),
@@ -246,9 +258,15 @@ class _BrandingCustomizationScreenState
           backgroundColor: Colors.transparent,
           extendBodyBehindAppBar: true,
           appBar: AppBar(
-            title: const Text('Customize Branding'),
-            backgroundColor: Colors.white.withOpacity(0.2),
-            foregroundColor: Colors.black,
+            title: Text(
+              widget.isEditMode ? 'Edit Branding' : 'Customize Branding',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+            backgroundColor: Colors.white.withOpacity(0.8),
+            foregroundColor: Colors.black87,
             elevation: 0,
             flexibleSpace: ClipRRect(
               child: BackdropFilter(
@@ -271,7 +289,7 @@ class _BrandingCustomizationScreenState
                       const SizedBox(height: 32),
                       _buildLogoUploadSection(),
                       const SizedBox(height: 32),
-                      _buildColorThemeSection(),
+                      _buildColorThemeSection(), // Redesigned section
                       const SizedBox(height: 32),
                       _buildVisualSettingsSection(),
                       const SizedBox(height: 48),
@@ -291,37 +309,75 @@ class _BrandingCustomizationScreenState
   }
 
   Widget _buildAppInfoSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'App Information',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade300),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: TextField(
-            controller: _appNameController,
-            decoration: InputDecoration(
-              hintText: 'Enter your app name',
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-              border: InputBorder.none,
-              prefixIcon: Icon(Icons.edit_note, color: _primaryColor),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.edit_note, color: _primaryColor, size: 20),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'App Information',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
             ),
-            onChanged: (value) {
-              setState(() {}); // Trigger rebuild for preview
-            },
-          ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _appNameController,
+              decoration: InputDecoration(
+                hintText: 'Enter your app name',
+                hintStyle: TextStyle(color: Colors.grey.shade400),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: _primaryColor, width: 2),
+                ),
+                prefixIcon: Icon(Icons.app_registration, color: _primaryColor),
+              ),
+              onChanged: (value) {
+                setState(() {}); // Trigger rebuild for preview
+              },
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -332,9 +388,10 @@ class _BrandingCustomizationScreenState
         const Text(
           'Brand Your App',
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 32,
             fontWeight: FontWeight.bold,
             color: Colors.black87,
+            letterSpacing: -0.5,
           ),
         ),
         const SizedBox(height: 8),
@@ -351,167 +408,288 @@ class _BrandingCustomizationScreenState
   }
 
   Widget _buildLogoUploadSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Company Logo',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        GestureDetector(
-          onTap: _pickLogo,
-          child: Container(
-            height: 160,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.grey.shade300,
-                style: BorderStyle.solid,
-                width: 2,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.image, color: _primaryColor, size: 20),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Company Logo',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: _pickLogo,
+              child: Container(
+                height: 160,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.grey.shade200,
+                    style: BorderStyle.solid,
+                    width: 2,
+                  ),
+                ),
+                child: _logoFile != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.file(_logoFile!, fit: BoxFit.contain),
+                      )
+                    : _existingLogoUrl != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.network(
+                          _existingLogoUrl!,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildUploadPlaceholder(),
+                        ),
+                      )
+                    : _buildUploadPlaceholder(),
               ),
             ),
-            child: _logoFile != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Image.file(_logoFile!, fit: BoxFit.contain),
-                  )
-                : _existingLogoUrl != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Image.network(
-                      _existingLogoUrl!,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.cloud_upload_outlined,
-                            size: 48,
-                            color: Colors.deepPurple.shade300,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Tap to change logo',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUploadPlaceholder() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _primaryColor.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.cloud_upload_outlined,
+            size: 32,
+            color: _primaryColor,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Tap to upload logo',
+          style: TextStyle(
+            color: Colors.grey.shade700,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'PNG, JPG up to 5MB',
+          style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  // REDESIGNED THEME COLOR SECTION - More Professional
+  Widget _buildColorThemeSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.palette, color: _primaryColor, size: 20),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Theme Colors',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Preset Themes with modern design
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(
-                        Icons.cloud_upload_outlined,
-                        size: 48,
-                        color: Colors.deepPurple.shade300,
-                      ),
-                      const SizedBox(height: 12),
                       Text(
-                        'Tap to upload logo',
+                        'Preset Color Schemes',
                         style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'PNG, JPG up to 5MB',
-                        style: TextStyle(
-                          color: Colors.grey.shade400,
-                          fontSize: 12,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '${_selectedThemeIndex < _presetThemes.length ? _selectedThemeIndex + 1 : 'Custom'}/${_presetThemes.length}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _primaryColor,
+                          ),
                         ),
                       ),
                     ],
                   ),
-          ),
-        ),
-      ],
-    );
-  }
+                  const SizedBox(height: 16),
 
-  Widget _buildColorThemeSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Pick a theme color',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 255, 255, 255), // Dark background
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 5, // Fits better on mobile width
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: _presetThemes.length + 1, // +1 for Custom
-            itemBuilder: (context, index) {
-              final isCustom = index == _presetThemes.length;
-              final isSelected = _selectedThemeIndex == index;
+                  // Theme Circles Grid
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 5,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 1,
+                        ),
+                    itemCount: _presetThemes.length + 1, // +1 for Custom
+                    itemBuilder: (context, index) {
+                      final isCustom = index == _presetThemes.length;
+                      final isSelected = _selectedThemeIndex == index;
 
-              if (isCustom) {
-                return _buildCustomThemeCircle(isSelected);
-              }
+                      if (isCustom) {
+                        return _buildCustomThemeCircle(isSelected);
+                      }
 
-              return _buildThemeCircle(
-                index,
-                _presetThemes[index]['primary']!,
-                _presetThemes[index]['secondary']!,
-                isSelected,
-              );
-            },
-          ),
-        ),
-
-        if (_selectedThemeIndex == _presetThemes.length) ...[
-          const SizedBox(height: 24),
-          const Text(
-            'Custom Colors',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildManualColorButton(
-                  'Primary',
-                  _primaryColor,
-                  () => _showColorPicker('primary'),
-                ),
+                      return _buildModernThemeCircle(
+                        index,
+                        _presetThemes[index]['primary']!,
+                        _presetThemes[index]['secondary']!,
+                        isSelected,
+                      );
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildManualColorButton(
-                  'Secondary',
-                  _secondaryColor,
-                  () => _showColorPicker('secondary'),
+            ),
+
+            if (_selectedThemeIndex == _presetThemes.length) ...[
+              const SizedBox(height: 20),
+
+              // Custom Colors Section
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Custom Colors',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildModernColorButton(
+                            'Primary',
+                            _primaryColor,
+                            () => _showColorPicker('primary'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildModernColorButton(
+                            'Secondary',
+                            _secondaryColor,
+                            () => _showColorPicker('secondary'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
-          ),
-        ],
-
-        // Background Color Selection Removed
-      ],
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildThemeCircle(
+  // Modern Theme Circle Design
+  Widget _buildModernThemeCircle(
     int index,
     Color primary,
     Color secondary,
@@ -528,17 +706,35 @@ class _BrandingCustomizationScreenState
       child: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.transparent,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [primary, secondary],
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: primary.withOpacity(0.4),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
             ),
-            child: ClipOval(
-              child: CustomPaint(
-                size: const Size(50, 50),
-                painter: ThemeCirclePainter(
-                  primary: primary,
-                  secondary: secondary,
-                  tertiary: Colors.grey.shade600,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? Colors.white : Colors.transparent,
+                  width: 2,
                 ),
               ),
             ),
@@ -552,12 +748,15 @@ class _BrandingCustomizationScreenState
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 4,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
-                child: const Icon(
-                  Icons.check_circle,
-                  color: Colors.blue,
-                  size: 16,
-                ),
+                child: Icon(Icons.check, color: primary, size: 12),
               ),
             ),
         ],
@@ -565,6 +764,7 @@ class _BrandingCustomizationScreenState
     );
   }
 
+  // Modern Custom Theme Circle
   Widget _buildCustomThemeCircle(bool isSelected) {
     return GestureDetector(
       onTap: () {
@@ -573,15 +773,44 @@ class _BrandingCustomizationScreenState
         });
       },
       child: Stack(
-        alignment: Alignment.center,
         children: [
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Color(0xFF3F51B5),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [_primaryColor, _secondaryColor],
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: _primaryColor.withOpacity(0.4),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? Colors.white : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: const Center(
+                child: Icon(Icons.color_lens, color: Colors.white, size: 18),
+              ),
             ),
           ),
-          const Icon(Icons.colorize, color: Colors.white, size: 20),
           if (isSelected)
             Positioned(
               top: 0,
@@ -591,12 +820,15 @@ class _BrandingCustomizationScreenState
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 4,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
-                child: const Icon(
-                  Icons.check_circle,
-                  color: Colors.blue,
-                  size: 16,
-                ),
+                child: Icon(Icons.check, color: _primaryColor, size: 12),
               ),
             ),
         ],
@@ -604,7 +836,8 @@ class _BrandingCustomizationScreenState
     );
   }
 
-  Widget _buildManualColorButton(
+  // Modern Color Button
+  Widget _buildModernColorButton(
     String label,
     Color color,
     VoidCallback onTap,
@@ -616,7 +849,14 @@ class _BrandingCustomizationScreenState
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -624,13 +864,28 @@ class _BrandingCustomizationScreenState
               width: 24,
               height: 24,
               decoration: BoxDecoration(
-                color: color,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [color, color.withOpacity(0.7)],
+                ),
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(color: color.withOpacity(0.3), blurRadius: 4),
+                ],
               ),
             ),
             const SizedBox(width: 12),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+            const Spacer(),
+            Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 16),
           ],
         ),
       ),
@@ -638,33 +893,72 @@ class _BrandingCustomizationScreenState
   }
 
   Widget _buildVisualSettingsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Visual Settings',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: Column(
-            children: [
-              // Dark Mode Toggle Removed
-              const Divider(height: 32),
-              // Font Selection
-              Row(
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.text_format,
+                    color: _primaryColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Typography',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.font_download_outlined,
-                        color: Colors.grey.shade700,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: _primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.font_download,
+                          color: _primaryColor,
+                          size: 18,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       const Text(
@@ -672,48 +966,61 @@ class _BrandingCustomizationScreenState
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
+                          color: Colors.black87,
                         ),
                       ),
                     ],
                   ),
-                  DropdownButton<String>(
-                    value: _selectedFont,
-                    underline: Container(),
-                    items:
-                        [
-                              'Roboto',
-                              'Lato',
-                              'Montserrat',
-                              'Playfair Display',
-                              'Merriweather',
-                              'Oswald',
-                              'Fira Code',
-                              'Dancing Script',
-                            ]
-                            .map(
-                              (f) => DropdownMenuItem(
-                                value: f,
-                                child: Text(
-                                  f,
-                                  style: GoogleFonts.getFont(f, fontSize: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: DropdownButton<String>(
+                      value: _selectedFont,
+                      underline: Container(),
+                      icon: Icon(Icons.arrow_drop_down, color: _primaryColor),
+                      items:
+                          [
+                                'Roboto',
+                                'Lato',
+                                'Montserrat',
+                                'Playfair Display',
+                                'Merriweather',
+                                'Oswald',
+                                'Fira Code',
+                                'Dancing Script',
+                              ]
+                              .map(
+                                (f) => DropdownMenuItem(
+                                  value: f,
+                                  child: Text(
+                                    f,
+                                    style: GoogleFonts.getFont(f, fontSize: 14),
+                                  ),
                                 ),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() {
-                          _selectedFont = val;
-                        });
-                      }
-                    },
+                              )
+                              .toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _selectedFont = val;
+                          });
+                        }
+                      },
+                    ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -721,156 +1028,291 @@ class _BrandingCustomizationScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Live Preview',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.preview, color: _primaryColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Live Preview',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         Center(
           child: Container(
-            width: 250,
-            height: 450,
+            width: 280,
+            height: 500,
             decoration: BoxDecoration(
               color: _backgroundColor,
-
-              borderRadius: BorderRadius.circular(25),
+              borderRadius: BorderRadius.circular(30),
               border: Border.all(color: Colors.grey.shade300, width: 8),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 30,
+                  offset: const Offset(0, 15),
                 ),
               ],
             ),
-            child: Column(
-              children: [
-                // Mock App Bar
-                Container(
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: _backgroundColor, // Use selected background color
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(17),
-                      topRight: Radius.circular(17),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: Column(
+                children: [
+                  // Mock Status Bar
+                  Container(
+                    height: 44,
+                    color: _backgroundColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Text(
+                          '9:41',
+                          style: TextStyle(
+                            color: _backgroundColor.computeLuminance() < 0.5
+                                ? Colors.white
+                                : Colors.black87,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(
+                          Icons.signal_cellular_alt,
+                          size: 16,
+                          color: _backgroundColor.computeLuminance() < 0.5
+                              ? Colors.white70
+                              : Colors.black54,
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.wifi,
+                          size: 16,
+                          color: _backgroundColor.computeLuminance() < 0.5
+                              ? Colors.white70
+                              : Colors.black54,
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.battery_full,
+                          size: 16,
+                          color: _backgroundColor.computeLuminance() < 0.5
+                              ? Colors.white70
+                              : Colors.black54,
+                        ),
+                      ],
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 5,
-                      ),
-                    ],
                   ),
-                  child: Center(
-                    child: _logoFile != null
-                        ? Image.file(
-                            _logoFile!,
-                            height: 30,
-                            fit: BoxFit.contain,
-                          )
-                        : Text(
+                  // Mock App Bar
+                  Container(
+                    height: 60,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: _backgroundColor,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Colors.grey.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        _logoFile != null
+                            ? Image.file(
+                                _logoFile!,
+                                height: 30,
+                                width: 30,
+                                fit: BoxFit.contain,
+                              )
+                            : _existingLogoUrl != null
+                            ? Image.network(
+                                _existingLogoUrl!,
+                                height: 30,
+                                width: 30,
+                                fit: BoxFit.contain,
+                              )
+                            : Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: _primaryColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    _appNameController.text.isNotEmpty
+                                        ? _appNameController.text[0]
+                                              .toUpperCase()
+                                        : 'A',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
                             _appNameController.text.isEmpty
-                                ? 'Your Logo'
+                                ? 'App Name'
                                 : _appNameController.text,
                             style: GoogleFonts.getFont(
                               _selectedFont,
                               color: _backgroundColor.computeLuminance() < 0.5
                                   ? Colors.white
-                                  : Colors.black,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                                  : Colors.black87,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
                             ),
-                          ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: _primaryColor,
-                            borderRadius: BorderRadius.circular(12),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: _secondaryColor,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Lorem Ipsum',
-                                  style: GoogleFonts.getFont(
-                                    _selectedFont,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color:
-                                        _backgroundColor.computeLuminance() <
-                                            0.5
-                                        ? Colors.white
-                                        : Colors.black87,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Font Preview Text',
-                                  style: GoogleFonts.getFont(
-                                    _selectedFont,
-                                    fontSize: 10,
-                                    color:
-                                        _backgroundColor.computeLuminance() <
-                                            0.5
-                                        ? Colors.grey.shade400
-                                        : Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                        Icon(
+                          Icons.notifications_none,
+                          color: _backgroundColor.computeLuminance() < 0.5
+                              ? Colors.white70
+                              : Colors.black54,
                         ),
                       ],
                     ),
                   ),
-                ),
-                // Mock Tab Bar
-                Container(
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: _backgroundColor,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(17),
-                      bottomRight: Radius.circular(17),
-                    ),
-                    border: Border(
-                      top: BorderSide(
-                        color: Colors.grey.withOpacity(0.2),
-                        width: 1,
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            height: 100,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [_primaryColor, _secondaryColor],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _primaryColor.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Feature Card',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: _secondaryColor.withOpacity(0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    Icons.person,
+                                    color: _secondaryColor,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'John Doe',
+                                      style: GoogleFonts.getFont(
+                                        _selectedFont,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color:
+                                            _backgroundColor
+                                                    .computeLuminance() <
+                                                0.5
+                                            ? Colors.white
+                                            : Colors.black87,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Premium Member',
+                                      style: GoogleFonts.getFont(
+                                        _selectedFont,
+                                        fontSize: 12,
+                                        color:
+                                            _backgroundColor
+                                                    .computeLuminance() <
+                                                0.5
+                                            ? Colors.grey.shade400
+                                            : Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Icon(Icons.home, color: _primaryColor),
-                      Icon(Icons.search, color: Colors.grey),
-                      Icon(Icons.person, color: Colors.grey),
-                    ],
+                  // Mock Bottom Navigation
+                  Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: _backgroundColor,
+                      border: Border(
+                        top: BorderSide(
+                          color: Colors.grey.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Icon(Icons.home, color: _primaryColor),
+                        Icon(Icons.search, color: Colors.grey.shade400),
+                        Icon(
+                          Icons.favorite_border,
+                          color: Colors.grey.shade400,
+                        ),
+                        Icon(Icons.person_outline, color: Colors.grey.shade400),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -890,7 +1332,7 @@ class _BrandingCustomizationScreenState
   Widget _buildContinueButton() {
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: 60,
       child: ElevatedButton(
         onPressed: () async {
           // Show loading dialog
@@ -901,12 +1343,15 @@ class _BrandingCustomizationScreenState
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const CircularProgressIndicator(),
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     widget.isEditMode
                         ? 'Updating profile...'
                         : 'Finalizing subscription...',
+                    style: const TextStyle(color: Colors.black87),
                   ),
                 ],
               ),
@@ -982,9 +1427,13 @@ class _BrandingCustomizationScreenState
               Navigator.pop(context); // Close loading
 
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Profile updated successfully!'),
+                SnackBar(
+                  content: const Text('Profile updated successfully!'),
                   behavior: SnackBarBehavior.floating,
+                  backgroundColor: _primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               );
 
@@ -1035,6 +1484,11 @@ class _BrandingCustomizationScreenState
                 originalPrice: widget.originalPrice,
                 paymentMethod: widget.paymentMethod!,
                 brandingData: brandingData,
+                limits: widget.limits,
+                geoLocation: widget.geoLocation,
+                attendance: widget.attendance,
+                barcode: widget.barcode,
+                reportExport: widget.reportExport,
               );
 
               // 4. Update Global User Directory (Link Admin to this App)
@@ -1110,7 +1564,10 @@ class _BrandingCustomizationScreenState
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Let\'s Go'),
+                      child: Text(
+                        'Let\'s Go',
+                        style: TextStyle(color: _primaryColor),
+                      ),
                     ),
                   ],
                 ),
@@ -1128,13 +1585,22 @@ class _BrandingCustomizationScreenState
             if (mounted) {
               Navigator.pop(context); // Close loading
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error saving preferences: $e')),
+                SnackBar(
+                  content: Text('Error saving preferences: $e'),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
               );
             }
           }
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -1144,7 +1610,7 @@ class _BrandingCustomizationScreenState
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            letterSpacing: 0.5,
           ),
         ),
       ),

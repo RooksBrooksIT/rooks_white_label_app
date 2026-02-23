@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 
 class FirestoreService {
@@ -111,13 +112,25 @@ class FirestoreService {
     Map<String, dynamic>? brandingData,
     String? appId,
     String? customerMobile, // stored for future payment lookups
+    Map<String, dynamic>? limits,
+    bool? geoLocation,
+    bool? attendance,
+    bool? barcode,
+    bool? reportExport,
   }) async {
     final now = DateTime.now();
-    final nextBilling = isYearly
-        ? DateTime(now.year + 1, now.month, now.day)
-        : (isSixMonths
-              ? DateTime(now.year, now.month + 6, now.day)
-              : DateTime(now.year, now.month + 1, now.day));
+    DateTime nextBilling;
+
+    if (planName.toLowerCase().contains('trial')) {
+      // Free Trial is exactly 7 days
+      nextBilling = now.add(const Duration(days: 7));
+    } else if (isYearly) {
+      nextBilling = DateTime(now.year + 1, now.month, now.day);
+    } else if (isSixMonths) {
+      nextBilling = DateTime(now.year, now.month + 6, now.day);
+    } else {
+      nextBilling = DateTime(now.year, now.month + 1, now.day);
+    }
 
     final data = <String, dynamic>{
       'planName': planName,
@@ -132,6 +145,11 @@ class FirestoreService {
       'updatedAt': FieldValue.serverTimestamp(),
       if (customerMobile != null && customerMobile.isNotEmpty)
         'customerMobile': customerMobile,
+      if (limits != null) 'limits': limits,
+      if (geoLocation != null) 'geoLocation': geoLocation,
+      if (attendance != null) 'attendance': attendance,
+      if (barcode != null) 'barcode': barcode,
+      if (reportExport != null) 'reportExport': reportExport,
     };
 
     if (brandingData != null) {
@@ -182,6 +200,33 @@ class FirestoreService {
       }
     } catch (_) {}
     return false;
+  }
+
+  /// Check if an organization (tenant) has any active subscription.
+  /// Useful for gating access for non-admin users (Engineers, Customers).
+  Future<bool> isTenantActive({required String tenantId, String? appId}) async {
+    try {
+      final querySnapshot = await subscriptionsRef(
+        tenantId: tenantId,
+        appId: appId,
+      ).where('status', isEqualTo: 'active').limit(1).get();
+
+      if (querySnapshot.docs.isEmpty) return false;
+
+      final data = querySnapshot.docs.first.data();
+      final nextBillingStr = data['nextBillingAt'] as String?;
+      if (nextBillingStr != null) {
+        final nextBilling = DateTime.tryParse(nextBillingStr);
+        if (nextBilling != null && DateTime.now().isAfter(nextBilling)) {
+          // Found an active doc but it's expired
+          return false;
+        }
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error checking tenant active status: $e');
+      return false;
+    }
   }
 
   /// Set the active status flag on a user document

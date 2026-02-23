@@ -29,6 +29,19 @@ class AMCLoginBackend {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
+        // 3. Check Organization Subscription
+        final isSubscribed = await FirestoreService.instance.isTenantActive(
+          tenantId: tenantId,
+          appId: 'data',
+        );
+        if (!isSubscribed) {
+          return {
+            'success': false,
+            'message':
+                'Your organization\'s subscription has expired. Please contact your admin.',
+          };
+        }
+
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('email', email);
         await prefs.setString('tenantId', tenantId); // Store tenant association

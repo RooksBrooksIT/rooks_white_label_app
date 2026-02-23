@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'branding_customization_screen.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_dashboard.dart';
 
 class TransactionCompletedScreen extends StatelessWidget {
   final String planName;
@@ -143,17 +143,12 @@ class TransactionCompletedScreen extends StatelessWidget {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.push(
+                      Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => BrandingCustomizationScreen(
-                            planName: planName,
-                            isYearly: isYearly,
-                            price: amountPaid,
-                            paymentMethod: paymentMethod,
-                            transactionId: transactionId,
-                          ),
+                          builder: (context) => const admindashboard(),
                         ),
+                        (route) => false,
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -164,7 +159,7 @@ class TransactionCompletedScreen extends StatelessWidget {
                       elevation: 0,
                     ),
                     child: const Text(
-                      'CUSTOMIZE YOUR APP',
+                      'GO BACK TO DASHBOARD',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,

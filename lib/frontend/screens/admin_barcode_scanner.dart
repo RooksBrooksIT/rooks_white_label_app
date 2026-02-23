@@ -30,6 +30,8 @@ class _AdminBarcodeScannerState extends State<AdminBarcodeScanner> {
   DateTime? _warrantyStartDate;
   DateTime? _warrantyEndDate;
 
+  final _formKey = GlobalKey<FormState>();
+
   // Color scheme
   // final Color _deepBlue = const Color(0xFF0B3470);
   // final Color _lightBlue = const Color(0xFF4B6A93);
@@ -47,7 +49,7 @@ class _AdminBarcodeScannerState extends State<AdminBarcodeScanner> {
     try {
       _firestore = FirestoreService.instance;
     } catch (e) {
-      print('Firestore initialization error: $e');
+      debugPrint('Firestore initialization error: $e');
     }
   }
 
@@ -94,19 +96,12 @@ class _AdminBarcodeScannerState extends State<AdminBarcodeScanner> {
       final number = int.parse(lastId.replaceAll('BSD', ''));
       return 'BSD${(number + 1).toString().padLeft(3, '0')}';
     } catch (e) {
-      print('Error getting next document ID: $e');
+      debugPrint('Error getting next document ID: $e');
       return 'BSD${DateTime.now().millisecondsSinceEpoch}';
     }
   }
 
   Future<void> _saveToFirestore() async {
-    if (_productNameController.text.isEmpty ||
-        _brandNameController.text.isEmpty ||
-        _customerNameController.text.isEmpty) {
-      _showSnackBar('Please fill all required fields', Colors.red);
-      return;
-    }
-
     if (_firestore == null) {
       _initializeFirestore();
       if (_firestore == null) {
@@ -116,6 +111,10 @@ class _AdminBarcodeScannerState extends State<AdminBarcodeScanner> {
     }
 
     try {
+      if (_formKey.currentState?.validate() != true) {
+        return;
+      }
+
       final documentId = await _getNextDocumentId();
 
       await _firestore!
@@ -138,13 +137,15 @@ class _AdminBarcodeScannerState extends State<AdminBarcodeScanner> {
             "userlog": "Admin",
           });
 
+      if (!mounted) return;
+
       _showSnackBar(
         'Product saved successfully with ID: $documentId',
         Colors.green,
       );
       _resetForm();
     } catch (e) {
-      print('Firestore error: $e');
+      debugPrint('Firestore error: $e');
       _showSnackBar('Error saving product: $e', Colors.red);
     }
   }
@@ -172,6 +173,7 @@ class _AdminBarcodeScannerState extends State<AdminBarcodeScanner> {
     _customerIdController.clear();
     _customerPhoneController.clear();
     _initializeDates();
+    _scannerController?.start();
   }
 
   Future<void> _selectWarrantyStartDate() async {
@@ -218,15 +220,40 @@ class _AdminBarcodeScannerState extends State<AdminBarcodeScanner> {
           slivers: [
             // App Bar with Glass Effect
             SliverAppBar(
-              backgroundColor: Colors.transparent,
+              backgroundColor: Theme.of(context).cardColor,
               elevation: 0,
               pinned: true,
               floating: true,
-              expandedHeight: 100,
-              flexibleSpace: _buildGlassAppBar(),
-              iconTheme: IconThemeData(
-                color: Colors.white, // This will make the back icon white
+              centerTitle: true,
+              title: Text(
+                'Barcode Scanner',
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.titleLarge?.color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
               ),
+              iconTheme: IconThemeData(
+                color: Theme.of(context).iconTheme.color,
+              ),
+              actions: [
+                if (scannedCode != null)
+                  Container(
+                    margin: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.refresh,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                      onPressed: _resetForm,
+                      tooltip: 'Scan New Code',
+                    ),
+                  ),
+              ],
             ),
 
             // Main Content
@@ -237,7 +264,7 @@ class _AdminBarcodeScannerState extends State<AdminBarcodeScanner> {
 
                 // Form Section or Empty State
                 if (scannedCode != null)
-                  _buildProductForm()
+                  Form(key: _formKey, child: _buildProductForm())
                 else
                   _buildEmptyState(),
 
@@ -247,58 +274,6 @@ class _AdminBarcodeScannerState extends State<AdminBarcodeScanner> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildGlassAppBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-        ),
-        border: Border.all(color: Theme.of(context).dividerColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          'Barcode Scanner',
-          style: TextStyle(
-            color: Theme.of(context).textTheme.titleLarge?.color,
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-          ),
-        ),
-        centerTitle: true,
-        iconTheme: IconThemeData(color: Theme.of(context).iconTheme.color),
-        actions: [
-          if (scannedCode != null)
-            Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconButton(
-                icon: Icon(
-                  Icons.refresh,
-                  color: Theme.of(context).primaryColor,
-                ),
-                onPressed: _resetForm,
-                tooltip: 'Scan New Code',
-              ),
-            ),
-        ],
       ),
     );
   }
@@ -343,11 +318,7 @@ class _AdminBarcodeScannerState extends State<AdminBarcodeScanner> {
                       },
                     ),
                     // Scanner overlay with glass effect
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                      ),
-                    ),
+                    // Scanner overlay with glass effect - removed solid container that was blocking camera feed
                     Center(
                       child: Container(
                         width: 250,
@@ -574,12 +545,16 @@ class _AdminBarcodeScannerState extends State<AdminBarcodeScanner> {
                     controller: _productNameController,
                     label: 'Product Name *',
                     icon: Icons.shopping_bag,
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Required' : null,
                   ),
                   const SizedBox(height: 15),
                   _buildGlassTextField(
                     controller: _brandNameController,
                     label: 'Brand Name *',
                     icon: Icons.branding_watermark,
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Required' : null,
                   ),
                   const SizedBox(height: 15),
                   _buildGlassTextField(
@@ -632,6 +607,8 @@ class _AdminBarcodeScannerState extends State<AdminBarcodeScanner> {
                     controller: _customerNameController,
                     label: 'Customer Name *',
                     icon: Icons.person,
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Required' : null,
                   ),
                   const SizedBox(height: 15),
                   _buildGlassTextField(

@@ -20,6 +20,14 @@ class PaymentScreen extends StatefulWidget {
   final bool isSixMonths;
   final int price;
   final int? originalPrice;
+  final Map<String, dynamic>? brandingData;
+
+  // New fields for plan limits and features
+  final Map<String, dynamic>? limits;
+  final bool? geoLocation;
+  final bool? attendance;
+  final bool? barcode;
+  final bool? reportExport;
 
   const PaymentScreen({
     super.key,
@@ -29,9 +37,12 @@ class PaymentScreen extends StatefulWidget {
     required this.price,
     this.originalPrice,
     this.brandingData,
+    this.limits,
+    this.geoLocation,
+    this.attendance,
+    this.barcode,
+    this.reportExport,
   });
-
-  final Map<String, dynamic>? brandingData;
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
@@ -669,6 +680,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
             isYearly: widget.isYearly,
             originalPrice: widget.originalPrice,
             brandingData: widget.brandingData,
+            limits: widget.limits,
+            geoLocation: widget.geoLocation,
+            attendance: widget.attendance,
+            barcode: widget.barcode,
+            reportExport: widget.reportExport,
           ),
         ),
       );
@@ -1126,11 +1142,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
           tenantId: tenantId,
           planName: widget.planName,
           isYearly: widget.isYearly,
+          isSixMonths: widget.isSixMonths,
           price: widget.price,
           originalPrice: widget.originalPrice,
           paymentMethod: selectedPaymentMethod,
           brandingData: finalBrandingData,
           appId: appId,
+          limits: widget.limits,
+          geoLocation: widget.geoLocation,
+          attendance: widget.attendance,
+          barcode: widget.barcode,
+          reportExport: widget.reportExport,
         );
         await FirestoreService.instance.setUserActiveStatus(
           uid: uid,

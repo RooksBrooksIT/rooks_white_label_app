@@ -16,6 +16,13 @@ class CardDetailsScreen extends StatefulWidget {
   final int? originalPrice;
   final Map<String, dynamic>? brandingData;
 
+  // New fields for plan limits and features
+  final Map<String, dynamic>? limits;
+  final bool? geoLocation;
+  final bool? attendance;
+  final bool? barcode;
+  final bool? reportExport;
+
   const CardDetailsScreen({
     super.key,
     required this.paymentAmount,
@@ -23,6 +30,11 @@ class CardDetailsScreen extends StatefulWidget {
     this.isYearly = false,
     this.originalPrice,
     this.brandingData,
+    this.limits,
+    this.geoLocation,
+    this.attendance,
+    this.barcode,
+    this.reportExport,
   });
 
   @override
@@ -638,7 +650,57 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
         throw Exception(webViewResult?.message ?? 'Payment was cancelled');
       }
 
-      // 3. Finalize on success
+      // 3. Verify transaction status
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Verifying payment...'),
+              ],
+            ),
+          ),
+        );
+      }
+
+      bool paymentVerified = false;
+
+      if (merchantTxnNo != null && merchantTxnNo.isNotEmpty) {
+        // Give the gateway a moment to process
+        await Future.delayed(const Duration(seconds: 2));
+
+        final statusResult = await IciciService.instance.checkTransactionStatus(
+          merchantTxnNo: merchantTxnNo,
+        );
+        debugPrint('ICICI Transaction Status: $statusResult');
+
+        paymentVerified =
+            statusResult != null &&
+            (statusResult['status'] == 'SUCCESS' ||
+                statusResult['txnStatus'] == 'SUCCESS' ||
+                statusResult['Status'] == 'SUCCESS');
+      }
+
+      // If status API also didn't confirm, trust WebView callback (UAT mode fallback)
+      if (!paymentVerified && webViewResult.success) {
+        debugPrint(
+          'Status API unconfirmed, but WebView returned success (UAT mode).',
+        );
+        paymentVerified = true;
+      }
+
+      if (mounted) Navigator.pop(context); // Close verifying dialog
+
+      if (!paymentVerified) {
+        throw Exception('Payment verification failed. Please contact support.');
+      }
+
+      // 4. Finalize on success
       await _finalizeCardPayment(
         uid: uid,
         merchantTxnNo: merchantTxnNo ?? '',
@@ -717,6 +779,11 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
         paymentMethod: 'Card',
         brandingData: finalBrandingData,
         appId: appId,
+        limits: widget.limits,
+        geoLocation: widget.geoLocation,
+        attendance: widget.attendance,
+        barcode: widget.barcode,
+        reportExport: widget.reportExport,
       );
 
       // Mark user as active

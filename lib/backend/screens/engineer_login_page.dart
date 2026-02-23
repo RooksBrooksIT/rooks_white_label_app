@@ -51,6 +51,19 @@ class EngineerLoginBackend {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
+        // 3. Check Organization Subscription
+        final isSubscribed = await FirestoreService.instance.isTenantActive(
+          tenantId: tenantId,
+          appId: 'data', // Engineers use the default bucket or tenant-level
+        );
+        if (!isSubscribed) {
+          return {
+            'success': false,
+            'message':
+                'Your organization\'s subscription has expired. Please contact your admin.',
+          };
+        }
+
         try {
           await FirebaseAuth.instance.signInAnonymously();
         } catch (e) {

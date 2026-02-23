@@ -305,6 +305,7 @@ exports.sendEmailTrigger = onDocumentCreated("mail/{docId}", async (event) => {
             filename: att.filename,
             content: att.content,
             encoding: "base64",
+            contentType: att.contentType, // Added contentType for better attachment handling
         })),
     };
 
@@ -329,5 +330,146 @@ exports.sendEmailTrigger = onDocumentCreated("mail/{docId}", async (event) => {
                 failedAt: admin.firestore.FieldValue.serverTimestamp(),
             },
         });
+    }
+});
+
+/**
+ * Generates a 6-digit OTP and sends it to the user's email.
+ */
+exports.sendOTP = onRequest(async (req, res) => {
+    // Handle CORS
+    res.set('Access-Control-Allow-Origin', '*');
+    if (req.method === 'OPTIONS') {
+        res.set('Access-Control-Allow-Methods', 'GET, POST');
+        res.set('Access-Control-Allow-Headers', 'Content-Type');
+        res.set('Access-Control-Max-Age', '3600');
+        res.status(204).send('');
+        return;
+    }
+
+    const { email } = req.body.data || req.query;
+    if (!email) {
+        return res.status(400).send({ data: { success: false, message: "Missing email" } });
+    }
+
+    try {
+        // 1. Generate OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // 2. Store OTP in Firestore
+        await admin.firestore().collection("otps").doc(email).set({
+            otp: otp,
+            expiresAt: expiresAt,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 3. Trigger Email Sending via 'mail' collection
+        await admin.firestore().collection("mail").add({
+            to: email,
+            message: {
+                subject: "Your OTP for Password Reset",
+                html: `<p>Your OTP for resetting your password is: <b>${otp}</b></p><p>This OTP is valid for 10 minutes.</p>`
+            }
+        });
+
+        console.log(`OTP generated and email queued for ${email}`);
+        res.send({ data: { success: true, message: "OTP sent successfully" } });
+    } catch (error) {
+        console.error("sendOTP Error:", error);
+        res.status(500).send({ data: { success: false, message: error.message } });
+    }
+});
+
+/**
+ * Verifies the OTP and resets the user's password.
+ */
+exports.verifyOTPAndResetPassword = onRequest(async (req, res) => {
+    // Handle CORS
+    res.set('Access-Control-Allow-Origin', '*');
+    if (req.method === 'OPTIONS') {
+        res.set('Access-Control-Allow-Methods', 'GET, POST');
+        res.set('Access-Control-Allow-Headers', 'Content-Type');
+        res.set('Access-Control-Max-Age', '3600');
+        res.status(204).send('');
+        return;
+    }
+
+    const { email, otp, newPassword } = req.body.data || req.query;
+    if (!email || !otp || !newPassword) {
+        return res.status(400).send({ data: { success: false, message: "Missing email, otp, or newPassword" } });
+    }
+
+    try {
+        // 1. Fetch OTP from Firestore
+        const otpDoc = await admin.firestore().collection("otps").doc(email).get();
+        if (!otpDoc.exists) {
+            return res.status(400).send({ data: { success: false, message: "OTP not found or expired" } });
+        }
+
+        const data = otpDoc.data();
+        if (data.otp !== otp) {
+            return res.status(400).send({ data: { success: false, message: "Invalid OTP" } });
+        }
+
+        if (data.expiresAt.toMillis() < Date.now()) {
+            return res.status(400).send({ data: { success: false, message: "OTP expired" } });
+        }
+
+        // 2. Find user by email to get UID
+        const userRecord = await admin.auth().getUserByEmail(email);
+        const uid = userRecord.uid;
+
+        // 3. Reset password in Firebase Auth
+        await admin.auth().updateUser(uid, {
+            password: newPassword
+        });
+
+        // 4. Delete the OTP used
+        await admin.firestore().collection("otps").doc(email).delete();
+
+        // 5. Update password in organizational collections
+        // We need to find where this user exists. Using the directory lookup logic if available.
+        // For now, let's look in users and admin collections if we have tenantId
+        // But since we are resetting via email, we might need a way to find the tenant.
+
+        // Actually, AuthStateService.loginUser uses FirebaseAuth.signInWithEmailAndPassword
+        // If we update FirebaseAuth, the login should work for UnifiedLogin.
+        // However, AdminLoginBackend.login checks plain text password in 'admin' collection (Bad practice, but existing)
+
+        // Let's try to update 'admin' collection as well if found.
+        const directorySnapshot = await admin.firestore().collection("global_user_directory").doc(uid).get();
+        if (directorySnapshot.exists) {
+            const dirData = directorySnapshot.data();
+            const tenantId = dirData.tenantId;
+            const role = dirData.role;
+
+            if (tenantId) {
+                // Update in 'users' collection
+                await admin.firestore().collection(tenantId).doc("data").collection("users").doc(uid).update({
+                    passwordUpdated: admin.firestore.FieldValue.serverTimestamp()
+                }).catch(e => console.warn(`Could not update 'users' doc: ${e.message}`));
+
+                if (role === 'admin' || role === 'Owner') {
+                    // Update in 'admin' collection (where plain text password might be stored)
+                    // We need the admin name/docId. In AuthStateService, it's often the 'name' or 'appName'.
+                    // This is tricky without the exact doc ID.
+                    // Let's look for a doc with this email in the tenant's admin collection.
+                    const adminDocs = await admin.firestore().collection(tenantId).doc("data").collection("admin").where("email", "==", email).get();
+                    for (const doc of adminDocs.docs) {
+                        await doc.ref.update({
+                            password: newPassword
+                        });
+                    }
+                }
+            }
+        }
+
+        console.log(`Password reset successful for ${email}`);
+        res.send({ data: { success: true, message: "Password reset successful" } });
+
+    } catch (error) {
+        console.error("verifyOTPAndResetPassword Error:", error);
+        res.status(500).send({ data: { success: false, message: error.message } });
     }
 });

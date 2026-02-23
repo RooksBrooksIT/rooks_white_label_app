@@ -30,6 +30,7 @@ import 'package:subscription_rooks_app/backend/screens/admin_dashboard.dart';
 import 'package:subscription_rooks_app/services/notification_service.dart';
 import 'package:subscription_rooks_app/subscription/branding_customization_screen.dart';
 import 'package:subscription_rooks_app/subscription/subscription_plans_screen.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_transactions_screen.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 
 class admindashboard extends StatefulWidget {
@@ -50,6 +51,8 @@ class _admindashboardState extends State<admindashboard> {
   String referralCode = '';
   DateTime? _lastBackPressed;
   bool _isUploadingQR = false;
+  String? currentPlanName;
+  String? billingCycle;
 
   // Dynamic Color Palette from ThemeService
   late Color primaryColor;
@@ -112,6 +115,37 @@ class _admindashboardState extends State<admindashboard> {
           userId: user.uid, // Use UID instead of name
           email: adminEmail,
         );
+
+        // Fetch Subscription Info for Badge
+        try {
+          final tenantId = ThemeService.instance.databaseName;
+          final appId = ThemeService.instance.appName;
+          final doc = await FirestoreService.instance
+              .subscriptionsRef(tenantId: tenantId, appId: appId)
+              .doc(user.uid)
+              .get();
+
+          if (doc.exists && doc.data() != null) {
+            final data = doc.data()!;
+            setState(() {
+              currentPlanName = data['planName'] as String?;
+              final isYearly = data['isYearly'] as bool? ?? false;
+              final isSixMonths = data['isSixMonths'] as bool? ?? false;
+
+              if (currentPlanName?.toLowerCase().contains('trial') ?? false) {
+                billingCycle = '7 Days';
+              } else if (isYearly) {
+                billingCycle = 'Yearly';
+              } else if (isSixMonths) {
+                billingCycle = '6 Months';
+              } else {
+                billingCycle = 'Monthly';
+              }
+            });
+          }
+        } catch (e) {
+          debugPrint('Error loading subscription info: $e');
+        }
       }
     }
   }
@@ -380,11 +414,6 @@ class _admindashboardState extends State<admindashboard> {
                           );
                         },
                       ),
-                      // _buildMenuCard(
-                      //   title: 'Shift',
-                      //   subtitle: 'Comprehensive asset info',
-                      //   icon: Icons.location_pin,
-                      //   color: const Color(0xFF483785),
                       //   onTap: () => Navigator.push(
                       //     context,
                       //     MaterialPageRoute(
@@ -392,6 +421,24 @@ class _admindashboardState extends State<admindashboard> {
                       //     ),
                       //   ),
                       // ),
+                    ]),
+                    const SizedBox(height: 24),
+                    _buildManagementSection('Financials', [
+                      _buildMenuCard(
+                        title: 'Transactions',
+                        subtitle: 'Payments & Refunds',
+                        icon: Icons.receipt_long_rounded,
+                        color: const Color(0xFF00B894),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const AdminTransactionsScreen(),
+                            ),
+                          );
+                        },
+                      ),
                     ]),
                     const SizedBox(height: 48),
                   ],
@@ -965,9 +1012,52 @@ class _admindashboardState extends State<admindashboard> {
               fontSize: 14,
             ),
           ),
+          if (currentPlanName != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _getPlanColor(currentPlanName!).withOpacity(0.8),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.workspace_premium_rounded,
+                    color: _getPlanColor(currentPlanName!),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${currentPlanName!} : ${billingCycle ?? "Active"}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Color _getPlanColor(String planName) {
+    final name = planName.toLowerCase();
+    if (name.contains('silver')) return Colors.grey.shade300;
+    if (name.contains('gold')) return const Color(0xFFFFD700); // Gold
+    if (name.contains('platinum'))
+      return const Color(0xFFE5E4E2); // Platinum color
+    if (name.contains('trial')) return Colors.lightBlueAccent;
+    return Colors.white;
   }
 
   Widget _buildDrawerItem({

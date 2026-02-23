@@ -6,10 +6,22 @@ import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:subscription_rooks_app/services/notification_service.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize App Check
+  try {
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: AndroidProvider.debug,
+      appleProvider: AppleProvider.debug,
+    );
+    debugPrint('Firebase App Check initialized');
+  } catch (e) {
+    debugPrint('Firebase App Check initialization failed: $e');
+  }
 
   // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);

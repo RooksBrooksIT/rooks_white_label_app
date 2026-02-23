@@ -3,6 +3,7 @@ import 'package:subscription_rooks_app/frontend/screens/admin_dashboard.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_signup_page.dart';
 import 'package:subscription_rooks_app/backend/screens/admin_login_page.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/frontend/screens/forgot_password_page.dart';
 
 class AdminLogin extends StatefulWidget {
   const AdminLogin({super.key});
@@ -211,6 +212,24 @@ class _AdminLoginState extends State<AdminLogin> {
                           },
                           child: Text(
                             'Don\'t have an account? Sign Up',
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const ForgotPasswordPage(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Forgot Password?',
                             style: TextStyle(
                               color: primaryColor,
                               fontWeight: FontWeight.bold,
