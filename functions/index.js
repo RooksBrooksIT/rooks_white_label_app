@@ -297,10 +297,12 @@ exports.processMailDocument = onDocumentCreated("mail/{docId}", async (event) =>
     //   firebase functions:secrets:set GMAIL_APP_PASSWORD
     // ─────────────────────────────────────────────────────────────────────────
     const transporter = nodemailer.createTransport({
-        service: "gmail",
+        host: "smtp.hostinger.com",
+        port: 465,
+        secure: true,
         auth: {
-            user: "rookssoftservices@gmail.com",
-            pass: "reen eidd kyak yscg",
+            user: "support@rookstechnologies.com",
+            pass: "Rooks!123",
         },
     });
 

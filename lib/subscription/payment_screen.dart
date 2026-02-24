@@ -19,6 +19,7 @@ class PaymentScreen extends StatefulWidget {
   final int price;
   final int? originalPrice;
   final Map<String, dynamic>? brandingData;
+  final bool isFirstTimeRegistration;
 
   // New fields for plan limits and features
   final Map<String, dynamic>? limits;
@@ -35,6 +36,7 @@ class PaymentScreen extends StatefulWidget {
     required this.price,
     this.originalPrice,
     this.brandingData,
+    this.isFirstTimeRegistration = true,
     this.limits,
     this.geoLocation,
     this.attendance,
@@ -1119,7 +1121,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (!mounted) return;
 
       // Navigate to Transaction Completed Screen
-      Navigator.push(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => TransactionCompletedScreen(
@@ -1129,8 +1131,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
             paymentMethod: selectedPaymentMethod,
             transactionId: transactionId,
             timestamp: DateTime.now(),
+            isFirstTimeRegistration: widget.isFirstTimeRegistration,
+            isSixMonths: widget.isSixMonths,
+            originalPrice: widget.originalPrice,
+            limits: widget.limits,
+            geoLocation: widget.geoLocation,
+            attendance: widget.attendance,
+            barcode: widget.barcode,
+            reportExport: widget.reportExport,
           ),
         ),
+        (route) => false,
       );
     } catch (e) {
       if (mounted && Navigator.canPop(context)) {

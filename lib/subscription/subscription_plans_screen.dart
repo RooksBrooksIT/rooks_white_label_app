@@ -691,6 +691,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           originalPrice: originalPrice,
           isYearly: isYearly,
           isSixMonths: isSixMonths,
+          isFirstTimeRegistration: widget.currentPlanName == null,
           limits: selectedPlan['limits'],
           geoLocation: selectedPlan['geoLocation'],
           attendance: selectedPlan['attendance'],

@@ -4,6 +4,7 @@ import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:subscription_rooks_app/services/receipt_service.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
+import 'package:subscription_rooks_app/subscription/branding_customization_screen.dart';
 
 class TransactionCompletedScreen extends StatelessWidget {
   final String planName;
@@ -12,6 +13,16 @@ class TransactionCompletedScreen extends StatelessWidget {
   final String paymentMethod;
   final String transactionId;
   final DateTime timestamp;
+  final bool isFirstTimeRegistration;
+
+  // Fields needed for BrandingCustomizationScreen navigation
+  final bool isSixMonths;
+  final int? originalPrice;
+  final Map<String, dynamic>? limits;
+  final bool? geoLocation;
+  final bool? attendance;
+  final bool? barcode;
+  final bool? reportExport;
 
   const TransactionCompletedScreen({
     super.key,
@@ -21,6 +32,14 @@ class TransactionCompletedScreen extends StatelessWidget {
     required this.paymentMethod,
     required this.transactionId,
     required this.timestamp,
+    this.isFirstTimeRegistration = false,
+    this.isSixMonths = false,
+    this.originalPrice,
+    this.limits,
+    this.geoLocation,
+    this.attendance,
+    this.barcode,
+    this.reportExport,
   });
 
   @override
@@ -149,13 +168,38 @@ class TransactionCompletedScreen extends StatelessWidget {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const admindashboard(),
-                        ),
-                        (route) => false,
-                      );
+                      if (isFirstTimeRegistration) {
+                        // First-time user → go to Branding Customization
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => BrandingCustomizationScreen(
+                              planName: planName,
+                              isYearly: isYearly,
+                              isSixMonths: isSixMonths,
+                              price: amountPaid,
+                              originalPrice: originalPrice,
+                              paymentMethod: paymentMethod,
+                              transactionId: transactionId,
+                              limits: limits,
+                              geoLocation: geoLocation,
+                              attendance: attendance,
+                              barcode: barcode,
+                              reportExport: reportExport,
+                            ),
+                          ),
+                          (route) => false,
+                        );
+                      } else {
+                        // Existing user → go to Dashboard
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const admindashboard(),
+                          ),
+                          (route) => false,
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black87,
@@ -164,9 +208,11 @@ class TransactionCompletedScreen extends StatelessWidget {
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
-                      'GO BACK TO DASHBOARD',
-                      style: TextStyle(
+                    child: Text(
+                      isFirstTimeRegistration
+                          ? 'CUSTOMIZE YOUR APP'
+                          : 'GO BACK TO DASHBOARD',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,

@@ -206,10 +206,19 @@ class FirestoreService {
   /// Useful for gating access for non-admin users (Engineers, Customers).
   Future<bool> isTenantActive({required String tenantId, String? appId}) async {
     try {
-      final querySnapshot = await subscriptionsRef(
+      // 1. Check in the specific app-specific bucket (Alen Cho, etc.)
+      var querySnapshot = await subscriptionsRef(
         tenantId: tenantId,
         appId: appId,
       ).where('status', isEqualTo: 'active').limit(1).get();
+
+      // 2. FALLBACK: Check in the default 'data' bucket if not found or if appId was 'data'
+      if (querySnapshot.docs.isEmpty && appId != 'data' && appId != null) {
+        querySnapshot = await subscriptionsRef(
+          tenantId: tenantId,
+          appId: 'data',
+        ).where('status', isEqualTo: 'active').limit(1).get();
+      }
 
       if (querySnapshot.docs.isEmpty) return false;
 
@@ -338,7 +347,8 @@ class FirestoreService {
   }
 
   /// Global lookup for referral codes across all tenants (used during registration)
-  Future<String?> validateGlobalReferralCode(String code) async {
+  /// Returns a map containing 'tenantId' and 'appId' if found.
+  Future<Map<String, String?>?> validateGlobalReferralCode(String code) async {
     try {
       final snapshot = await _db
           .collectionGroup('referral_codes')
@@ -347,7 +357,13 @@ class FirestoreService {
           .get();
 
       if (snapshot.docs.isNotEmpty) {
-        return snapshot.docs.first.get('tenantId') as String?;
+        final doc = snapshot.docs.first;
+        return {
+          'tenantId': doc.get('tenantId') as String?,
+          'appId': doc.data().containsKey('appId')
+              ? doc.get('appId') as String?
+              : 'data',
+        };
       }
     } catch (e) {
       // debugPrint('Error validating global referral code: $e');

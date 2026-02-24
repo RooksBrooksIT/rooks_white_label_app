@@ -1522,6 +1522,25 @@ class _BrandingCustomizationScreenState
                 reportExport: widget.reportExport,
               );
 
+              // 3b. Save a master copy to the default 'data' bucket for easy lookup during login
+              await FirestoreService.instance.upsertSubscription(
+                uid: uid,
+                tenantId: ThemeService.instance.databaseName,
+                appId: 'data',
+                planName: widget.planName!,
+                isYearly: widget.isYearly!,
+                isSixMonths: widget.isSixMonths ?? false,
+                price: widget.price!,
+                originalPrice: widget.originalPrice,
+                paymentMethod: widget.paymentMethod!,
+                brandingData: brandingData,
+                limits: widget.limits,
+                geoLocation: widget.geoLocation,
+                attendance: widget.attendance,
+                barcode: widget.barcode,
+                reportExport: widget.reportExport,
+              );
+
               // 4. Update Global User Directory (Link Admin to this App)
               await FirestoreService.instance.saveUserDirectory(
                 uid: uid,

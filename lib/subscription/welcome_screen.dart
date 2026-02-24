@@ -59,9 +59,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         return;
       }
 
-      linkedAppName = await FirestoreService.instance
+      final referralData = await FirestoreService.instance
           .validateGlobalReferralCode(code);
-      if (linkedAppName == null) {
+      if (referralData == null) {
         setState(() => _isLoading = false);
         if (!mounted) return;
         ScaffoldMessenger.of(
@@ -69,6 +69,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         ).showSnackBar(const SnackBar(content: Text('Invalid Referral Code.')));
         return;
       }
+      linkedAppName = referralData['appId'] ?? 'data';
     }
 
     final phone = _phoneController.text.trim();

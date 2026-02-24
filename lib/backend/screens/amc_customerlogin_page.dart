@@ -15,11 +15,13 @@ class AMCLoginBackend {
   ) async {
     try {
       // 1. Identify Tenant via Referral Code
-      final tenantId = await FirestoreService.instance
+      final referralData = await FirestoreService.instance
           .validateGlobalReferralCode(referralCode);
-      if (tenantId == null) {
+      if (referralData == null) {
         return {'success': false, 'message': 'Invalid Referral Code.'};
       }
+      final tenantId = referralData['tenantId']!;
+      final referralAppId = referralData['appId'] ?? 'data';
 
       // 2. Query User within the specific Organization
       final querySnapshot = await FirestoreService.instance
@@ -32,7 +34,7 @@ class AMCLoginBackend {
         // 3. Check Organization Subscription
         final isSubscribed = await FirestoreService.instance.isTenantActive(
           tenantId: tenantId,
-          appId: 'data',
+          appId: referralAppId,
         );
         if (!isSubscribed) {
           return {

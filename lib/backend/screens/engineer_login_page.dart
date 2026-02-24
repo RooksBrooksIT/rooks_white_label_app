@@ -37,11 +37,13 @@ class EngineerLoginBackend {
   ) async {
     try {
       // 1. Identify Tenant via Referral Code
-      final tenantId = await FirestoreService.instance
+      final referralData = await FirestoreService.instance
           .validateGlobalReferralCode(referralCode);
-      if (tenantId == null) {
+      if (referralData == null) {
         return {'success': false, 'message': 'Invalid Referral Code.'};
       }
+      final tenantId = referralData['tenantId']!;
+      final referralAppId = referralData['appId'] ?? 'data';
 
       // 2. Query Engineer within the specific Organization
       final querySnapshot = await FirestoreService.instance
@@ -54,7 +56,7 @@ class EngineerLoginBackend {
         // 3. Check Organization Subscription
         final isSubscribed = await FirestoreService.instance.isTenantActive(
           tenantId: tenantId,
-          appId: 'data', // Engineers use the default bucket or tenant-level
+          appId: referralAppId,
         );
         if (!isSubscribed) {
           return {
@@ -101,11 +103,12 @@ class EngineerLoginBackend {
   ) async {
     try {
       // 1. Identify Tenant via Referral Code
-      final tenantId = await FirestoreService.instance
+      final referralData = await FirestoreService.instance
           .validateGlobalReferralCode(referralCode);
-      if (tenantId == null) {
+      if (referralData == null) {
         return {'success': false, 'message': 'Invalid Referral Code.'};
       }
+      final tenantId = referralData['tenantId']!;
 
       final query = await FirestoreService.instance
           .collection('EngineerLogin', tenantId: tenantId)
