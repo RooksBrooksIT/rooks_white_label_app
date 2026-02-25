@@ -5,7 +5,6 @@ import 'package:subscription_rooks_app/frontend/screens/splash_screen.dart';
 import 'package:subscription_rooks_app/services/stripe_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
-
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:subscription_rooks_app/services/notification_service.dart';
 
