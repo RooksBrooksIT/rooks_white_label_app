@@ -345,7 +345,7 @@ class TransactionCompletedScreen extends StatelessWidget {
           final bytes = await pdfFile.readAsBytes();
           return bytes;
         },
-        name: 'Receipt_${transactionId}.pdf',
+        name: 'Receipt_$transactionId.pdf',
       );
     } catch (e) {
       ScaffoldMessenger.of(

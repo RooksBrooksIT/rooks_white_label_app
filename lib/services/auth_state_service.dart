@@ -119,7 +119,7 @@ class AuthStateService extends ChangeNotifier {
       await FirestoreService.instance.saveUserDirectory(
         uid: uid,
         tenantId: targetScope,
-        appName: role == 'admin' ? name : null,
+        appName: 'data', // Stable ID for primary app
         role: role,
       );
 
@@ -190,23 +190,24 @@ class AuthStateService extends ChangeNotifier {
       if (metadata != null) {
         scope = metadata['tenantId'] ?? scope;
         // Fetch actual branding from 'branding/config' under the tenant
-        // Use the appName found in metadata as the appId path
-        final appNameFromMetadata = metadata['appName'];
-
+        // Always prefer the stable 'data' bucket for branding
         final brandingDoc = await FirestoreService.instance
-            .brandingDoc(tenantId: scope, appId: appNameFromMetadata)
+            .brandingDoc(tenantId: scope, appId: 'data')
             .get();
 
         Map<String, dynamic>? brandingData;
         if (brandingDoc.exists) {
           brandingData = brandingDoc.data();
-        } else if (appNameFromMetadata != null) {
-          // Fallback to 'data' bucket if app-specific branding not found
-          final fallbackDoc = await FirestoreService.instance
-              .brandingDoc(tenantId: scope, appId: 'data')
-              .get();
-          if (fallbackDoc.exists) {
-            brandingData = fallbackDoc.data();
+        } else {
+          // Fallback check if for some reason 'data' isn't there but a named one is
+          final appNameFromMetadata = metadata['appName'];
+          if (appNameFromMetadata != null && appNameFromMetadata != 'data') {
+            final namedDoc = await FirestoreService.instance
+                .brandingDoc(tenantId: scope, appId: appNameFromMetadata)
+                .get();
+            if (namedDoc.exists) {
+              brandingData = namedDoc.data();
+            }
           }
         }
 
@@ -248,10 +249,10 @@ class AuthStateService extends ChangeNotifier {
       final role = userData['role'] ?? 'user';
 
       // 1. Unified Subscription Check for all roles
-      final appIdFromMetadata = metadata?['appName'] as String?;
+      // Always look for subscription in the stable 'data' bucket
       final isSubscribed = await FirestoreService.instance.isTenantActive(
         tenantId: scope,
-        appId: appIdFromMetadata ?? 'data',
+        appId: 'data',
       );
 
       if (!isSubscribed) {
@@ -267,7 +268,7 @@ class AuthStateService extends ChangeNotifier {
           return {
             'success': false,
             'message':
-                'Your organization\'s subscription has expired. Please contact your admin.',
+                'Your administrator hasn\'t subscribed to a plan. Please contact your admin for access.',
           };
         }
       }
@@ -379,7 +380,7 @@ class AuthStateService extends ChangeNotifier {
             // Initialize branding for the recovered tenant
             await FirestoreService.instance.syncBranding(
               tenantId,
-              appId: appName,
+              appId: 'data',
             );
           }
 
@@ -398,10 +399,9 @@ class AuthStateService extends ChangeNotifier {
             // Check subscription before allowing dashboard access
             final effectiveTenant =
                 tenantId ?? ThemeService.instance.databaseName;
-            final appId = metadata['appName'] as String?;
             final isSubscribed = await FirestoreService.instance.isTenantActive(
               tenantId: effectiveTenant,
-              appId: appId ?? 'data',
+              appId: 'data',
             );
             if (!isSubscribed) {
               return const SubscriptionPlansScreen();
@@ -411,10 +411,9 @@ class AuthStateService extends ChangeNotifier {
             // Engineer or Customer
             final effectiveTenant =
                 tenantId ?? ThemeService.instance.databaseName;
-            final appId = metadata['appName'] as String?;
             final isSubscribed = await FirestoreService.instance.isTenantActive(
               tenantId: effectiveTenant,
-              appId: appId ?? 'data',
+              appId: 'data',
             );
 
             if (!isSubscribed) {
@@ -442,10 +441,9 @@ class AuthStateService extends ChangeNotifier {
           // Sync branding for the found session
           await FirestoreService.instance.syncBranding(adminTenantId);
 
-          final appId = prefs.getString('appName');
           final isSubscribed = await FirestoreService.instance.isTenantActive(
             tenantId: adminTenantId,
-            appId: appId ?? 'data',
+            appId: 'data',
           );
           if (!isSubscribed) {
             return const SubscriptionPlansScreen();
@@ -462,7 +460,7 @@ class AuthStateService extends ChangeNotifier {
         if (tenantId != null) {
           final isSubscribed = await FirestoreService.instance.isTenantActive(
             tenantId: tenantId,
-            appId: prefs.getString('appName') ?? 'data',
+            appId: 'data',
           );
           if (!isSubscribed) {
             return const AccessRestrictedScreen(role: 'engineer');
@@ -478,7 +476,7 @@ class AuthStateService extends ChangeNotifier {
         if (tenantId != null) {
           final isSubscribed = await FirestoreService.instance.isTenantActive(
             tenantId: tenantId,
-            appId: prefs.getString('appName') ?? 'data',
+            appId: 'data',
           );
           if (!isSubscribed) {
             return const AccessRestrictedScreen(role: 'customer');

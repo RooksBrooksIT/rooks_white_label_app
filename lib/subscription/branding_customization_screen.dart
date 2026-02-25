@@ -1431,13 +1431,6 @@ class _BrandingCustomizationScreenState
               // Save to App-Specific Collection
               await FirestoreService.instance.saveAppBranding(
                 tenantId: ThemeService.instance.databaseName,
-                appId: _appNameController.text,
-                brandingData: brandingData,
-              );
-
-              // Also save to default 'data' location
-              await FirestoreService.instance.saveAppBranding(
-                tenantId: ThemeService.instance.databaseName,
                 appId: 'data',
                 brandingData: brandingData,
               );
@@ -1481,14 +1474,7 @@ class _BrandingCustomizationScreenState
               final referralCode = _generateReferralCode();
               brandingData['referralCode'] = referralCode;
 
-              // 1. Save to App-Specific Collection
-              await FirestoreService.instance.saveAppBranding(
-                tenantId: ThemeService.instance.databaseName,
-                appId: _appNameController.text,
-                brandingData: brandingData,
-              );
-
-              // Also save to default 'data' location for simplified lookups during login
+              // 1. Save to App-Specific Collection ('data' as stable ID)
               await FirestoreService.instance.saveAppBranding(
                 tenantId: ThemeService.instance.databaseName,
                 appId: 'data',
@@ -1499,30 +1485,11 @@ class _BrandingCustomizationScreenState
               await FirestoreService.instance.saveReferralCode(
                 code: referralCode,
                 tenantId: ThemeService.instance.databaseName,
-                appId: _appNameController.text,
+                appId: 'data',
                 adminUid: uid,
               );
 
               // 3. Save Full Subscription with Branding (linked to user)
-              await FirestoreService.instance.upsertSubscription(
-                uid: uid,
-                tenantId: ThemeService.instance.databaseName,
-                appId: _appNameController.text,
-                planName: widget.planName!,
-                isYearly: widget.isYearly!,
-                isSixMonths: widget.isSixMonths ?? false,
-                price: widget.price!,
-                originalPrice: widget.originalPrice,
-                paymentMethod: widget.paymentMethod!,
-                brandingData: brandingData,
-                limits: widget.limits,
-                geoLocation: widget.geoLocation,
-                attendance: widget.attendance,
-                barcode: widget.barcode,
-                reportExport: widget.reportExport,
-              );
-
-              // 3b. Save a master copy to the default 'data' bucket for easy lookup during login
               await FirestoreService.instance.upsertSubscription(
                 uid: uid,
                 tenantId: ThemeService.instance.databaseName,

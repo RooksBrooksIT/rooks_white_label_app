@@ -34,7 +34,7 @@ class AccessRestrictedScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Your organization\'s subscription has expired. Please contact your administrator to renew the plan.',
+                'Your administrator hasn\'t subscribed to a plan. Please contact your admin for access.',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey.shade600,
@@ -42,6 +42,7 @@ class AccessRestrictedScreen extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
+
               const SizedBox(height: 48),
               SizedBox(
                 width: double.infinity,

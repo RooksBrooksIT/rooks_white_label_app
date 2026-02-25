@@ -99,6 +99,33 @@ class FirestoreService {
     return _db.runTransaction(updateFunction);
   }
 
+  /// Updates the online status of an engineer in the EngineerLogin collection.
+  Future<void> updateEngineerStatus({
+    required String tenantId,
+    required String username,
+    required bool isOnline,
+  }) async {
+    try {
+      // Find the document ID for the given username
+      final querySnapshot = await collection(
+        'EngineerLogin',
+        tenantId: tenantId,
+      ).where('Username', isEqualTo: username).get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final docId = querySnapshot.docs.first.id;
+        await collection('EngineerLogin', tenantId: tenantId).doc(docId).update(
+          {
+            'isOnline': isOnline,
+            'lastStatusUpdate': FieldValue.serverTimestamp(),
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint('Error updating engineer status: $e');
+    }
+  }
+
   // Create/update current subscription for a tenant user
   Future<void> upsertSubscription({
     required String uid,
@@ -142,6 +169,8 @@ class FirestoreService {
       'status': 'active',
       'startedAt': now.toIso8601String(),
       'nextBillingAt': nextBilling.toIso8601String(),
+      'expiresAt':
+          nextBilling, // DateTime is converted to Timestamp by Firestore
       'updatedAt': FieldValue.serverTimestamp(),
       if (customerMobile != null && customerMobile.isNotEmpty)
         'customerMobile': customerMobile,

@@ -15,7 +15,6 @@ import 'package:subscription_rooks_app/frontend/screens/admin_customer_report_pa
 import 'package:subscription_rooks_app/frontend/screens/admin_deliverytickets_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_device_config_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_geo_location_screen.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_shift_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_view_barcode_details.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_view_engineer_updates.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_tickets_overview.dart';
@@ -45,6 +44,7 @@ class _admindashboardState extends State<admindashboard> {
   int engineerUpdateCount = 0;
   int totalCustomers = 0;
   int activeEngineers = 0;
+  int totalEngineers = 0;
   int pendingTickets = 0;
   String adminName = 'Loading...';
   String adminEmail = '';
@@ -53,6 +53,7 @@ class _admindashboardState extends State<admindashboard> {
   bool _isUploadingQR = false;
   String? currentPlanName;
   String? billingCycle;
+  int? remainingDays;
 
   // Dynamic Color Palette from ThemeService
   late Color primaryColor;
@@ -94,6 +95,9 @@ class _admindashboardState extends State<admindashboard> {
     AdminDashboardBackend.getActiveEngineersStream().listen((count) {
       if (mounted) setState(() => activeEngineers = count);
     });
+    AdminDashboardBackend.getTotalEngineersStream().listen((count) {
+      if (mounted) setState(() => totalEngineers = count);
+    });
     AdminDashboardBackend.getPendingTicketsStream().listen((count) {
       if (mounted) setState(() => pendingTickets = count);
     });
@@ -115,6 +119,26 @@ class _admindashboardState extends State<admindashboard> {
           userId: user.uid, // Use UID instead of name
           email: adminEmail,
         );
+
+        // Check for active subscription
+        final tenantId = ThemeService.instance.databaseName;
+        final appId = ThemeService.instance.appName;
+        final isSubscribed = await FirestoreService.instance.isTenantActive(
+          tenantId: tenantId,
+          appId: appId,
+        );
+
+        if (!isSubscribed) {
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SubscriptionPlansScreen(),
+              ),
+            );
+          }
+          return;
+        }
 
         // Fetch Subscription Info for Badge
         try {
@@ -140,6 +164,17 @@ class _admindashboardState extends State<admindashboard> {
                 billingCycle = '6 Months';
               } else {
                 billingCycle = 'Monthly';
+              }
+
+              // Calculate remaining days
+              final nextBillingStr = data['nextBillingAt'] as String?;
+              if (nextBillingStr != null) {
+                final nextBilling = DateTime.tryParse(nextBillingStr);
+                if (nextBilling != null) {
+                  remainingDays = nextBilling.difference(DateTime.now()).inDays;
+                  // Ensure it's not negative
+                  if (remainingDays! < 0) remainingDays = 0;
+                }
               }
             });
           }
@@ -585,7 +620,7 @@ class _admindashboardState extends State<admindashboard> {
               ),
               _buildMetricCard(
                 'Active Engineers',
-                activeEngineers.toString(),
+                '$activeEngineers/$totalEngineers',
                 Icons.engineering_rounded,
                 const Color(0xFF00D2FF),
               ),
@@ -917,15 +952,6 @@ class _admindashboardState extends State<admindashboard> {
                   },
                 ),
                 _buildDrawerItem(
-                  icon: Icons.workspace_premium_rounded,
-                  title: 'Change Plan',
-                  subtitle: 'Upgrade or switch subscription',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _navigateToChangePlan();
-                  },
-                ),
-                _buildDrawerItem(
                   icon: Icons.qr_code_2_rounded,
                   title: 'QR Code Upload',
                   subtitle: 'Upload payment QR code',
@@ -935,6 +961,28 @@ class _admindashboardState extends State<admindashboard> {
                   },
                 ),
                 const Divider(indent: 20, endIndent: 20),
+                _buildDrawerItem(
+                  icon: Icons.workspace_premium_rounded,
+                  title: 'Manage Subscription',
+                  subtitle: remainingDays != null
+                      ? '$remainingDays Days Remaining'
+                      : 'Upgrade or switch plan',
+                  subtitleStyle: remainingDays != null
+                      ? TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: remainingDays! <= 3
+                              ? errorColor
+                              : primaryColor,
+                        )
+                      : null,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _navigateToChangePlan();
+                  },
+                ),
+                const Divider(indent: 20, endIndent: 20),
+
                 _buildDrawerItem(
                   icon: Icons.logout_rounded,
                   title: 'Logout',

@@ -80,6 +80,13 @@ class EngineerLoginBackend {
         // Sync branding configuration immediately
         await FirestoreService.instance.syncBranding(tenantId);
 
+        // Mark engineer as online
+        await FirestoreService.instance.updateEngineerStatus(
+          tenantId: tenantId,
+          username: username,
+          isOnline: true,
+        );
+
         return {'success': true, 'username': username};
       } else {
         return {

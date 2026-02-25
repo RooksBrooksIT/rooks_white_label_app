@@ -630,6 +630,7 @@ class _EngineerPageState extends State<EngineerPage> {
   Timer? _searchDebounceTimer;
   List<AdminDetails> _allBookings = [];
   List<AdminDetails> _filteredBookings = [];
+  bool _isOnline = true; // Default to true as they just logged in
   bool _isLoading = true;
 
   @override
@@ -645,6 +646,39 @@ class _EngineerPageState extends State<EngineerPage> {
     _handleInitialNotification();
     _listenToNotifications();
     _setupFCMListeners();
+    _fetchInitialOnlineStatus();
+  }
+
+  Future<void> _fetchInitialOnlineStatus() async {
+    final tenantId = await SharedPreferences.getInstance().then(
+      (p) => p.getString('tenantId'),
+    );
+    if (tenantId != null) {
+      final doc = await FirestoreService.instance
+          .collection('EngineerLogin', tenantId: tenantId)
+          .where('Username', isEqualTo: widget.userName)
+          .get();
+
+      if (doc.docs.isNotEmpty && mounted) {
+        setState(() {
+          _isOnline = doc.docs.first.data()['isOnline'] ?? false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleOnlineStatus(bool value) async {
+    final tenantId = await SharedPreferences.getInstance().then(
+      (p) => p.getString('tenantId'),
+    );
+    if (tenantId != null) {
+      setState(() => _isOnline = value);
+      await FirestoreService.instance.updateEngineerStatus(
+        tenantId: tenantId,
+        username: widget.userName,
+        isOnline: value,
+      );
+    }
   }
 
   @override
@@ -989,6 +1023,15 @@ class _EngineerPageState extends State<EngineerPage> {
       Navigator.pop(context);
     }
     final prefs = await SharedPreferences.getInstance();
+    final tenantId = prefs.getString('tenantId');
+    if (tenantId != null) {
+      await FirestoreService.instance.updateEngineerStatus(
+        tenantId: tenantId,
+        username: widget.userName,
+        isOnline: false,
+      );
+    }
+
     await prefs.remove('engineerEmail');
     await prefs.remove('engineerName');
     await AuthStateService.instance.logout();
@@ -1119,8 +1162,51 @@ class _EngineerPageState extends State<EngineerPage> {
                 ),
               ),
               actions: [
+                // Online/Offline Toggle
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _isOnline
+                              ? Icons.cloud_done_rounded
+                              : Icons.cloud_off_rounded,
+                          size: 16,
+                          color: _isOnline
+                              ? Colors.greenAccent
+                              : Colors.white70,
+                        ),
+                        const SizedBox(width: 4),
+                        SizedBox(
+                          height: 24,
+                          width: 40,
+                          child: FittedBox(
+                            fit: BoxFit.fill,
+                            child: Switch(
+                              value: _isOnline,
+                              onChanged: _toggleOnlineStatus,
+                              activeColor: Colors.greenAccent,
+                              activeTrackColor: Colors.white24,
+                              inactiveThumbColor: Colors.white70,
+                              inactiveTrackColor: Colors.white12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 Container(
-                  margin: const EdgeInsets.only(right: 8),
+                  margin: const EdgeInsets.only(right: 8, left: 4),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.15),
                     shape: BoxShape.circle,

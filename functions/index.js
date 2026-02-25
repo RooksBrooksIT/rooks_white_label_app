@@ -306,6 +306,8 @@ exports.processMailDocument = onDocumentCreated("mail/{docId}", async (event) =>
         },
     });
 
+    console.log(`[EMAIL] Attempting to send using support@rookstechnologies.com`);
+
     const mailOptions = {
         from: '"Rooks And Brooks" <support@rookstechnologies.com>',
         to: data.to,
@@ -756,8 +758,152 @@ exports.processPaymentSuccess = onDocumentWritten(
  * ─────────────────────────────────────────────────────────────────────────────
  * Checks for active subscriptions expiring in 3 days and sends a reminder.
  */
-exports.checkSubscriptionExpiryReminders = onSchedule("0 0 * * *", async (event) => {
-    console.log("[SCHEDULER] Running daily subscription expiry check...");
+exports.checkSubscriptionExpiryReminders = onSchedule("0 9 * * *", async (event) => {
+    console.log("[SCHEDULER] Running daily subscription reminders check at 09:00 AM IST...");
+
+    const now = new Date();
+    const threeDaysFromNow = new Date();
+    threeDaysFromNow.setDate(now.getDate() + 3);
+
+    // For "3 days remaining" we look at a window around exactly 3 days to avoid missing it
+    const threeDaysStart = new Date(threeDaysFromNow);
+    threeDaysStart.setHours(0, 0, 0, 0);
+    const threeDaysEnd = new Date(threeDaysFromNow);
+    threeDaysEnd.setHours(23, 59, 59, 999);
+
+    try {
+        const subscriptionsSnapshot = await admin.firestore()
+            .collectionGroup("subscriptions")
+            .where("status", "==", "active")
+            .get();
+
+        if (subscriptionsSnapshot.empty) {
+            console.log("[SCHEDULER] No active subscriptions found.");
+            return;
+        }
+
+        console.log(`[SCHEDULER] Analyzing ${subscriptionsSnapshot.size} active subscriptions...`);
+
+        const reminderPromises = subscriptionsSnapshot.docs.map(async (doc) => {
+            const subData = doc.data();
+            const uid = doc.id;
+            const recipientEmail = subData.corporateEmail;
+            const planName = subData.planName || "Subscription";
+
+            // Normalize expiry date (check both expiresAt Timestamp and nextBillingAt String)
+            let expiryDate = null;
+            if (subData.expiresAt && subData.expiresAt.toDate) {
+                expiryDate = subData.expiresAt.toDate();
+            } else if (subData.nextBillingAt) {
+                expiryDate = new Date(subData.nextBillingAt);
+            }
+
+            if (!expiryDate || isNaN(expiryDate.getTime())) {
+                console.warn(`[WARN] Invalid expiry date for sub ${doc.ref.path}`);
+                return;
+            }
+
+            // Extract IDs from path
+            const pathSegments = doc.ref.path.split('/');
+            const tenantId = pathSegments[0];
+            const appId = pathSegments[1];
+
+            // ─── LOGIC 1: 3-Day Expiry Warning ───
+            const diffDays = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 3 && !subData.reminder3DaysSentAt) {
+                console.log(`[SCHEDULER] Sending 3-day reminder for ${uid} in ${tenantId}`);
+
+                const formattedExpiry = expiryDate.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+                const title = "Subscription Expiring Soon";
+                const body = `Your ${planName} subscription will expire in 3 days (${formattedExpiry}). Please renew to avoid service loss.`;
+
+                // 1. Email
+                if (recipientEmail) {
+                    await admin.firestore().collection("mail").add({
+                        to: recipientEmail,
+                        message: {
+                            subject: 'Urgent: 3 Days Remaining for Your Subscription',
+                            html: `<p>Your <strong>${planName}</strong> expires on <strong>${formattedExpiry}</strong>.</p><p>Please renew your plan soon.</p>`,
+                        },
+                        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                        type: "expiry_3day_warning"
+                    });
+                }
+
+                // 2. Push & In-App
+                await sendNotification(tenantId, appId, "admin", uid, { notification: { title, body }, data: { type: "expiry_3day" } });
+                await admin.firestore().collection(tenantId).doc(appId).collection("notifications").add({
+                    customerId: uid,
+                    title,
+                    body,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    seen: false,
+                    type: "subscription_expiry"
+                });
+
+                await doc.ref.update({ reminder3DaysSentAt: admin.firestore.FieldValue.serverTimestamp() });
+            }
+
+            // ─── LOGIC 2: Monthly Status for 6-Month/Yearly ───
+            if (subData.isSixMonths || subData.isYearly) {
+                const startedDate = subData.startedAt ? new Date(subData.startedAt) : null;
+                if (startedDate) {
+                    const monthsActive = (now.getFullYear() - startedDate.getFullYear()) * 12 + (now.getMonth() - startedDate.getMonth());
+
+                    // If it's a new month and we haven't sent a reminder this month
+                    const lastSent = subData.lastMonthlyReminderSentAt ? subData.lastMonthlyReminderSentAt.toDate() : null;
+                    const isNewMonth = !lastSent || (lastSent.getMonth() !== now.getMonth() || lastSent.getFullYear() !== now.getFullYear());
+
+                    if (monthsActive > 0 && isNewMonth) {
+                        console.log(`[SCHEDULER] Sending monthly status for ${uid} in ${tenantId}`);
+
+                        const title = "Monthly Subscription Status";
+                        const body = `Your ${planName} is active and running smoothly. Thank you for being with us!`;
+
+                        // 1. Email
+                        if (recipientEmail) {
+                            await admin.firestore().collection("mail").add({
+                                to: recipientEmail,
+                                message: {
+                                    subject: 'Your Monthly Subscription Status',
+                                    html: `<p>Hello, your <strong>${planName}</strong> is currently active.</p><p>Next renewal date: ${expiryDate.toLocaleDateString("en-IN")}</p>`,
+                                },
+                                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                                type: "monthly_status"
+                            });
+                        }
+
+                        // 2. Push & In-App
+                        await sendNotification(tenantId, appId, "admin", uid, { notification: { title, body }, data: { type: "monthly_status" } });
+                        await admin.firestore().collection(tenantId).doc(appId).collection("notifications").add({
+                            customerId: uid,
+                            title,
+                            body,
+                            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                            seen: false,
+                            type: "monthly_status"
+                        });
+
+                        await doc.ref.update({ lastMonthlyReminderSentAt: admin.firestore.FieldValue.serverTimestamp() });
+                    }
+                }
+            }
+        });
+
+        await Promise.all(reminderPromises);
+        console.log("[SCHEDULER] ✅ All subscription checks completed.");
+    } catch (error) {
+        console.error("[SCHEDULER ERROR] checkSubscriptionExpiryReminders failed:", error);
+    }
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. Temporary HTTP Trigger for Testing Subscription Expiry (Manual)
+// ─────────────────────────────────────────────────────────────────────────────
+exports.testExpiryReminder = onRequest(async (req, res) => {
+    console.log("[TEST] Manually triggering subscription reminders check...");
 
     const now = new Date();
     const threeDaysFromNow = new Date();
@@ -767,94 +913,52 @@ exports.checkSubscriptionExpiryReminders = onSchedule("0 0 * * *", async (event)
         const subscriptionsSnapshot = await admin.firestore()
             .collectionGroup("subscriptions")
             .where("status", "==", "active")
-            .where("reminderSent", "==", false)
-            .where("expiresAt", "<=", admin.firestore.Timestamp.fromDate(threeDaysFromNow))
-            .where("expiresAt", ">", admin.firestore.Timestamp.fromDate(now))
             .get();
 
         if (subscriptionsSnapshot.empty) {
-            console.log("[SCHEDULER] No subscriptions nearing expiry.");
-            return;
+            return res.send("No active subscriptions found to test.");
         }
 
-        console.log(`[SCHEDULER] Found ${subscriptionsSnapshot.size} subscriptions nearing expiry.`);
-
-        const reminderPromises = subscriptionsSnapshot.docs.map(async (doc) => {
+        let results = [];
+        for (const doc of subscriptionsSnapshot.docs) {
             const subData = doc.data();
             const uid = doc.id;
             const recipientEmail = subData.corporateEmail;
             const planName = subData.planName || "Subscription";
-            const expiryDate = subData.expiresAt.toDate();
-            const formattedExpiry = expiryDate.toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric"
-            });
 
-            if (!recipientEmail) {
-                console.warn(`[WARN] No corporate email for sub ${doc.ref.path}. Skipping.`);
-                return;
+            let expiryDate = null;
+            if (subData.expiresAt && subData.expiresAt.toDate) {
+                expiryDate = subData.expiresAt.toDate();
+            } else if (subData.nextBillingAt) {
+                expiryDate = new Date(subData.nextBillingAt);
             }
 
-            // 1. Build Reminder Email
-            const htmlReminder = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <style>
-                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; }
-                    .header { background-color: ${BRAND_BLUE}; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-                    .content { padding: 30px; }
-                    .footer { text-align: center; font-size: 12px; color: #999; margin-top: 20px; }
-                    .button { display: inline-block; padding: 12px 24px; background-color: ${BRAND_BLUE}; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 20px; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>Subscription Alert</h1>
-                    </div>
-                    <div class="content">
-                        <p>Hello,</p>
-                        <p>This is a reminder that your <strong>${planName}</strong> subscription is about to expire on <strong>${formattedExpiry}</strong>.</p>
-                        <p>To avoid any interruption in service, please renew your subscription before it expires.</p>
-                        <center>
-                            <a href="#" class="button">Renew Now</a>
-                        </center>
-                        <p>If you have already renewed, please ignore this email.</p>
-                        <p>Thank you,<br>Rooks And Brooks Team</p>
-                    </div>
-                    <div class="footer">
-                        &copy; ${new Date().getFullYear()} Rooks And Brooks. All rights reserved.
-                    </div>
-                </div>
-            </body>
-            </html>`;
+            if (!expiryDate || isNaN(expiryDate.getTime())) continue;
 
-            // 2. Queue email in 'mail' collection
-            await admin.firestore().collection("mail").add({
-                to: recipientEmail,
-                message: {
-                    subject: 'Urgent: Your Subscription is Expiring Soon!',
-                    html: htmlReminder,
-                },
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                type: "expiry_reminder",
-                uid: uid,
-            });
+            const pathSegments = doc.ref.path.split('/');
+            const tenantId = pathSegments[0];
+            const appId = pathSegments[1];
 
-            // 3. Mark as reminder sent
-            await doc.ref.update({ reminderSent: true });
+            const diffDays = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
 
-            console.log(`[SCHEDULER] Reminder sent to ${recipientEmail} for subscription ${doc.ref.path}`);
-        });
+            if (diffDays === 3) {
+                results.push(`3-DAY TRIGGER: ${uid} in ${tenantId}`);
+                // In test mode, we don't check for sentAt flags to allow repeated tests
+                await admin.firestore().collection("mail").add({
+                    to: recipientEmail || "support@rookstechnologies.com",
+                    message: { subject: '[TEST] 3-Day Warning', html: `<p>Expiring on ${expiryDate.toLocaleDateString()}</p>` },
+                    createdAt: admin.firestore.FieldValue.serverTimestamp()
+                });
+            }
 
-        await Promise.all(reminderPromises);
-        console.log("[SCHEDULER] ✅ All reminders processed.");
+            if (subData.isSixMonths || subData.isYearly) {
+                results.push(`MONTHLY CHECK: ${uid} in ${tenantId}`);
+            }
+        }
 
+        res.send(`Test results: ${results.length ? results.join(", ") : "Matched no specific conditions but analyzed " + subscriptionsSnapshot.size + " docs."}`);
     } catch (error) {
-        console.error("[SCHEDULER ERROR] checkSubscriptionExpiryReminders failed:", error);
+        console.error("[TEST ERROR]", error);
+        res.status(500).send("Error: " + error.message);
     }
 });
