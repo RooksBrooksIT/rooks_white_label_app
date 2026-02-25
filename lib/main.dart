@@ -7,9 +7,11 @@ import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:subscription_rooks_app/services/notification_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Initialize App Check
@@ -25,7 +27,7 @@ Future<void> main() async {
 
   // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  
+
   // Initialize Notification Service
   await NotificationService.instance.initialize();
 

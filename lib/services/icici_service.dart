@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:crypto/crypto.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firestore_service.dart';
 
 /// Service to interact with ICICI Payment Gateway UAT APIs.
@@ -15,25 +16,31 @@ class IciciService {
   static final IciciService instance = IciciService._();
 
   // ─── UAT Endpoints ───────────────────────────────────────────────────
-  static const String _initiateSaleUrl =
+  static final String _initiateSaleUrl =
+      dotenv.env['ICICI_INITIATE_SALE_URL'] ??
       'https://pgpayuat.icicibank.com/tsp/pg/api/v2/initiateSale';
-  static const String _commandUrl =
+  static final String _commandUrl =
+      dotenv.env['ICICI_COMMAND_URL'] ??
       'https://pgpayuat.icicibank.com/tsp/pg/api/command';
 
   // ─── Merchant Configuration (UAT / Test) ─────────────────────────────
   // TODO: Move these to a secure backend or environment config for production.
-  static const String merchantId = '100000000007164';
-  static const String aggregatorId = 'A100000000007164';
+  static final String merchantId =
+      dotenv.env['ICICI_MERCHANT_ID'] ?? '100000000007164';
+  static final String aggregatorId =
+      dotenv.env['ICICI_AGGREGATOR_ID'] ?? 'A100000000007164';
   static const String currencyCode = '356'; // INR
   static const String transactionType = 'SALE';
 
   // TODO: Replace with your actual return URL that your app can intercept.
-  static const String returnUrl =
+  static final String returnUrl =
+      dotenv.env['ICICI_RETURN_URL'] ??
       'https://pgpayuat.icicibank.com/tsp/pg/api/merchant';
 
   // TODO: Replace with the actual Merchant Secret Key from the ICICI UAT Kit.
   // This MUST be kept secret and ideally used only on the backend.
-  static const String _merchantSecretKey = 'YOUR_MERCHANT_SECRET_KEY';
+  static final String _merchantSecretKey =
+      dotenv.env['ICICI_MERCHANT_SECRET_KEY'] ?? 'YOUR_MERCHANT_SECRET_KEY';
 
   /// Generate a unique merchant transaction number.
   String _generateMerchantTxnNo() {

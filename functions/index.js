@@ -2,6 +2,7 @@ const { onDocumentUpdated, onDocumentCreated, onDocumentWritten } = require("fir
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
+require("dotenv").config();
 const BRAND_BLUE = "#1A237E";
 const BRAND_BLUE_LIGHT = "#EBF5FF";
 
@@ -297,19 +298,19 @@ exports.processMailDocument = onDocumentCreated("mail/{docId}", async (event) =>
     //   firebase functions:secrets:set GMAIL_APP_PASSWORD
     // ─────────────────────────────────────────────────────────────────────────
     const transporter = nodemailer.createTransport({
-        host: "smtp.hostinger.com",
-        port: 465,
+        host: process.env.SMTP_HOST || "smtp.hostinger.com",
+        port: parseInt(process.env.SMTP_PORT || "465"),
         secure: true,
         auth: {
-            user: "support@rookstechnologies.com",
-            pass: "Rooks!123",
+            user: process.env.SMTP_USER || "support@rookstechnologies.com",
+            pass: process.env.SMTP_PASS || "Rooks!123",
         },
     });
 
-    console.log(`[EMAIL] Attempting to send using support@rookstechnologies.com`);
+    console.log(`[EMAIL] Attempting to send using ${process.env.SMTP_USER || "support@rookstechnologies.com"}`);
 
     const mailOptions = {
-        from: '"Rooks And Brooks" <support@rookstechnologies.com>',
+        from: `"${process.env.COMPANY_NAME || "Rooks And Brooks"}" <${process.env.SMTP_USER || "support@rookstechnologies.com"}>`,
         to: data.to,
         subject: data.message.subject,
         html: data.message.html,
@@ -437,9 +438,9 @@ exports.processPaymentSuccess = onDocumentWritten(
             const LIGHT_BG = "#F9FAFB";
             const TEXT_DARK = "#515861ff";
             const TEXT_MID = "#4B5563";
-            const COMPANY_NAME = "Rooks And Brooks";
-            const COMPANY_EMAIL = "support@rookstechnologies.com";
-            const COMPANY_GSTIN = "GSTIN: 33AAMCR8640J1ZZ";
+            const COMPANY_NAME = process.env.COMPANY_NAME || "Rooks And Brooks";
+            const COMPANY_EMAIL = process.env.COMPANY_EMAIL || "support@rookstechnologies.com";
+            const COMPANY_GSTIN = process.env.COMPANY_GSTIN || "GSTIN: 33AAMCR8640J1ZZ";
 
             const generatePdfBuffer = () => new Promise((resolve, reject) => {
                 const doc = new PDFDocument({ margin: 40, size: "A4" });
