@@ -556,18 +556,37 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
   ) {
     // Local helper for status color
     Color getStatusColor(String status) {
-      switch (status.toLowerCase()) {
-        case 'assigned':
-          return const Color(0xFF2196F3); // Blue
-        case 'completed':
-          return const Color(0xFF4CAF50); // Green
-        case 'canceled':
-          return const Color(0xFFF44336); // Red
-        case 'appointment':
-          return const Color(0xFF9C27B0); // Purple
-        default:
-          return const Color(0xFFFF9800); // Orange
+      final statusLower = status.toLowerCase().trim();
+      if (statusLower == 'assigned' ||
+          statusLower == 'completed' ||
+          statusLower == 'complete' ||
+          statusLower == 'delivered') {
+        return Colors.green;
       }
+      if (statusLower == 'not assigned' || statusLower == 'not assinged') {
+        return Colors.red;
+      }
+      if (statusLower.contains('approval')) {
+        return Colors.purple;
+      }
+      if (statusLower.contains('spare')) {
+        return Colors.amber;
+      }
+      if (statusLower.contains('observation')) {
+        return Colors.cyan;
+      }
+      if (statusLower == 'canceled' || statusLower == 'cancelled') {
+        return Colors.grey;
+      }
+      if (statusLower == 'appointment') {
+        return Colors.pink;
+      }
+      if (statusLower == 'open' ||
+          statusLower == 'pending' ||
+          statusLower.contains('progress')) {
+        return Colors.orange;
+      }
+      return Colors.blueGrey;
     }
 
     // Check if this is an AMC customer
@@ -2868,32 +2887,39 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
   }
 
   Color getStatusColor(String status) {
-    final statusLower = status.toLowerCase();
-    if (statusLower.contains('canceled')) {
+    final statusLower = status.toLowerCase().trim();
+    if (statusLower == 'assigned' ||
+        statusLower == 'completed' ||
+        statusLower == 'complete' ||
+        statusLower == 'delivered') {
+      return Colors.green;
+    }
+    if (statusLower == 'not assigned' || statusLower == 'not assinged') {
+      return Colors.red;
+    }
+    if (statusLower.contains('approval')) {
+      return Colors.purple;
+    }
+    if (statusLower.contains('spare')) {
+      return Colors.amber;
+    }
+    if (statusLower.contains('observation')) {
+      return Colors.cyan;
+    }
+    if (statusLower == 'canceled' ||
+        statusLower == 'cancelled' ||
+        statusLower.contains('cancel')) {
       return Colors.grey;
     }
     if (statusLower.contains('appointment')) {
-      return Colors.purple;
+      return Colors.pink;
     }
-    if (statusLower.contains('complete')) {
-      return Colors.green;
+    if (statusLower == 'open' ||
+        statusLower == 'pending' ||
+        statusLower.contains('progress')) {
+      return Colors.orange;
     }
-    switch (statusLower) {
-      case 'not assigned':
-        return Colors.red;
-      case 'in progress':
-        return Colors.orange;
-      case 'open':
-        return Colors.blue;
-      case 'assigned':
-        return const Color(0xFF0B3470);
-      case 'canceled':
-        return const Color.fromARGB(255, 255, 219, 59);
-      case 'appointment':
-        return Colors.purple;
-      default:
-        return Colors.grey;
-    }
+    return Colors.blueGrey;
   }
 
   void _navigateToAssignPage(customer_var.Customer customer) {

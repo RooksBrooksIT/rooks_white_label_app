@@ -46,7 +46,32 @@ class AdminDashboardBackend {
     return FirestoreService.instance
         .collection('Admin_details')
         .snapshots()
-        .map((snapshot) => snapshot.docs.length);
+        .map(
+          (snapshot) => snapshot.docs.where((doc) {
+            final data = doc.data();
+            // A ticket is considered "updated" if it has been actively modified by an engineer.
+            // We exclude initial statuses: 'Assigned', 'Not Assigned', 'Ticket Created'.
+            final engineerStatus = (data['engineerStatus']?.toString() ?? '')
+                .trim()
+                .toLowerCase();
+
+            final isInitialStatus =
+                engineerStatus == 'assigned' ||
+                engineerStatus == 'not assigned' ||
+                engineerStatus == 'ticket created' ||
+                engineerStatus.isEmpty;
+
+            final hasDescription =
+                (data['description']?.toString() ?? '').isNotEmpty;
+            final hasLastUpdated = data['lastUpdated'] != null;
+            final hasAmount = (data['amount'] as num? ?? 0) > 0;
+
+            return !isInitialStatus ||
+                hasDescription ||
+                hasLastUpdated ||
+                hasAmount;
+          }).length,
+        );
   }
 
   static Stream<int> getTotalCustomersStream() {

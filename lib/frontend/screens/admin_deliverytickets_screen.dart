@@ -2092,29 +2092,29 @@ class _AdminDeliveryTicketsState extends State<AdminDeliveryTickets> {
       hasBorder = true;
       icon = Icon(Icons.person_off, color: Colors.white, size: 24);
     } else if (isCanceled) {
-      statusColor = const Color.fromARGB(255, 241, 97, 97);
-      backgroundColor = const Color.fromARGB(255, 241, 118, 118);
-      iconColor = const Color.fromARGB(255, 228, 19, 19);
+      statusColor = Colors.grey;
+      backgroundColor = Colors.grey[100]!;
+      iconColor = Colors.grey;
       icon = Icon(Icons.cancel, color: Colors.white, size: 24);
     } else if (isDelivered) {
       statusColor = Colors.green;
-      backgroundColor = Color(0xFFE8F5E8);
+      backgroundColor = const Color(0xFFE8F5E9);
       iconColor = Colors.green;
       borderColor = Colors.green;
       hasBorder = true;
       icon = Icon(Icons.check_circle, color: Colors.white, size: 24);
     } else if (isOutForDelivery) {
-      statusColor = Colors.orange;
-      backgroundColor = Color(0xFFFFF3E0);
-      iconColor = Colors.orange;
-      borderColor = Colors.orange;
+      statusColor = Colors.green;
+      backgroundColor = const Color(0xFFE8F5E9);
+      iconColor = Colors.green;
+      borderColor = Colors.green;
       hasBorder = true;
       icon = Icon(Icons.local_shipping, color: Colors.white, size: 24);
     } else if (isOutOfStock) {
-      statusColor = Colors.orange;
-      backgroundColor = Color(0xFFFFF3E0);
-      iconColor = Colors.orange;
-      borderColor = Colors.orange;
+      statusColor = Colors.amber;
+      backgroundColor = Colors.amber[50]!;
+      iconColor = Colors.amber;
+      borderColor = Colors.amber;
       hasBorder = true;
       icon = Icon(Icons.inventory_2, color: Colors.white, size: 24);
     }

@@ -780,17 +780,28 @@ class _AMCTrackMyServiceState extends State<AMCTrackMyService> {
       case 'completed':
         return _StatusInfo('Completed', Colors.green.shade600);
       case 'assigned':
-        return _StatusInfo('Assigned', Colors.blue.shade600);
+        return _StatusInfo('Assigned', Colors.green.shade600);
       case 'in progress':
-        return _StatusInfo('In Progress', Colors.orange.shade700);
+        return _StatusInfo('In Progress', Colors.blue.shade600);
       case 'pending':
-        return _StatusInfo('Pending', Colors.amber.shade700);
+        return _StatusInfo('Pending', Colors.orange.shade700);
       case 'not assigned':
         return _StatusInfo('Not Assigned', Colors.red.shade700);
       case 'cancelled':
       case 'canceled':
         return _StatusInfo('Cancelled', Colors.grey.shade600);
       default:
+        // Check for specific substrings if exact match fails
+        if (lowerStatus.contains('approval')) {
+          return _StatusInfo('Pending Approval', Colors.purple.shade600);
+        }
+        if (lowerStatus.contains('spare')) {
+          return _StatusInfo('Pending Spares', Colors.amber.shade700);
+        }
+        if (lowerStatus.contains('observation')) {
+          return _StatusInfo('Observation', Colors.cyan.shade600);
+        }
+
         // Capitalize first letter if it's unknown
         String formatted = status.isNotEmpty
             ? status[0].toUpperCase() + status.substring(1)

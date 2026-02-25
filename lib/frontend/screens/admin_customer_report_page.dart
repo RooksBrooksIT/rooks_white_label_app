@@ -498,300 +498,395 @@ class _CustomerReportGeneratorState extends State<CustomerReportGenerator> {
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(15)),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // Search Card
-            Card(
-              elevation: 8,
-              shadowColor: primaryColor.withOpacity(0.3),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).cardColor,
-                      Theme.of(context).primaryColorLight.withOpacity(0.1),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.search, color: primaryColor, size: 28),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Find Customer Records',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: primaryColor,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 600;
+          final hPad = isNarrow ? 12.0 : 20.0;
+          return SafeArea(
+            bottom: false,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 16),
+                child: Column(
+                  children: [
+                    // Search Card
+                    Card(
+                      elevation: 8,
+                      shadowColor: primaryColor.withOpacity(0.3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Theme.of(context).cardColor,
+                              Theme.of(
+                                context,
+                              ).primaryColorLight.withOpacity(0.1),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: MediaQuery.of(context).size.width < 400
+                                ? 14
+                                : 20,
+                            vertical: 20,
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.search,
+                                    color: primaryColor,
+                                    size: 28,
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Find Customer Records',
+                                      style: TextStyle(
+                                        fontSize: isNarrow ? 16 : 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: primaryColor,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 20),
+                              TextField(
+                                controller: _controller,
+                                decoration: InputDecoration(
+                                  labelText:
+                                      'Enter Customer ID, Phone, or Booking ID',
+                                  labelStyle: TextStyle(
+                                    color: Theme.of(context).hintColor,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                    borderSide: BorderSide(
+                                      color: Theme.of(context).dividerColor,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                    borderSide: BorderSide(
+                                      color: primaryColor,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: Theme.of(context).cardColor,
+                                  prefixIcon: Icon(
+                                    Icons.person_search,
+                                    color: primaryColor,
+                                  ),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 16,
+                                  ),
+                                ),
+                                onSubmitted: (value) {
+                                  _fetchData(value.trim());
+                                },
+                              ),
+                              SizedBox(height: 20),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 52,
+                                child: ElevatedButton(
+                                  onPressed: _loading
+                                      ? null
+                                      : () =>
+                                            _fetchData(_controller.text.trim()),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: primaryColor,
+                                    foregroundColor: Colors.white,
+                                    elevation: 4,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    shadowColor: primaryColor.withOpacity(0.4),
+                                  ),
+                                  child: _loading
+                                      ? SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.manage_search, size: 22),
+                                            SizedBox(width: 10),
+                                            Text(
+                                              'Search & Generate Report',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 20),
+
+                    // Debug Info
+                    if (_debugInfo.isNotEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Theme.of(context).dividerColor,
+                          ),
+                        ),
+                        child: Text(
+                          _debugInfo,
+                          style: TextStyle(
+                            color: Theme.of(context).hintColor,
+                            fontSize: 12,
+                            fontFamily: 'Monospace',
+                          ),
+                        ),
+                      ),
+
+                    SizedBox(height: 20),
+
+                    // Selection Info Bar (when multiple results)
+                    if (multipleResults != null && multipleResults!.isNotEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: _selectedCount > 0
+                              ? Theme.of(
+                                  context,
+                                ).primaryColorLight.withOpacity(0.2)
+                              : Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: _selectedCount > 0
+                                ? Theme.of(context).primaryColorLight
+                                : Theme.of(context).dividerColor,
+                          ),
+                        ),
+                        child: isNarrow
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '$_selectedCount of ${multipleResults!.length} selected',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: _selectedCount > 0
+                                          ? primaryColor
+                                          : Theme.of(context).hintColor,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Select All',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: primaryColor,
+                                        ),
+                                      ),
+                                      Checkbox(
+                                        value: _allSelected,
+                                        onChanged: (value) =>
+                                            _toggleAllSelection(),
+                                        activeColor: primaryColor,
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '$_selectedCount of ${multipleResults!.length} records selected',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: _selectedCount > 0
+                                          ? primaryColor
+                                          : Theme.of(context).hintColor,
+                                    ),
+                                  ),
+                                  if (multipleResults!.isNotEmpty)
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Select All',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: primaryColor,
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Checkbox(
+                                          value: _allSelected,
+                                          onChanged: (value) =>
+                                              _toggleAllSelection(),
+                                          activeColor: primaryColor,
+                                        ),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                      ),
+
+                    SizedBox(height: 10),
+
+                    // Results Section
+                    multipleResults != null && multipleResults!.isNotEmpty
+                        ? _buildMultipleResultsTable()
+                        : resultData == null
+                        ? _buildEmptyState()
+                        : _buildSingleResultTable(),
+
+                    SizedBox(height: 12),
+
+                    // PDF Generation Button
+                    if ((resultData != null) ||
+                        (multipleResults != null &&
+                            multipleResults!.isNotEmpty))
+                      SafeArea(
+                        top: false,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: ElevatedButton.icon(
+                              onPressed: _loading ? null : _generatePdf,
+                              icon: _loading
+                                  ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Icon(Icons.picture_as_pdf, size: 22),
+                              label: Text(
+                                _loading
+                                    ? 'Generating PDF...'
+                                    : multipleResults != null
+                                    ? 'Generate PDF ($_selectedCount selected)'
+                                    : 'Generate PDF Report',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    _selectedCount > 0 || resultData != null
+                                    ? Colors.red[600]
+                                    : Theme.of(context).disabledColor,
+                                foregroundColor: Colors.white,
+                                elevation: 4,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                shadowColor:
+                                    (_selectedCount > 0 || resultData != null)
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.error.withOpacity(0.3)
+                                    : Theme.of(context).disabledColor,
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                      SizedBox(height: 20),
-                      TextField(
-                        controller: _controller,
-                        decoration: InputDecoration(
-                          labelText: 'Enter Customer ID, Phone, or Booking ID',
-                          labelStyle: TextStyle(
-                            color: Theme.of(context).hintColor,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: Theme.of(context).dividerColor,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            borderSide: BorderSide(
-                              color: primaryColor,
-                              width: 2,
-                            ),
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).cardColor,
-                          prefixIcon: Icon(
-                            Icons.person_search,
-                            color: primaryColor,
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 16,
-                          ),
                         ),
-                        onSubmitted: (value) {
-                          _fetchData(value.trim());
-                        },
-                      ),
-                      SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: _loading
-                              ? null
-                              : () => _fetchData(_controller.text.trim()),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                            elevation: 4,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            shadowColor: primaryColor.withOpacity(0.4),
-                          ),
-                          child: _loading
-                              ? SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.manage_search, size: 22),
-                                    SizedBox(width: 10),
-                                    Text(
-                                      'Search & Generate Report',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            SizedBox(height: 20),
-
-            // Debug Info
-            if (_debugInfo.isNotEmpty)
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Theme.of(context).dividerColor),
-                ),
-                child: Text(
-                  _debugInfo,
-                  style: TextStyle(
-                    color: Theme.of(context).hintColor,
-                    fontSize: 12,
-                    fontFamily: 'Monospace',
-                  ),
-                ),
-              ),
-
-            SizedBox(height: 20),
-
-            // Selection Info Bar (when multiple results)
-            if (multipleResults != null && multipleResults!.isNotEmpty)
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _selectedCount > 0
-                      ? Theme.of(context).primaryColorLight.withOpacity(0.2)
-                      : Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: _selectedCount > 0
-                        ? Theme.of(context).primaryColorLight
-                        : Theme.of(context).dividerColor,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '$_selectedCount of ${multipleResults!.length} records selected',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: _selectedCount > 0
-                            ? primaryColor
-                            : Theme.of(context).hintColor,
-                      ),
-                    ),
-                    if (multipleResults!.isNotEmpty)
-                      Row(
-                        children: [
-                          Text(
-                            'Select All',
-                            style: TextStyle(fontSize: 12, color: primaryColor),
-                          ),
-                          SizedBox(width: 8),
-                          Checkbox(
-                            value: _allSelected,
-                            onChanged: (value) => _toggleAllSelection(),
-                            activeColor: primaryColor,
-                          ),
-                        ],
                       ),
                   ],
                 ),
               ),
-
-            SizedBox(height: 10),
-
-            // Results Section
-            Expanded(
-              child: multipleResults != null && multipleResults!.isNotEmpty
-                  ? _buildMultipleResultsTable()
-                  : resultData == null
-                  ? _buildEmptyState()
-                  : _buildSingleResultTable(),
             ),
-
-            SizedBox(height: 20),
-
-            // PDF Generation Button
-            if ((resultData != null) ||
-                (multipleResults != null && multipleResults!.isNotEmpty))
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton.icon(
-                  onPressed: _loading ? null : _generatePdf,
-                  icon: _loading
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Icon(Icons.picture_as_pdf, size: 24),
-                  label: Text(
-                    _loading
-                        ? 'Generating PDF...'
-                        : multipleResults != null
-                        ? 'Generate PDF ($_selectedCount selected)'
-                        : 'Generate PDF Report',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _selectedCount > 0 || resultData != null
-                        ? Colors.red[600]
-                        : Theme.of(context).disabledColor,
-                    foregroundColor: Colors.white,
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    shadowColor: (_selectedCount > 0 || resultData != null)
-                        ? Theme.of(context).colorScheme.error.withOpacity(0.3)
-                        : Theme.of(context).disabledColor,
-                  ),
-                ),
-              ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColorLight.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.assignment_outlined,
-              size: 60,
-              color: primaryColor,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final iconSize = constraints.maxWidth < 360 ? 80.0 : 120.0;
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: iconSize,
+                  height: iconSize,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColorLight.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.assignment_outlined,
+                    size: iconSize * 0.5,
+                    color: primaryColor,
+                  ),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'No Data Found',
+                  style: TextStyle(
+                    fontSize: constraints.maxWidth < 360 ? 18 : 22,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).hintColor,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Try searching with Customer ID, Phone Number, or Booking ID',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: constraints.maxWidth < 360 ? 13 : 15,
+                    color: Theme.of(context).hintColor,
+                  ),
+                ),
+                SizedBox(height: 20),
+              ],
             ),
           ),
-          SizedBox(height: 24),
-          Text(
-            'No Data Found',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).hintColor,
-            ),
-          ),
-          SizedBox(height: 12),
-          Text(
-            'Try searching with Customer ID, Phone Number, or Booking ID',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: Theme.of(context).hintColor),
-          ),
-          SizedBox(height: 24),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -807,12 +902,15 @@ class _CustomerReportGeneratorState extends State<CustomerReportGenerator> {
               children: [
                 Icon(Icons.list_alt, color: Colors.green, size: 24),
                 SizedBox(width: 10),
-                Text(
-                  'Multiple Records Found (${multipleResults!.length})',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.green[700],
+                Flexible(
+                  child: Text(
+                    'Multiple Records Found (${multipleResults!.length})',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green[700],
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -967,12 +1065,15 @@ class _CustomerReportGeneratorState extends State<CustomerReportGenerator> {
               children: [
                 Icon(Icons.verified, color: Colors.green, size: 24),
                 SizedBox(width: 10),
-                Text(
-                  'Customer Record Found',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.green[700],
+                Flexible(
+                  child: Text(
+                    'Customer Record Found',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green[700],
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -1093,17 +1194,33 @@ class _CustomerReportGeneratorState extends State<CustomerReportGenerator> {
   }
 
   Color _getStatusColor(String? status) {
-    switch (status?.toLowerCase()) {
-      case 'completed':
-        return Colors.green;
-      case 'pending':
-        return Colors.orange;
-      case 'in progress':
-        return Colors.blue;
-      case 'cancelled':
-        return Colors.red;
-      default:
-        return Colors.grey;
+    final normalized = status?.toLowerCase().trim() ?? '';
+    if (normalized == 'assigned' ||
+        normalized == 'completed' ||
+        normalized == 'complete') {
+      return Colors.green;
     }
+    if (normalized == 'not assigned' || normalized == 'not assinged') {
+      return Colors.red;
+    }
+    if (normalized.contains('approval')) {
+      return Colors.purple;
+    }
+    if (normalized.contains('spare')) {
+      return Colors.amber;
+    }
+    if (normalized.contains('observation')) {
+      return Colors.cyan;
+    }
+    if (normalized.contains('cancel')) {
+      return Colors.grey;
+    }
+    if (normalized == 'pending' || normalized == 'open') {
+      return Colors.orange;
+    }
+    if (normalized == 'in progress') {
+      return Colors.blue;
+    }
+    return Colors.blueGrey;
   }
 }

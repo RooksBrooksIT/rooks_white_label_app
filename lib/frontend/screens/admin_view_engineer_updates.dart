@@ -21,9 +21,14 @@ class _EngineerUpdatesState extends State<EngineerUpdates> {
   List<String> engineerUsernames = ['All Engineers'];
   List<String> statusOptions = [
     'All Statuses',
+    'Assigned',
     'Pending',
     'In Progress',
+    'Pending for Approval',
+    'Pending for Spares',
+    'Observation',
     'Completed',
+    'Canceled',
     'Unrepairable',
   ];
   bool isLoadingEngineers = true;
@@ -81,6 +86,55 @@ class _EngineerUpdatesState extends State<EngineerUpdates> {
     if (value == null) return defaultValue;
     if (value is String) return value;
     return value.toString();
+  }
+
+  Color _getStatusColor(String status) {
+    final statusLower = status.toLowerCase().trim();
+
+    if (statusLower == 'assigned' ||
+        statusLower == 'completed' ||
+        statusLower == 'complete' ||
+        statusLower == 'delivered') {
+      return Colors.green;
+    }
+
+    if (statusLower == 'not assigned' || statusLower == 'not assinged') {
+      return Colors.red;
+    }
+
+    if (statusLower.contains('approval')) {
+      return Colors.purple;
+    }
+
+    if (statusLower.contains('spare')) {
+      return Colors.amber;
+    }
+
+    if (statusLower.contains('observation')) {
+      return Colors.cyan;
+    }
+
+    if (statusLower == 'canceled' ||
+        statusLower == 'cancelled' ||
+        statusLower.contains('cancel')) {
+      return Colors.grey;
+    }
+
+    if (statusLower == 'appointment') {
+      return Colors.pink;
+    }
+
+    if (statusLower == 'open' ||
+        statusLower == 'pending' ||
+        statusLower.contains('progress')) {
+      return Colors.orange;
+    }
+
+    if (statusLower == 'closed') {
+      return Colors.blue;
+    }
+
+    return Colors.blueGrey;
   }
 
   void _applyFilters(List<QueryDocumentSnapshot> docs) {
@@ -179,19 +233,47 @@ class _EngineerUpdatesState extends State<EngineerUpdates> {
           switch (selectedStatus) {
             case 'Pending':
               statusMatches =
-                  (engineerStatus == 'pending' ||
-                      engineerStatus == 'assigned') &&
-                  adminStatus != 'completed';
+                  engineerStatus == 'pending' ||
+                  engineerStatus == 'open' ||
+                  adminStatus == 'pending' ||
+                  adminStatus == 'open';
+              break;
+            case 'Assigned':
+              statusMatches =
+                  engineerStatus == 'assigned' || adminStatus == 'assigned';
               break;
             case 'In Progress':
               statusMatches =
                   engineerStatus.contains('progress') ||
-                  engineerStatus == 'in progress' ||
-                  (engineerStatus == 'open' && adminStatus == 'assigned');
+                  engineerStatus == 'in progress';
+              break;
+            case 'Pending for Approval':
+              statusMatches =
+                  engineerStatus.contains('approval') ||
+                  engineerStatus == 'pfa';
+              break;
+            case 'Pending for Spares':
+              statusMatches =
+                  engineerStatus.contains('spare') || engineerStatus == 'pfs';
+              break;
+            case 'Observation':
+              statusMatches = engineerStatus.contains('observation');
               break;
             case 'Completed':
               statusMatches =
-                  adminStatus == 'completed' || engineerStatus == 'completed';
+                  adminStatus == 'completed' ||
+                  adminStatus == 'complete' ||
+                  adminStatus == 'delivered' ||
+                  adminStatus == 'closed' ||
+                  engineerStatus == 'completed' ||
+                  engineerStatus == 'complete';
+              break;
+            case 'Canceled':
+              statusMatches =
+                  adminStatus == 'canceled' ||
+                  adminStatus == 'cancelled' ||
+                  engineerStatus == 'canceled' ||
+                  engineerStatus == 'cancelled';
               break;
             case 'Unrepairable':
               statusMatches =
@@ -379,7 +461,35 @@ class _EngineerUpdatesState extends State<EngineerUpdates> {
                   return _buildErrorState();
                 }
 
-                final updateDocs = snapshot.data?.docs ?? [];
+                final allUpdateDocs = snapshot.data?.docs ?? [];
+
+                // Pre-filter: Only show tickets that have been actively updated by an engineer
+                final updateDocs = allUpdateDocs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  // A ticket is considered "updated" if it has been actively modified by an engineer.
+                  // We exclude initial statuses: 'Assigned', 'Not Assigned', 'Ticket Created'.
+                  final engineerStatus =
+                      (data['engineerStatus']?.toString() ?? '')
+                          .trim()
+                          .toLowerCase();
+
+                  final isInitialStatus =
+                      engineerStatus == 'assigned' ||
+                      engineerStatus == 'not assigned' ||
+                      engineerStatus == 'ticket created' ||
+                      engineerStatus.isEmpty;
+
+                  final hasDescription =
+                      (data['description']?.toString() ?? '').isNotEmpty;
+                  final hasLastUpdated = data['lastUpdated'] != null;
+                  final hasAmount = (data['amount'] as num? ?? 0) > 0;
+
+                  return !isInitialStatus ||
+                      hasDescription ||
+                      hasLastUpdated ||
+                      hasAmount;
+                }).toList();
+
                 // Apply search and filters in real-time
                 final docsToShow =
                     filteredDocs.isNotEmpty ||
@@ -399,7 +509,32 @@ class _EngineerUpdatesState extends State<EngineerUpdates> {
                               return bookingId.contains(searchTerm) ||
                                   customerName.contains(searchTerm);
                             }).toList()
-                          : filteredDocs)
+                          : filteredDocs.where((doc) {
+                              // Ensure filtered segments also respect the active update rule
+                              final data = doc.data() as Map<String, dynamic>;
+                              final engineerStatus =
+                                  (data['engineerStatus']?.toString() ?? '')
+                                      .trim()
+                                      .toLowerCase();
+
+                              final isInitialStatus =
+                                  engineerStatus == 'assigned' ||
+                                  engineerStatus == 'not assigned' ||
+                                  engineerStatus == 'ticket created' ||
+                                  engineerStatus.isEmpty;
+
+                              final hasDescription =
+                                  (data['description']?.toString() ?? '')
+                                      .isNotEmpty;
+                              final hasLastUpdated =
+                                  data['lastUpdated'] != null;
+                              final hasAmount =
+                                  (data['amount'] as num? ?? 0) > 0;
+                              return !isInitialStatus ||
+                                  hasDescription ||
+                                  hasLastUpdated ||
+                                  hasAmount;
+                            }).toList())
                     : updateDocs;
 
                 final reversedDocs = docsToShow.reversed.toList();
@@ -571,22 +706,27 @@ class _EngineerUpdatesState extends State<EngineerUpdates> {
         return const SizedBox.shrink();
     }
 
+    Color chipColor = primaryBlue;
+    if (key == 'status') {
+      chipColor = _getStatusColor(value);
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: primaryBlue.withOpacity(0.06),
+        color: chipColor.withOpacity(0.06),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: primaryBlue.withOpacity(0.1)),
+        border: Border.all(color: chipColor.withOpacity(0.1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: primaryBlue),
+          Icon(icon, size: 14, color: chipColor),
           const SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
-              color: primaryBlue,
+              color: chipColor,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -594,7 +734,7 @@ class _EngineerUpdatesState extends State<EngineerUpdates> {
           const SizedBox(width: 6),
           GestureDetector(
             onTap: () => _removeFilter(key),
-            child: Icon(Icons.close_rounded, size: 14, color: primaryBlue),
+            child: Icon(Icons.close_rounded, size: 14, color: chipColor),
           ),
         ],
       ),
@@ -1251,24 +1391,52 @@ class _EngineerUpdateCardState extends State<EngineerUpdateCard> {
   }
 
   Color getStatusColor(String status) {
-    if (status.toLowerCase() == 'open') {
-      return Colors.orange;
-    }
-    if (status.toLowerCase() == 'closed') {
+    final statusLower = status.toLowerCase().trim();
+
+    if (statusLower == 'assigned' ||
+        statusLower == 'completed' ||
+        statusLower == 'complete' ||
+        statusLower == 'delivered') {
       return Colors.green;
     }
-    switch (status) {
-      case 'Pending':
-        return Colors.orange;
-      case 'In Progress':
-        return Colors.blue;
-      case 'Completed':
-        return Colors.green;
-      case 'Unrepairable':
-        return Colors.red;
-      default:
-        return Colors.grey;
+
+    if (statusLower == 'not assigned' || statusLower == 'not assinged') {
+      return Colors.red;
     }
+
+    if (statusLower.contains('approval')) {
+      return Colors.purple;
+    }
+
+    if (statusLower.contains('spare')) {
+      return Colors.amber;
+    }
+
+    if (statusLower.contains('observation')) {
+      return Colors.cyan;
+    }
+
+    if (statusLower == 'canceled' ||
+        statusLower == 'cancelled' ||
+        statusLower.contains('cancel')) {
+      return Colors.grey;
+    }
+
+    if (statusLower == 'appointment') {
+      return Colors.pink;
+    }
+
+    if (statusLower == 'open' ||
+        statusLower == 'pending' ||
+        statusLower.contains('progress')) {
+      return Colors.orange;
+    }
+
+    if (statusLower == 'closed') {
+      return Colors.blue;
+    }
+
+    return Colors.blueGrey;
   }
 
   void _showImageDialog(BuildContext context, String imageUrl) {
@@ -1716,12 +1884,45 @@ class _EngineerUpdateCardState extends State<EngineerUpdateCard> {
     String engineerStatus = data['engineerStatus'] ?? '';
     String adminStatus = data['adminStatus'] ?? '';
 
-    if (engineerStatus.toLowerCase() == 'open') {
-      statusForColor = 'open';
-    } else if (adminStatus.toLowerCase() == 'closed') {
-      statusForColor = 'closed';
+    if (adminStatus.toLowerCase() == 'canceled' ||
+        engineerStatus.toLowerCase() == 'canceled' ||
+        engineerStatus.toLowerCase() == 'cancelled') {
+      statusForColor = 'canceled';
+    } else if (adminStatus.toLowerCase() == 'closed' ||
+        adminStatus.toLowerCase() == 'delivered' ||
+        engineerStatus.toLowerCase() == 'delivered') {
+      statusForColor = 'delivered';
+    } else if (engineerStatus.isNotEmpty) {
+      statusForColor = engineerStatus;
+    } else if (adminStatus.isNotEmpty) {
+      statusForColor = adminStatus;
     } else {
-      statusForColor = engineerStatus.isNotEmpty ? engineerStatus : 'Pending';
+      statusForColor = 'Pending';
+    }
+
+    // Map status for display
+    String displayStatus = statusForColor;
+    final lowerStatus = statusForColor.toLowerCase().trim();
+    if (lowerStatus == 'pfa' || lowerStatus.contains('approval')) {
+      displayStatus = 'Pending for Approval';
+    } else if (lowerStatus == 'pfs' || lowerStatus.contains('spare')) {
+      displayStatus = 'Pending for Spares';
+    } else if (lowerStatus.contains('observation')) {
+      displayStatus = 'Observation';
+    } else if (lowerStatus == 'delivered' ||
+        lowerStatus == 'complete' ||
+        lowerStatus == 'completed') {
+      displayStatus = 'Completed';
+    } else if (lowerStatus == 'open' || lowerStatus == 'assigned') {
+      displayStatus = 'Assigned';
+    } else if (lowerStatus == 'canceled' || lowerStatus == 'cancelled') {
+      displayStatus = 'Canceled';
+    } else if (lowerStatus.contains('progress')) {
+      displayStatus = 'In Progress';
+    } else if (statusForColor.length > 2) {
+      displayStatus =
+          statusForColor[0].toUpperCase() +
+          statusForColor.substring(1).toLowerCase();
     }
 
     final Color statusColor = getStatusColor(statusForColor);
@@ -1810,7 +2011,7 @@ class _EngineerUpdateCardState extends State<EngineerUpdateCard> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            statusForColor.toUpperCase(),
+                            displayStatus.toUpperCase(),
                             style: TextStyle(
                               color: statusColor,
                               fontSize: 10,
@@ -1929,7 +2130,7 @@ class _EngineerUpdateCardState extends State<EngineerUpdateCard> {
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedStatus,
+                          value: selectedStatus,
                           isExpanded: true,
                           decoration: const InputDecoration(
                             border: InputBorder.none,
@@ -1937,9 +2138,14 @@ class _EngineerUpdateCardState extends State<EngineerUpdateCard> {
                           ),
                           items:
                               [
+                                    'Assigned',
                                     'Pending',
                                     'In Progress',
+                                    'Pending for Approval',
+                                    'Pending for Spares',
+                                    'Observation',
                                     'Completed',
+                                    'Canceled',
                                     'Unrepairable',
                                   ]
                                   .map(

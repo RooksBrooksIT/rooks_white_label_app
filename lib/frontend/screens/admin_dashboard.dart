@@ -190,7 +190,7 @@ class _admindashboardState extends State<admindashboard> {
     // Refresh colors from ThemeService
     primaryColor = ThemeService.instance.primaryColor;
     secondaryColor = ThemeService.instance.secondaryColor;
-    backgroundColor = ThemeService.instance.backgroundColor;
+    backgroundColor = Colors.white; // Ensure clean white background
 
     return WillPopScope(
       onWillPop: () async {
@@ -624,12 +624,6 @@ class _admindashboardState extends State<admindashboard> {
                 Icons.engineering_rounded,
                 const Color(0xFF00D2FF),
               ),
-              _buildMetricCard(
-                'Pending Tickets',
-                pendingTickets.toString(),
-                Icons.pending_actions_rounded,
-                const Color(0xFFFF7675),
-              ),
             ],
           ),
         ),
@@ -650,13 +644,7 @@ class _admindashboardState extends State<admindashboard> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.1),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        border: Border.all(color: Colors.grey.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

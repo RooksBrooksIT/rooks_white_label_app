@@ -2377,32 +2377,36 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
         'text': 'Completed',
       },
       'Assigned': {
-        'color': const Color(0xFF6366F1), // Indigo
+        'color': ProfessionalTheme.success,
         'icon': Icons.assignment_ind_outlined,
         'text': 'Assigned',
       },
       'Pending for Approval': {
-        'color': ProfessionalTheme.warning,
+        'color': const Color(0xFF9C27B0), // Purple
         'icon': Icons.hourglass_empty_rounded,
         'text': 'Pending',
       },
       'Pending for Spares': {
-        'color': const Color(0xFFF97316), // Orange
+        'color': Colors.amber, // Amber
         'icon': Icons.settings_input_component_outlined,
         'text': 'Spares',
       },
       'Under Observation': {
-        'color': const Color(0xFF0EA5E9), // Sky Blue
+        'color': Colors.cyan, // Cyan
         'icon': Icons.visibility_outlined,
         'text': 'Observation',
       },
       'Order Taken': {
-        'color': const Color(0xFF8B5CF6), // Violet
+        'color': const Color(
+          0xFF8B5CF6,
+        ), // Violet - keeping as is if not in palette
         'icon': Icons.handshake_outlined,
         'text': 'Order Taken',
       },
       'Order Received': {
-        'color': const Color(0xFFEC4899), // Pink
+        'color': const Color(
+          0xFFEC4899,
+        ), // Pink - keeping as is if not in palette
         'icon': Icons.inventory_2_outlined,
         'text': 'Received',
       },

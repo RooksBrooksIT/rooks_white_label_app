@@ -270,11 +270,14 @@ class _CustomerDeviceTypeState extends State<CustomerDeviceType> {
           ),
 
           Expanded(
-            child: Padding(
-              padding: EdgeInsets.all(ResponsiveHelper.getResponsiveWidth(5)),
-              child: !showDeviceSelection
-                  ? _buildServiceSelection()
-                  : _buildDeviceSelection(),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: EdgeInsets.all(ResponsiveHelper.getResponsiveWidth(5)),
+                child: !showDeviceSelection
+                    ? _buildServiceSelection()
+                    : _buildDeviceSelection(),
+              ),
             ),
           ),
         ],
@@ -316,64 +319,47 @@ class _CustomerDeviceTypeState extends State<CustomerDeviceType> {
         const SizedBox(height: 32),
 
         // Service Cards
-        Expanded(
-          child: GridView(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: serviceGridCount,
-              crossAxisSpacing: ResponsiveHelper.getResponsiveWidth(3),
-              mainAxisSpacing: ResponsiveHelper.getResponsiveWidth(3),
-              childAspectRatio: 0.85,
-            ),
-            children: [
-              _buildServiceCard(
-                title: 'Service',
-                subtitle: 'Professional repair service',
-                icon: Icons.handyman_rounded,
-                onTap: () {
-                  setState(() {
-                    showDeviceSelection = true;
-                  });
-                },
-              ),
-              _buildServiceCard(
-                title: 'Request',
-                subtitle: 'Pickup & drop-off service',
-                icon: Icons.local_shipping_rounded,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CustomerHomePage(
-                        customerId: widget.customerId,
-                        customerName: widget.loggedInName,
-                        mobileNumber: widget.phoneNumber,
-                        categoryName: '',
-                        initialJobType: 'Delivery',
-                        initialDeviceType: '',
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-              // _buildServiceCard(
-              //   title: 'Maintenance',
-              //   subtitle: 'Regular maintenance',
-              //   icon: Icons.settings_suggest_rounded,
-              //   onTap: () {
-              //     _showComingSoon(context);
-              //   },
-              // ),
-              // _buildServiceCard(
-              //   title: 'Consultation',
-              //   subtitle: 'Expert consultation',
-              //   icon: Icons.support_agent_rounded,
-              //   onTap: () {
-              //     _showComingSoon(context);
-              //   },
-              // ),
-            ],
+        GridView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: serviceGridCount,
+            crossAxisSpacing: ResponsiveHelper.getResponsiveWidth(3),
+            mainAxisSpacing: ResponsiveHelper.getResponsiveWidth(3),
+            childAspectRatio: isMobile ? 0.8 : 1.0,
           ),
+          children: [
+            _buildServiceCard(
+              title: 'Service',
+              subtitle: 'Professional repair service',
+              icon: Icons.handyman_rounded,
+              onTap: () {
+                setState(() {
+                  showDeviceSelection = true;
+                });
+              },
+            ),
+            _buildServiceCard(
+              title: 'Request',
+              subtitle: 'Pickup & drop-off service',
+              icon: Icons.local_shipping_rounded,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CustomerHomePage(
+                      customerId: widget.customerId,
+                      customerName: widget.loggedInName,
+                      mobileNumber: widget.phoneNumber,
+                      categoryName: '',
+                      initialJobType: 'Delivery',
+                      initialDeviceType: '',
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
 
         const SizedBox(height: 32),
@@ -526,387 +512,399 @@ class _CustomerDeviceTypeState extends State<CustomerDeviceType> {
   }
 
   Widget _buildDeviceSelection() {
-    final isMobile = ResponsiveHelper.isMobile;
-    final isTablet = ResponsiveHelper.isTablet;
-    final devicesGridCount = isMobile ? 3 : (isTablet ? 4 : 5);
-    if (isLoading) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                color: Theme.of(context).primaryColor,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Loading Devices',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1E293B),
-                fontFamily: 'Inter',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Please wait while we fetch available devices',
-              style: TextStyle(
-                fontSize: 14,
-                color:
-                    Theme.of(context).textTheme.bodySmall?.color ??
-                    const Color(0xFF64748B),
-                fontFamily: 'Inter',
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        final isTablet =
+            constraints.maxWidth >= 600 && constraints.maxWidth < 1024;
+        final devicesGridCount = isMobile
+            ? (constraints.maxWidth < 360 ? 2 : 3)
+            : (isTablet ? 4 : 6);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Progress Indicator
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+        if (isLoading) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    color: Theme.of(context).primaryColor,
+                  ),
                 ),
-                child: Icon(
-                  Icons.devices_rounded,
-                  size: 20,
-                  color: Theme.of(context).primaryColor,
+                const SizedBox(height: 20),
+                const Text(
+                  'Loading Devices',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E293B),
+                    fontFamily: 'Inter',
+                  ),
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  'Please wait while we fetch available devices',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color:
+                        Theme.of(context).textTheme.bodySmall?.color ??
+                        const Color(0xFF64748B),
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Progress Indicator
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Select your device type',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(
-                          0xFF1E293B,
-                        ), // Keeping dark for readability on white
-                        fontFamily: 'Inter',
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.devices_rounded,
+                      size: 20,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Select your device type',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1E293B),
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        LinearProgressIndicator(
+                          value: selectedDeviceId == null ? 0.5 : 1.0,
+                          backgroundColor: Colors.grey.shade100,
+                          color: Theme.of(context).primaryColor,
+                          borderRadius: BorderRadius.circular(4),
+                          minHeight: 4,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (selectedDeviceId != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Selected',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green,
+                          fontFamily: 'Inter',
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    LinearProgressIndicator(
-                      value: selectedDeviceId == null ? 0.5 : 1.0,
-                      backgroundColor: Colors.grey.shade100,
-                      color: Theme.of(context).primaryColor,
-                      borderRadius: BorderRadius.circular(4),
-                      minHeight: 4,
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Available Devices Header
+            Text(
+              'Available Devices',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color:
+                    Theme.of(context).textTheme.titleLarge?.color ??
+                    const Color(0xFF1E293B),
+                fontFamily: 'Inter',
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Devices Grid
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: devicesGridCount,
+                crossAxisSpacing: ResponsiveHelper.getResponsiveWidth(3),
+                mainAxisSpacing: ResponsiveHelper.getResponsiveWidth(3),
+                childAspectRatio: isMobile ? 0.8 : 0.9,
+              ),
+              itemCount: allDevices.length + 1,
+              itemBuilder: (context, index) {
+                if (index < allDevices.length) {
+                  final device = allDevices[index];
+                  final isSelected = selectedDeviceId == device.id;
+                  return _buildDeviceCard(device, isSelected);
+                }
+
+                // "Other" option
+                final isOtherSelected = selectedDeviceId == 'other';
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedDeviceId = isOtherSelected ? null : 'other';
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      color: isOtherSelected
+                          ? Theme.of(context).primaryColor.withOpacity(0.1)
+                          : Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isOtherSelected
+                            ? Theme.of(context).primaryColor
+                            : Colors.grey.shade200,
+                        width: isOtherSelected ? 2 : 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(
+                            isOtherSelected ? 0.1 : 0.05,
+                          ),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(
+                        ResponsiveHelper.getResponsiveWidth(3),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: ResponsiveHelper.getResponsiveWidth(9),
+                            height: ResponsiveHelper.getResponsiveWidth(9),
+                            decoration: BoxDecoration(
+                              color: isOtherSelected
+                                  ? Theme.of(context).primaryColor
+                                  : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.add_rounded,
+                              size: ResponsiveHelper.getResponsiveWidth(5),
+                              color: isOtherSelected
+                                  ? Colors.white
+                                  : Colors.grey.shade600,
+                            ),
+                          ),
+                          SizedBox(
+                            height: ResponsiveHelper.getResponsiveHeight(1.5),
+                          ),
+                          Text(
+                            'Other',
+                            style: TextStyle(
+                              fontSize: ResponsiveHelper.getResponsiveFontSize(
+                                13,
+                              ),
+                              fontWeight: FontWeight.w600,
+                              color: isOtherSelected
+                                  ? Theme.of(context).primaryColor
+                                  : Theme.of(
+                                          context,
+                                        ).textTheme.bodyMedium?.color ??
+                                        const Color(0xFF1E293B),
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 24),
+
+            // Custom Device Input
+            if (selectedDeviceId == 'other')
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
-              ),
-              if (selectedDeviceId != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'Selected',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 24),
-
-        // Available Devices Header
-        Text(
-          'Available Devices',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color:
-                Theme.of(context).textTheme.titleLarge?.color ??
-                const Color(0xFF1E293B),
-            fontFamily: 'Inter',
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Devices Grid
-        Expanded(
-          child: GridView.builder(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: devicesGridCount,
-              crossAxisSpacing: ResponsiveHelper.getResponsiveWidth(3),
-              mainAxisSpacing: ResponsiveHelper.getResponsiveWidth(3),
-              childAspectRatio: 0.85,
-            ),
-            itemCount: allDevices.length + 1,
-            itemBuilder: (context, index) {
-              if (index < allDevices.length) {
-                final device = allDevices[index];
-                final isSelected = selectedDeviceId == device.id;
-
-                return _buildDeviceCard(device, isSelected);
-              }
-
-              // "Other" option
-              final isOtherSelected = selectedDeviceId == 'other';
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    selectedDeviceId = isOtherSelected ? null : 'other';
-                  });
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  decoration: BoxDecoration(
-                    color: isOtherSelected
-                        ? Theme.of(context).primaryColor.withOpacity(0.1)
-                        : Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isOtherSelected
-                          ? Theme.of(context).primaryColor
-                          : Colors.grey.shade200,
-                      width: isOtherSelected ? 2 : 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(
-                          isOtherSelected ? 0.1 : 0.05,
-                        ),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(
-                      ResponsiveHelper.getResponsiveWidth(3),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
                         Container(
-                          width: ResponsiveHelper.getResponsiveWidth(9),
-                          height: ResponsiveHelper.getResponsiveWidth(9),
+                          width: 40,
+                          height: 40,
                           decoration: BoxDecoration(
-                            color: isOtherSelected
-                                ? Theme.of(context).primaryColor
-                                : Colors.grey.shade100,
+                            color: Theme.of(
+                              context,
+                            ).primaryColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
-                            Icons.add_rounded,
-                            size: ResponsiveHelper.getResponsiveWidth(5),
-                            color: isOtherSelected
-                                ? Colors.white
-                                : Colors.grey.shade600,
+                            Icons.edit_rounded,
+                            size: 20,
+                            color: Theme.of(context).primaryColor,
                           ),
                         ),
-                        SizedBox(
-                          height: ResponsiveHelper.getResponsiveHeight(1.5),
-                        ),
+                        const SizedBox(width: 12),
                         Text(
-                          'Other',
+                          'Custom Device',
                           style: TextStyle(
-                            fontSize: ResponsiveHelper.getResponsiveFontSize(
-                              13,
-                            ),
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: isOtherSelected
-                                ? Theme.of(context).primaryColor
-                                : Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium?.color ??
-                                      const Color(0xFF1E293B),
+                            color:
+                                Theme.of(
+                                  context,
+                                ).textTheme.titleMedium?.color ??
+                                const Color(0xFF1E293B),
                             fontFamily: 'Inter',
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-
-        const SizedBox(height: 24),
-
-        // Custom Device Input
-        if (selectedDeviceId == 'other')
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.edit_rounded,
-                        size: 20,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Custom Device',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color:
-                            Theme.of(context).textTheme.titleMedium?.color ??
-                            const Color(0xFF1E293B),
-                        fontFamily: 'Inter',
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: otherController,
+                      onChanged: (value) =>
+                          setState(() => otherDeviceName = value),
+                      decoration: InputDecoration(
+                        labelText: 'Device Name / Model',
+                        hintText: 'e.g., Dell XPS 15, MacBook Pro M2',
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        prefixIcon: const Icon(
+                          Icons.devices_other_rounded,
+                          color: Color(0xFF64748B),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: otherController,
-                  onChanged: (value) => setState(() => otherDeviceName = value),
-                  decoration: InputDecoration(
-                    labelText: 'Device Name / Model',
-                    hintText: 'e.g., Dell XPS 15, MacBook Pro M2',
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    prefixIcon: const Icon(
-                      Icons.devices_other_rounded,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-        const SizedBox(height: 24),
-
-        // Continue Button
-        if (selectedDeviceId != null)
-          ElevatedButton(
-            onPressed: () {
-              if (selectedDeviceId == 'other' && otherDeviceName.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Please enter device name'),
-                    backgroundColor: Theme.of(context).primaryColor,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                );
-                return;
-              }
-
-              final isOther = selectedDeviceId == 'other';
-              final deviceName = isOther
-                  ? otherDeviceName
-                  : allDevices
-                        .firstWhere((d) => d.id == selectedDeviceId!)
-                        .name;
-
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CustomerHomePage(
-                    customerId: widget.customerId,
-                    customerName: widget.loggedInName,
-                    mobileNumber: widget.phoneNumber,
-                    categoryName: ThemeService
-                        .instance
-                        .appName, // Passing app name as category
-                    initialJobType: 'Service',
-                    // When Others is selected, set Device Type dropdown to 'Others'
-                    // and pass the user's input into the custom field.
-                    initialDeviceType: isOther ? 'Others' : deviceName,
-                    initialCustomDeviceType: isOther ? deviceName : null,
-                  ),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 56),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
               ),
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Continue',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+
+            const SizedBox(height: 24),
+
+            // Continue Button
+            if (selectedDeviceId != null)
+              ElevatedButton(
+                onPressed: () {
+                  if (selectedDeviceId == 'other' && otherDeviceName.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Please enter device name'),
+                        backgroundColor: Theme.of(context).primaryColor,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+
+                  final isOther = selectedDeviceId == 'other';
+                  final deviceName = isOther
+                      ? otherDeviceName
+                      : allDevices
+                            .firstWhere((d) => d.id == selectedDeviceId!)
+                            .name;
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CustomerHomePage(
+                        customerId: widget.customerId,
+                        customerName: widget.loggedInName,
+                        mobileNumber: widget.phoneNumber,
+                        categoryName: ThemeService
+                            .instance
+                            .appName, // Passing app name as category
+                        initialJobType: 'Service',
+                        initialDeviceType: isOther ? 'Others' : deviceName,
+                        initialCustomDeviceType: isOther ? deviceName : null,
+                      ),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
                 ),
-                SizedBox(width: 8),
-                Icon(Icons.arrow_forward_rounded, size: 20),
-              ],
-            ),
-          ),
-      ],
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Continue',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward_rounded, size: 20),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
