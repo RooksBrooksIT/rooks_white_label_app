@@ -185,17 +185,20 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
       child: Container(
-        height: getProportionalSize(44),
+        height: getProportionalSize(48),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(getProportionalSize(12)),
+          borderRadius: BorderRadius.circular(getProportionalSize(16)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: getProportionalSize(6),
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: getProportionalSize(10),
               offset: Offset(0, getProportionalSize(4)),
             ),
           ],
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withOpacity(0.1),
+          ),
         ),
         child: TextField(
           controller: _searchController,
@@ -205,26 +208,25 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
             });
           },
           style: TextStyle(
-            fontSize: getProportionalSize(14),
+            fontSize: getProportionalSize(15),
             color: Theme.of(context).textTheme.bodyLarge?.color,
             fontWeight: FontWeight.w500,
-            fontFamily: 'Arial',
           ),
           decoration: InputDecoration(
             prefixIcon: Icon(
-              Icons.search,
-              color: Theme.of(context).primaryColor,
-              size: getProportionalSize(22),
+              Icons.search_rounded,
+              color: Theme.of(context).primaryColor.withOpacity(0.7),
+              size: getProportionalSize(24),
             ),
-            hintText: 'Search by Booking ID',
+            hintText: 'Search Booking ID...',
             hintStyle: TextStyle(
-              color: Theme.of(context).hintColor,
-              fontWeight: FontWeight.w700,
-              fontSize: getProportionalSize(13),
+              color: Theme.of(context).hintColor.withOpacity(0.7),
+              fontWeight: FontWeight.w500,
+              fontSize: getProportionalSize(14),
             ),
             border: InputBorder.none,
             contentPadding: EdgeInsets.symmetric(
-              vertical: getProportionalSize(13),
+              vertical: getProportionalSize(14),
             ),
           ),
         ),
@@ -479,7 +481,7 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
               mobileNumber: getField(data, ['mobileNumber', 'MobileNumber']),
               jobType: getField(data, ['jobType', 'JobType']),
               amount: getField(data, ['amount']),
-              customerid: getField(data, ['customerid']),
+              customerid: getField(data, ['customerid', 'id', 'Id']),
             );
             String statusRaw = getField(data, [
               'engineerStatus',
@@ -552,8 +554,25 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
     double Function(double) getProportionalSize,
     Map<String, dynamic> durationInfo,
   ) {
+    // Local helper for status color
+    Color getStatusColor(String status) {
+      switch (status.toLowerCase()) {
+        case 'assigned':
+          return const Color(0xFF2196F3); // Blue
+        case 'completed':
+          return const Color(0xFF4CAF50); // Green
+        case 'canceled':
+          return const Color(0xFFF44336); // Red
+        case 'appointment':
+          return const Color(0xFF9C27B0); // Purple
+        default:
+          return const Color(0xFFFF9800); // Orange
+      }
+    }
+
     // Check if this is an AMC customer
     final isAMC = customer.bookingId.toUpperCase().startsWith('AMC');
+    final statusColor = getStatusColor(status);
 
     return GestureDetector(
       onTap: () {
@@ -581,23 +600,22 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
         );
       },
       child: Container(
+        margin: EdgeInsets.only(bottom: getProportionalSize(16)),
         decoration: BoxDecoration(
-          color: isCanceled
-              ? Colors.grey[300]
-              : isAppointment
-              ? Color(0xFFFFF9C4)
-              : isAMC
-              ? Color(0xFFFFF8E1)
-              : Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(getProportionalSize(12)),
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(getProportionalSize(16)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isCanceled ? 0.05 : 0.13),
-              blurRadius: getProportionalSize(6),
-              offset: Offset(getProportionalSize(2), getProportionalSize(4)),
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: getProportionalSize(10),
+              offset: Offset(0, getProportionalSize(4)),
             ),
           ],
-          border: isAMC ? Border.all(color: Color(0xFFFFD700), width: 2) : null,
+          border: isAMC
+              ? Border.all(color: const Color(0xFFFFD700), width: 1.5)
+              : Border.all(
+                  color: Theme.of(context).dividerColor.withOpacity(0.1),
+                ),
         ),
         padding: EdgeInsets.symmetric(
           vertical: screenHeight * 0.014,
@@ -605,285 +623,242 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
         ),
         child: Column(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: screenWidth * 0.14,
-                  height: screenWidth * 0.14,
-                  decoration: BoxDecoration(
-                    color: isCanceled
-                        ? Colors.grey
-                        : isAppointment
-                        ? Colors.amber
-                        : isAMC
-                        ? Color(0xFFFFD700)
-                        : isCompleted
-                        ? Colors.green
-                        : Theme.of(context).primaryColor,
-                    borderRadius: BorderRadius.circular(screenWidth * 0.07),
+            // Header Section
+            Padding(
+              padding: EdgeInsets.all(getProportionalSize(16)),
+              child: Row(
+                children: [
+                  // Icon Box
+                  Container(
+                    width: getProportionalSize(48),
+                    height: getProportionalSize(48),
+                    decoration: BoxDecoration(
+                      color: isAMC
+                          ? const Color(0xFFFFF8E1)
+                          : statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(
+                        getProportionalSize(12),
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        isAMC
+                            ? Icons.star_rounded
+                            : isCompleted
+                            ? Icons.check_circle_outline
+                            : isCanceled
+                            ? Icons.cancel_outlined
+                            : isAppointment
+                            ? Icons.calendar_today_rounded
+                            : Icons.build_circle_outlined,
+                        color: isAMC ? const Color(0xFFFFD700) : statusColor,
+                        size: getProportionalSize(24),
+                      ),
+                    ),
                   ),
-                  child: Center(
-                    child: isCanceled
-                        ? Icon(
-                            Icons.cancel,
-                            color: Colors.white,
-                            size: getProportionalSize(24),
-                          )
-                        : isAppointment
-                        ? Icon(
-                            Icons.calendar_today,
-                            color: Colors.white,
-                            size: getProportionalSize(24),
-                          )
-                        : isAMC
-                        ? Icon(
-                            Icons.star,
-                            color: Colors.white,
-                            size: getProportionalSize(24),
-                          )
-                        : isCompleted
-                        ? Icon(
-                            Icons.check,
-                            color: Colors.white,
-                            size: getProportionalSize(24),
-                          )
-                        : Text(
-                            serialNumber.toString(),
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: getProportionalSize(24),
-                              fontFamily: 'Arial',
-                              fontWeight: FontWeight.w400,
-                            ),
+                  SizedBox(width: getProportionalSize(12)),
+                  // Titles
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          customer.bookingId,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: getProportionalSize(16),
+                            color: Theme.of(context).textTheme.bodyLarge?.color,
                           ),
+                        ),
+                        SizedBox(height: getProportionalSize(4)),
+                        Text(
+                          customer.customerName,
+                          style: TextStyle(
+                            fontSize: getProportionalSize(14),
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                SizedBox(width: screenWidth * 0.034),
-                Expanded(
-                  child: Column(
+                  // Status Chip
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: getProportionalSize(12),
+                      vertical: getProportionalSize(6),
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(
+                        getProportionalSize(20),
+                      ),
+                    ),
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: getProportionalSize(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Divider(
+              height: 1,
+              color: Theme.of(context).dividerColor.withOpacity(0.1),
+            ),
+
+            // Details Section
+            Padding(
+              padding: EdgeInsets.all(getProportionalSize(16)),
+              child: Column(
+                children: [
+                  // Address
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Booking ID row
-                      Row(
-                        children: [
-                          Text(
-                            'Booking ID',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).textTheme.bodyLarge?.color,
-                              fontSize: getProportionalSize(14),
-                              fontFamily: 'Arial',
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          Text(
-                            ' : ',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).textTheme.bodyLarge?.color,
-                              fontSize: getProportionalSize(14),
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          Flexible(
-                            child: Text(
-                              customer.bookingId,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: isAMC
-                                    ? Color(0xFFFFD700)
-                                    : Theme.of(
-                                        context,
-                                      ).textTheme.bodyLarge?.color,
-                                fontWeight: FontWeight.bold,
-                                fontSize: getProportionalSize(14),
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.03,
-                              vertical: screenHeight * 0.005,
-                            ),
-                            decoration: BoxDecoration(
-                              color: getStatusColor(status),
-                              borderRadius: BorderRadius.circular(100),
-                            ),
-                            child: Text(
-                              status,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: getProportionalSize(13),
-                                fontFamily: 'Arial',
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                          ),
-                        ],
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: getProportionalSize(16),
+                        color: Theme.of(context).hintColor,
                       ),
-                      SizedBox(height: screenHeight * 0.005),
-                      // Customer row
-                      Row(
-                        children: [
-                          Text(
-                            'Customer',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).textTheme.bodyLarge?.color,
-                              fontSize: getProportionalSize(14),
-                              fontFamily: 'Arial',
-                              fontWeight: FontWeight.w400,
-                            ),
+                      SizedBox(width: getProportionalSize(10)),
+                      Expanded(
+                        child: Text(
+                          customer.address,
+                          style: TextStyle(
+                            fontSize: getProportionalSize(13),
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color,
+                            height: 1.3,
                           ),
-                          Text(
-                            ' : ',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).textTheme.bodyLarge?.color,
-                              fontSize: getProportionalSize(14),
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          Flexible(
-                            child: Text(
-                              customer.customerName,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).textTheme.bodyLarge?.color,
-                                fontSize: getProportionalSize(14),
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: getProportionalSize(2)),
-                      // Customer ID row - FIXED: Safe document reference
-                      Row(
-                        children: [
-                          Text(
-                            'Customer ID',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).textTheme.bodyMedium?.color,
-                              fontSize: getProportionalSize(14),
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          Text(
-                            ' : ',
-                            style: TextStyle(fontSize: getProportionalSize(14)),
-                          ),
-                          Flexible(
-                            child: StreamBuilder<DocumentSnapshot>(
-                              stream: _getCustomerIdStream(customer),
-                              builder: (context, snapshot) {
-                                String customerId = 'Not Found';
-
-                                if (snapshot.hasData && snapshot.data!.exists) {
-                                  final customerData =
-                                      snapshot.data!.data()
-                                          as Map<String, dynamic>?;
-                                  if (customerData != null &&
-                                      customerData.containsKey('id')) {
-                                    customerId = customerData['id'].toString();
-                                  }
-                                }
-
-                                return Text(
-                                  customerId,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium?.color,
-                                    fontSize: getProportionalSize(14),
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: getProportionalSize(2)),
-                      // Job Type row
-                      Row(
-                        children: [
-                          Text(
-                            'Job Type',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).textTheme.bodyMedium?.color,
-                              fontSize: getProportionalSize(14),
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          Text(
-                            ' : ',
-                            style: TextStyle(fontSize: getProportionalSize(14)),
-                          ),
-                          Flexible(
-                            child: Text(
-                              'Service',
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Theme.of(context).primaryColor,
-                                fontSize: getProportionalSize(14),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: getProportionalSize(2)),
-                      // Assigned Engineer row
-                      Row(
-                        children: [
-                          Text(
-                            'Assigned Engineer',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).textTheme.bodyMedium?.color,
-                              fontSize: getProportionalSize(14),
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          Text(
-                            ' : ',
-                            style: TextStyle(fontSize: getProportionalSize(14)),
-                          ),
-                          Flexible(
-                            child: Text(
-                              assignedEmployee,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).textTheme.bodyLarge?.color,
-                                fontSize: getProportionalSize(14),
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                          ),
-                        ],
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  SizedBox(height: getProportionalSize(8)),
+                  // Mobile
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.phone_outlined,
+                        size: getProportionalSize(16),
+                        color: Theme.of(context).hintColor,
+                      ),
+                      SizedBox(width: getProportionalSize(10)),
+                      Text(
+                        customer.mobileNumber,
+                        style: TextStyle(
+                          fontSize: getProportionalSize(13),
+                          color: Theme.of(context).textTheme.bodyMedium?.color,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: getProportionalSize(8)),
+                  // Device
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.devices_other,
+                        size: getProportionalSize(16),
+                        color: Theme.of(context).hintColor,
+                      ),
+                      SizedBox(width: getProportionalSize(10)),
+                      Text(
+                        '${customer.deviceBrand} - ${customer.deviceType}',
+                        style: TextStyle(
+                          fontSize: getProportionalSize(13),
+                          color: Theme.of(context).textTheme.bodyMedium?.color,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (assignedEmployee != 'Not Assigned') ...[
+                    SizedBox(height: getProportionalSize(8)),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.person_outline,
+                          size: getProportionalSize(16),
+                          color: Theme.of(context).hintColor,
+                        ),
+                        SizedBox(width: getProportionalSize(10)),
+                        Text(
+                          'Assigned to: $assignedEmployee',
+                          style: TextStyle(
+                            fontSize: getProportionalSize(13),
+                            color: const Color(0xFF2196F3),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
+
+            // Replaced Footer logic with new footer
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: getProportionalSize(16),
+                vertical: getProportionalSize(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    size: getProportionalSize(14),
+                    color: Theme.of(context).hintColor,
+                  ),
+                  SizedBox(width: getProportionalSize(6)),
+                  Text(
+                    DateFormat(
+                      'dd MMM yyyy',
+                    ).format(customer.timestamp.toDate()),
+                    style: TextStyle(
+                      fontSize: getProportionalSize(12),
+                      color: Theme.of(context).hintColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (!isCanceled) ...[
+                    Icon(
+                      Icons.access_time,
+                      size: getProportionalSize(14),
+                      color:
+                          (durationInfo['color'] as Color?) ??
+                          Theme.of(context).primaryColor,
+                    ),
+                    SizedBox(width: getProportionalSize(6)),
+                    Text(
+                      (durationInfo['label'] as String?) ?? '',
+                      style: TextStyle(
+                        fontSize: getProportionalSize(12),
+                        color:
+                            (durationInfo['color'] as Color?) ??
+                            Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
             // Customer cancellation message
             if (isCanceledByCustomer)
               Padding(
@@ -925,56 +900,6 @@ class _AdminPage_CusDetailsState extends State<AdminPage_CusDetails> {
                 ),
               ),
             // Duration container (working days)
-            if (!isCanceled)
-              Padding(
-                padding: EdgeInsets.only(top: screenHeight * 0.01),
-                child: Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: screenWidth * 0.03,
-                    vertical: screenHeight * 0.01,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        (durationInfo['bg'] as Color?) ??
-                        const Color(0xFFE3F2FD),
-                    borderRadius: BorderRadius.circular(getProportionalSize(8)),
-                    border: Border.all(
-                      color:
-                          ((durationInfo['color'] as Color?) ??
-                                  Theme.of(context).primaryColor)
-                              .withOpacity(0.35),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        isCompleted
-                            ? Icons.check_circle
-                            : Icons.hourglass_bottom,
-                        color:
-                            (durationInfo['color'] as Color?) ??
-                            Theme.of(context).primaryColor,
-                        size: getProportionalSize(18),
-                      ),
-                      SizedBox(width: screenWidth * 0.02),
-                      Expanded(
-                        child: Text(
-                          (durationInfo['label'] as String?) ?? '',
-                          style: TextStyle(
-                            color:
-                                (durationInfo['color'] as Color?) ??
-                                Theme.of(context).primaryColor,
-                            fontSize: getProportionalSize(13),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
           ],
         ),
       ),

@@ -58,7 +58,15 @@ class AdminDashboardBackend {
 
   static Stream<int> getActiveEngineersStream() {
     return FirestoreService.instance
-        .collection('Engineer_details')
+        .collection('EngineerLogin') // Use the core login collection
+        .where('isOnline', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  static Stream<int> getTotalEngineersStream() {
+    return FirestoreService.instance
+        .collection('EngineerLogin')
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }

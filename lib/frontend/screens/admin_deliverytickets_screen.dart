@@ -643,7 +643,7 @@ class _AdminDeliveryTicketsState extends State<AdminDeliveryTickets> {
       mobileNumber: _getField(data, ['mobileNumber', 'MobileNumber']),
       jobType: _getField(data, ['jobType', 'JobType']),
       amount: _getField(data, ['amount']),
-      customerid: _getField(data, ['id', 'Id']),
+      customerid: _getField(data, ['id', 'Id', 'customerid']),
     );
 
     final statusInfo = _getStatusInfo(data);

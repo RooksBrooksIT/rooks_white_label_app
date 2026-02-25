@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import 'branding_customization_screen.dart';
-import '../frontend/screens/app_main_page.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_dashboard.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
+import 'package:subscription_rooks_app/services/receipt_service.dart';
+import 'package:subscription_rooks_app/services/auth_state_service.dart';
+import 'package:subscription_rooks_app/subscription/branding_customization_screen.dart';
 
 class TransactionCompletedScreen extends StatelessWidget {
   final String planName;
@@ -9,6 +13,16 @@ class TransactionCompletedScreen extends StatelessWidget {
   final String paymentMethod;
   final String transactionId;
   final DateTime timestamp;
+  final bool isFirstTimeRegistration;
+
+  // Fields needed for BrandingCustomizationScreen navigation
+  final bool isSixMonths;
+  final int? originalPrice;
+  final Map<String, dynamic>? limits;
+  final bool? geoLocation;
+  final bool? attendance;
+  final bool? barcode;
+  final bool? reportExport;
 
   const TransactionCompletedScreen({
     super.key,
@@ -18,6 +32,14 @@ class TransactionCompletedScreen extends StatelessWidget {
     required this.paymentMethod,
     required this.transactionId,
     required this.timestamp,
+    this.isFirstTimeRegistration = false,
+    this.isSixMonths = false,
+    this.originalPrice,
+    this.limits,
+    this.geoLocation,
+    this.attendance,
+    this.barcode,
+    this.reportExport,
   });
 
   @override
@@ -53,7 +75,7 @@ class TransactionCompletedScreen extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -98,10 +120,12 @@ class TransactionCompletedScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                    border: Border.all(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
+                        color: Colors.black.withValues(alpha: 0.03),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -144,18 +168,38 @@ class TransactionCompletedScreen extends StatelessWidget {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BrandingCustomizationScreen(
-                            planName: planName,
-                            isYearly: isYearly,
-                            price: amountPaid,
-                            paymentMethod: paymentMethod,
-                            transactionId: transactionId,
+                      if (isFirstTimeRegistration) {
+                        // First-time user → go to Branding Customization
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => BrandingCustomizationScreen(
+                              planName: planName,
+                              isYearly: isYearly,
+                              isSixMonths: isSixMonths,
+                              price: amountPaid,
+                              originalPrice: originalPrice,
+                              paymentMethod: paymentMethod,
+                              transactionId: transactionId,
+                              limits: limits,
+                              geoLocation: geoLocation,
+                              attendance: attendance,
+                              barcode: barcode,
+                              reportExport: reportExport,
+                            ),
                           ),
-                        ),
-                      );
+                          (route) => false,
+                        );
+                      } else {
+                        // Existing user → go to Dashboard
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const admindashboard(),
+                          ),
+                          (route) => false,
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black87,
@@ -164,9 +208,11 @@ class TransactionCompletedScreen extends StatelessWidget {
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
-                      'CUSTOMIZE YOUR APP',
-                      style: TextStyle(
+                    child: Text(
+                      isFirstTimeRegistration
+                          ? 'CUSTOMIZE YOUR APP'
+                          : 'GO BACK TO DASHBOARD',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
@@ -176,34 +222,33 @@ class TransactionCompletedScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Secondary Action Button
+
+                // View Receipt Button
                 SizedBox(
                   width: double.infinity,
                   height: 60,
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (_) => const AppMainPage()),
-                        (route) => false,
-                      );
-                    },
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.black54,
+                  child: OutlinedButton(
+                    onPressed: () => _viewReceipt(context),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.black87, width: 2),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                     child: const Text(
-                      'GO TO DASHBOARD',
+                      'VIEW RECEIPT',
                       style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.black87,
+                        letterSpacing: 1.0,
                       ),
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // Secondary Action Button
               ],
             ),
           ),
@@ -268,5 +313,44 @@ class TransactionCompletedScreen extends StatelessWidget {
     final minute = dt.minute.toString().padLeft(2, '0');
 
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}, $hour:$minute $ampm';
+  }
+
+  Future<void> _viewReceipt(BuildContext context) async {
+    try {
+      // Get current user info
+      final user = AuthStateService.instance.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('User not found')));
+        return;
+      }
+
+      // Generate PDF receipt
+      final pdfFile = await ReceiptService.generateReceipt(
+        planName: planName,
+        isYearly: isYearly,
+        isSixMonths: false, // Assuming not 6 months for now
+        amount: amountPaid,
+        transactionId: transactionId,
+        paymentMethod: paymentMethod,
+        userName: user.displayName,
+        userEmail: user.email,
+        appName: 'Rooks White Label',
+      );
+
+      // Display PDF using printing package
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async {
+          final bytes = await pdfFile.readAsBytes();
+          return bytes;
+        },
+        name: 'Receipt_$transactionId.pdf',
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error generating receipt: $e')));
+    }
   }
 }

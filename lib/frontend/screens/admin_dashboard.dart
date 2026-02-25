@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:subscription_rooks_app/frontend/screens/admin_Engineer_reports.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_assign_tickets.dart';
@@ -19,10 +22,15 @@ import 'package:subscription_rooks_app/frontend/screens/barcode_identifier.dart'
 import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
+import 'package:subscription_rooks_app/services/storage_service.dart';
 import 'package:flutter/services.dart';
 
 import 'package:subscription_rooks_app/backend/screens/admin_dashboard.dart';
 import 'package:subscription_rooks_app/services/notification_service.dart';
+import 'package:subscription_rooks_app/subscription/branding_customization_screen.dart';
+import 'package:subscription_rooks_app/subscription/subscription_plans_screen.dart';
+import 'package:subscription_rooks_app/frontend/screens/admin_transactions_screen.dart';
+import 'package:subscription_rooks_app/services/firestore_service.dart';
 
 class admindashboard extends StatefulWidget {
   const admindashboard({super.key});
@@ -36,11 +44,16 @@ class _admindashboardState extends State<admindashboard> {
   int engineerUpdateCount = 0;
   int totalCustomers = 0;
   int activeEngineers = 0;
+  int totalEngineers = 0;
   int pendingTickets = 0;
   String adminName = 'Loading...';
   String adminEmail = '';
   String referralCode = '';
   DateTime? _lastBackPressed;
+  bool _isUploadingQR = false;
+  String? currentPlanName;
+  String? billingCycle;
+  int? remainingDays;
 
   // Dynamic Color Palette from ThemeService
   late Color primaryColor;
@@ -58,6 +71,18 @@ class _admindashboardState extends State<admindashboard> {
     _initStreams();
     _loadAdminData();
     NotificationService.instance.initialize();
+    // Listen to ThemeService changes so colors/appName update reactively
+    ThemeService.instance.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    ThemeService.instance.removeListener(_onThemeChanged);
+    super.dispose();
   }
 
   void _initStreams() {
@@ -69,6 +94,9 @@ class _admindashboardState extends State<admindashboard> {
     });
     AdminDashboardBackend.getActiveEngineersStream().listen((count) {
       if (mounted) setState(() => activeEngineers = count);
+    });
+    AdminDashboardBackend.getTotalEngineersStream().listen((count) {
+      if (mounted) setState(() => totalEngineers = count);
     });
     AdminDashboardBackend.getPendingTicketsStream().listen((count) {
       if (mounted) setState(() => pendingTickets = count);
@@ -84,11 +112,76 @@ class _admindashboardState extends State<admindashboard> {
         adminEmail = profile['email']!;
         referralCode = code;
       });
-      NotificationService.instance.registerToken(
-        'admin',
-        adminName,
-        adminEmail,
-      );
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        NotificationService.instance.registerToken(
+          role: 'admin',
+          userId: user.uid, // Use UID instead of name
+          email: adminEmail,
+        );
+
+        // Check for active subscription
+        final tenantId = ThemeService.instance.databaseName;
+        final appId = ThemeService.instance.appName;
+        final isSubscribed = await FirestoreService.instance.isTenantActive(
+          tenantId: tenantId,
+          appId: appId,
+        );
+
+        if (!isSubscribed) {
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SubscriptionPlansScreen(),
+              ),
+            );
+          }
+          return;
+        }
+
+        // Fetch Subscription Info for Badge
+        try {
+          final tenantId = ThemeService.instance.databaseName;
+          final appId = ThemeService.instance.appName;
+          final doc = await FirestoreService.instance
+              .subscriptionsRef(tenantId: tenantId, appId: appId)
+              .doc(user.uid)
+              .get();
+
+          if (doc.exists && doc.data() != null) {
+            final data = doc.data()!;
+            setState(() {
+              currentPlanName = data['planName'] as String?;
+              final isYearly = data['isYearly'] as bool? ?? false;
+              final isSixMonths = data['isSixMonths'] as bool? ?? false;
+
+              if (currentPlanName?.toLowerCase().contains('trial') ?? false) {
+                billingCycle = '7 Days';
+              } else if (isYearly) {
+                billingCycle = 'Yearly';
+              } else if (isSixMonths) {
+                billingCycle = '6 Months';
+              } else {
+                billingCycle = 'Monthly';
+              }
+
+              // Calculate remaining days
+              final nextBillingStr = data['nextBillingAt'] as String?;
+              if (nextBillingStr != null) {
+                final nextBilling = DateTime.tryParse(nextBillingStr);
+                if (nextBilling != null) {
+                  remainingDays = nextBilling.difference(DateTime.now()).inDays;
+                  // Ensure it's not negative
+                  if (remainingDays! < 0) remainingDays = 0;
+                }
+              }
+            });
+          }
+        } catch (e) {
+          debugPrint('Error loading subscription info: $e');
+        }
+      }
     }
   }
 
@@ -356,6 +449,31 @@ class _admindashboardState extends State<admindashboard> {
                           );
                         },
                       ),
+                      //   onTap: () => Navigator.push(
+                      //     context,
+                      //     MaterialPageRoute(
+                      //       builder: (context) => const Engineershiftscreen(),
+                      //     ),
+                      //   ),
+                      // ),
+                    ]),
+                    const SizedBox(height: 24),
+                    _buildManagementSection('Financials', [
+                      _buildMenuCard(
+                        title: 'Transactions',
+                        subtitle: 'Payments & Refunds',
+                        icon: Icons.receipt_long_rounded,
+                        color: const Color(0xFF00B894),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const AdminTransactionsScreen(),
+                            ),
+                          );
+                        },
+                      ),
                     ]),
                     const SizedBox(height: 48),
                   ],
@@ -445,7 +563,7 @@ class _admindashboardState extends State<admindashboard> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            'Welcome backs,',
+                            ThemeService.instance.appName,
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.8),
                               fontSize: 14,
@@ -502,7 +620,7 @@ class _admindashboardState extends State<admindashboard> {
               ),
               _buildMetricCard(
                 'Active Engineers',
-                activeEngineers.toString(),
+                '$activeEngineers/$totalEngineers',
                 Icons.engineering_rounded,
                 const Color(0xFF00D2FF),
               ),
@@ -824,15 +942,47 @@ class _admindashboardState extends State<admindashboard> {
                   subtitle: 'Manage your profile',
                   onTap: () {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Profile management coming soon!'),
-                        behavior: SnackBarBehavior.floating,
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const BrandingCustomizationScreen(isEditMode: true),
                       ),
                     );
                   },
                 ),
+                _buildDrawerItem(
+                  icon: Icons.qr_code_2_rounded,
+                  title: 'QR Code Upload',
+                  subtitle: 'Upload payment QR code',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showQRUploadDialog();
+                  },
+                ),
                 const Divider(indent: 20, endIndent: 20),
+                _buildDrawerItem(
+                  icon: Icons.workspace_premium_rounded,
+                  title: 'Manage Subscription',
+                  subtitle: remainingDays != null
+                      ? '$remainingDays Days Remaining'
+                      : 'Upgrade or switch plan',
+                  subtitleStyle: remainingDays != null
+                      ? TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: remainingDays! <= 3
+                              ? errorColor
+                              : primaryColor,
+                        )
+                      : null,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _navigateToChangePlan();
+                  },
+                ),
+                const Divider(indent: 20, endIndent: 20),
+
                 _buildDrawerItem(
                   icon: Icons.logout_rounded,
                   title: 'Logout',
@@ -910,9 +1060,53 @@ class _admindashboardState extends State<admindashboard> {
               fontSize: 14,
             ),
           ),
+          if (currentPlanName != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _getPlanColor(currentPlanName!).withOpacity(0.8),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.workspace_premium_rounded,
+                    color: _getPlanColor(currentPlanName!),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${currentPlanName!} : ${billingCycle ?? "Active"}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Color _getPlanColor(String planName) {
+    final name = planName.toLowerCase();
+    if (name.contains('silver')) return Colors.grey.shade300;
+    if (name.contains('gold')) return const Color(0xFFFFD700); // Gold
+    if (name.contains('platinum')) {
+      return const Color(0xFFE5E4E2); // Platinum color
+    }
+    if (name.contains('trial')) return Colors.lightBlueAccent;
+    return Colors.white;
   }
 
   Widget _buildDrawerItem({
@@ -954,6 +1148,275 @@ class _admindashboardState extends State<admindashboard> {
       trailing: trailing,
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+    );
+  }
+
+  /// Fetches the admin's current plan from Firestore and navigates to the
+  /// SubscriptionPlansScreen with the plan name pre-highlighted.
+  Future<void> _navigateToChangePlan() async {
+    String? currentPlanName;
+    try {
+      final uid = AuthStateService.instance.currentUser?.uid;
+      final tenantId = ThemeService.instance.databaseName;
+      final appId = ThemeService.instance.appName;
+      if (uid != null) {
+        final doc = await FirestoreService.instance
+            .subscriptionsRef(tenantId: tenantId, appId: appId)
+            .doc(uid)
+            .get();
+        if (doc.exists && doc.data() != null) {
+          currentPlanName = doc.data()!['planName'] as String?;
+        }
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SubscriptionPlansScreen(
+          currentPlanName: currentPlanName,
+          hideTrial: true,
+        ),
+      ),
+    );
+  }
+
+  void _showQRUploadDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: !_isUploadingQR,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.qr_code_2_rounded,
+                            color: primaryColor,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'QR Code Upload',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: textColor,
+                                ),
+                              ),
+                              Text(
+                                'Upload a payment QR code for engineers',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: textLightColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Current QR preview
+                    FutureBuilder<String?>(
+                      future: StorageService.instance.getQRCodeUrl(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Container(
+                            height: 180,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: primaryColor,
+                              ),
+                            ),
+                          );
+                        }
+                        if (snapshot.hasData && snapshot.data != null) {
+                          return Column(
+                            children: [
+                              Text(
+                                'Current QR Code',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: textLightColor,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  snapshot.data!,
+                                  height: 180,
+                                  width: 180,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => Icon(
+                                    Icons.broken_image_outlined,
+                                    size: 60,
+                                    color: textLightColor,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Tap below to replace',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: textLightColor,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                        return Container(
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.grey.shade300,
+                              style: BorderStyle.solid,
+                            ),
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.upload_file_outlined,
+                                  size: 40,
+                                  color: textLightColor,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'No QR code uploaded yet',
+                                  style: TextStyle(
+                                    color: textLightColor,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    // Upload button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isUploadingQR
+                            ? null
+                            : () async {
+                                final picker = ImagePicker();
+                                final picked = await picker.pickImage(
+                                  source: ImageSource.gallery,
+                                  imageQuality: 90,
+                                );
+                                if (picked == null) return;
+
+                                setDialogState(() {});
+                                setState(() => _isUploadingQR = true);
+
+                                final file = File(picked.path);
+                                final url = await StorageService.instance
+                                    .uploadQRCode(file: file);
+
+                                setState(() => _isUploadingQR = false);
+
+                                if (context.mounted) {
+                                  Navigator.pop(dialogContext);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        url != null
+                                            ? 'QR code uploaded successfully!'
+                                            : 'Upload failed. Please try again.',
+                                      ),
+                                      backgroundColor: url != null
+                                          ? Colors.green
+                                          : errorColor,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              },
+                        icon: _isUploadingQR
+                            ? SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.upload_rounded,
+                                color: Colors.white,
+                              ),
+                        label: Text(
+                          _isUploadingQR ? 'Uploading...' : 'Upload QR Code',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: textLightColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

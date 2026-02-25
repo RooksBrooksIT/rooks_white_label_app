@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
@@ -21,6 +22,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _referralCodeController = TextEditingController(); // For customers
   final String _selectedRole = 'admin';
   bool _isLoading = false;
@@ -32,6 +34,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _referralCodeController.dispose();
@@ -56,28 +59,33 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         return;
       }
 
-      linkedAppName = await FirestoreService.instance
+      final referralData = await FirestoreService.instance
           .validateGlobalReferralCode(code);
-      if (linkedAppName == null) {
+      if (referralData == null) {
         setState(() => _isLoading = false);
+        if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Invalid Referral Code.')));
         return;
       }
+      linkedAppName = referralData['appId'] ?? 'data';
     }
+
+    final phone = _phoneController.text.trim();
+    final Map<String, dynamic> extraData = {
+      if (phone.isNotEmpty) 'phone': phone,
+      if (linkedAppName != null) 'linkedAppName': linkedAppName,
+      if (linkedAppName != null)
+        'referralCode': _referralCodeController.text.trim(),
+    };
 
     final result = await AuthStateService.instance.registerUser(
       name: _nameController.text.trim(),
       email: _emailController.text.trim(),
       password: _passwordController.text.trim(),
       role: _selectedRole,
-      additionalData: linkedAppName != null
-          ? {
-              'linkedAppName': linkedAppName,
-              'referralCode': _referralCodeController.text.trim(),
-            }
-          : null,
+      additionalData: extraData.isNotEmpty ? extraData : null,
     );
 
     if (!mounted) return;
@@ -338,6 +346,24 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           ),
           const SizedBox(height: 24),
           _buildFormTextField(
+            label: 'Phone Number',
+            controller: _phoneController,
+            icon: Icons.phone_outlined,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Enter phone number';
+              if (v.length != 10) {
+                return 'Phone number must be exactly 10 digits';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 24),
+          _buildFormTextField(
             label: 'Secure Password',
             controller: _passwordController,
             icon: Icons.lock_outline,
@@ -373,6 +399,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     bool obscureText = false,
     Widget? suffixIcon,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) {
     return Column(
@@ -391,6 +418,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           validator: validator,
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: Colors.black87),
@@ -423,7 +451,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withAlpha(26),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -452,7 +480,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             'Our platform is designed to scale with your business while maintaining a premium brand experience.',
             style: GoogleFonts.inter(
               fontSize: 15,
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withAlpha(179),
               height: 1.5,
             ),
           ),
@@ -528,7 +556,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withAlpha(51),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),

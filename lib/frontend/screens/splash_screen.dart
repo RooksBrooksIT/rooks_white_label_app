@@ -19,6 +19,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -35,15 +36,12 @@ class _SplashScreenState extends State<SplashScreen>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _controller.forward();
-
     _navigateToNext();
   }
 
   Future<void> _navigateToNext() async {
-    // 1. Determine target screen based on auth state
     final Widget target = await AuthStateService.instance.getInitialScreen();
 
-    // 2. Ensuring the splash is visible for at least 3 seconds
     await Future.delayed(const Duration(seconds: 3));
 
     if (mounted) {
@@ -68,82 +66,88 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final theme = ThemeService.instance;
-    final isDarkBackground = theme.backgroundColor.computeLuminance() < 0.5;
 
     return Scaffold(
-      backgroundColor: theme.backgroundColor,
+      backgroundColor: theme.primaryColor, // Solid orange background
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.primaryColor.withOpacity(0.1),
-              theme.backgroundColor,
-            ],
-          ),
-        ),
+        color: theme.primaryColor,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Support for dynamic logo
+              /// LOGO SECTION (Exact Image Style)
               FadeTransition(
                 opacity: _fadeAnimation,
                 child: ScaleTransition(
                   scale: _scaleAnimation,
                   child: Container(
-                    padding: const EdgeInsets.all(20),
+                    width: 160,
+                    height: 160,
                     decoration: BoxDecoration(
-                      color: Colors.white,
                       shape: BoxShape.circle,
+                      color: Colors.white, // Outer white ring
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 20,
-                          spreadRadius: 5,
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 25,
+                          spreadRadius: 3,
                         ),
                       ],
                     ),
-                    child: theme.logoUrl != null && theme.logoUrl!.isNotEmpty
-                        ? Image.network(
-                            theme.logoUrl!,
-                            width: 100,
-                            height: 100,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                _buildDefaultLogo(),
-                          )
-                        : _buildDefaultLogo(),
+                    padding: const EdgeInsets.all(6), // White ring thickness
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.grey.shade300, // Thin grey border
+                          width: 2,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: ClipOval(
+                        child:
+                            theme.logoUrl != null && theme.logoUrl!.isNotEmpty
+                            ? Image.network(
+                                theme.logoUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    _buildDefaultLogo(),
+                              )
+                            : _buildDefaultLogo(),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 30),
-              // Dynamic App Name
+
+              const SizedBox(height: 40),
+
+              /// APP NAME
               FadeTransition(
                 opacity: _fadeAnimation,
                 child: Text(
                   theme.appName,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: isDarkBackground ? Colors.white : Colors.black87,
-                    letterSpacing: 2.0,
+                    color: Colors.white,
+                    letterSpacing: 2,
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+
+              const SizedBox(height: 12),
+
+              /// SMALL LINE BELOW NAME
               FadeTransition(
                 opacity: _fadeAnimation,
                 child: Container(
-                  width: 40,
-                  height: 3,
+                  width: 50,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color:
-                        (isDarkBackground ? Colors.white : theme.primaryColor)
-                            .withOpacity(0.5),
+                    color: Colors.white.withOpacity(0.8),
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
@@ -158,12 +162,10 @@ class _SplashScreenState extends State<SplashScreen>
   Widget _buildDefaultLogo() {
     return Image.asset(
       'assets/images/logo.png',
-      width: 100,
-      height: 100,
-      fit: BoxFit.contain,
+      fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) => Icon(
         Icons.rocket_launch_rounded,
-        size: 60,
+        size: 50,
         color: ThemeService.instance.primaryColor,
       ),
     );

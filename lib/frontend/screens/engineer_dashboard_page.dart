@@ -12,13 +12,17 @@ import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.da
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:subscription_rooks_app/services/location_service.dart';
 import 'package:subscription_rooks_app/services/notification_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/services/storage_service.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
 class ProfessionalTheme {
   static Color primary(BuildContext context) => Theme.of(context).primaryColor;
@@ -508,6 +512,20 @@ class ProfessionalNavigationDrawer extends StatelessWidget {
                       );
                     },
                   ),
+                  // _buildMenuItem(
+                  //   context: context,
+                  //   icon: Icons.qr_code_2_rounded,
+                  //   title: 'Engineer Attendance',
+                  //   onTap: () {
+                  //     Navigator.pop(context);
+                  //     Navigator.push(
+                  //       context,
+                  //       MaterialPageRoute(
+                  //         builder: (context) => EngineerAttendanceScreen(),
+                  //       ),
+                  //     );
+                  //   },
+                  // ),
                   const Spacer(),
                   _buildMenuItem(
                     context: context,
@@ -612,6 +630,7 @@ class _EngineerPageState extends State<EngineerPage> {
   Timer? _searchDebounceTimer;
   List<AdminDetails> _allBookings = [];
   List<AdminDetails> _filteredBookings = [];
+  bool _isOnline = true; // Default to true as they just logged in
   bool _isLoading = true;
 
   @override
@@ -619,14 +638,47 @@ class _EngineerPageState extends State<EngineerPage> {
     super.initState();
 
     NotificationService.instance.registerToken(
-      'engineer',
-      widget.userName,
-      widget.userEmail,
+      role: 'engineer',
+      userId: widget.userName,
+      email: widget.userEmail,
     );
 
     _handleInitialNotification();
     _listenToNotifications();
     _setupFCMListeners();
+    _fetchInitialOnlineStatus();
+  }
+
+  Future<void> _fetchInitialOnlineStatus() async {
+    final tenantId = await SharedPreferences.getInstance().then(
+      (p) => p.getString('tenantId'),
+    );
+    if (tenantId != null) {
+      final doc = await FirestoreService.instance
+          .collection('EngineerLogin', tenantId: tenantId)
+          .where('Username', isEqualTo: widget.userName)
+          .get();
+
+      if (doc.docs.isNotEmpty && mounted) {
+        setState(() {
+          _isOnline = doc.docs.first.data()['isOnline'] ?? false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleOnlineStatus(bool value) async {
+    final tenantId = await SharedPreferences.getInstance().then(
+      (p) => p.getString('tenantId'),
+    );
+    if (tenantId != null) {
+      setState(() => _isOnline = value);
+      await FirestoreService.instance.updateEngineerStatus(
+        tenantId: tenantId,
+        username: widget.userName,
+        isOnline: value,
+      );
+    }
   }
 
   @override
@@ -644,7 +696,7 @@ class _EngineerPageState extends State<EngineerPage> {
           .collection('notifications')
           .where('engineerName', isEqualTo: widget.userName)
           .where('audience', isEqualTo: 'engineer')
-          .orderBy('timestamp', descending: true)
+          .where('processed', isEqualTo: false)
           .snapshots();
 
       _notificationSubscription = query.listen(
@@ -654,10 +706,10 @@ class _EngineerPageState extends State<EngineerPage> {
               final data = change.doc.data();
               if (data == null) continue;
 
-              // Check if the ticket is still in "Assigned" status
+              final docId = change.doc.id;
               final bookingId = data['bookingId']?.toString() ?? '';
               if (bookingId.isNotEmpty) {
-                _checkTicketStatusAndNotify(bookingId, data);
+                _checkTicketStatusAndNotify(bookingId, data, docId);
               }
             }
           }
@@ -674,6 +726,7 @@ class _EngineerPageState extends State<EngineerPage> {
   Future<void> _checkTicketStatusAndNotify(
     String bookingId,
     Map<String, dynamic> data,
+    String docId,
   ) async {
     try {
       final doc = await FirestoreService.instance
@@ -700,7 +753,7 @@ class _EngineerPageState extends State<EngineerPage> {
           try {
             FirestoreService.instance
                 .collection('notifications')
-                .doc(data['id'] ?? '')
+                .doc(docId)
                 .update({'processed': true});
           } catch (e) {
             // ignore
@@ -969,6 +1022,18 @@ class _EngineerPageState extends State<EngineerPage> {
     if (mounted) {
       Navigator.pop(context);
     }
+    final prefs = await SharedPreferences.getInstance();
+    final tenantId = prefs.getString('tenantId');
+    if (tenantId != null) {
+      await FirestoreService.instance.updateEngineerStatus(
+        tenantId: tenantId,
+        username: widget.userName,
+        isOnline: false,
+      );
+    }
+
+    await prefs.remove('engineerEmail');
+    await prefs.remove('engineerName');
     await AuthStateService.instance.logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
@@ -1097,75 +1162,51 @@ class _EngineerPageState extends State<EngineerPage> {
                 ),
               ),
               actions: [
-                // Live Location Toggle
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.bug_report_outlined,
-                        color: Colors.white70,
-                        size: 18,
-                      ),
-                      tooltip: 'Test Connection',
-                      onPressed: () {
-                        LocationService.instance.testConnection(
-                          widget.userName,
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Connection test triggered. Check your logs.',
+                // Online/Offline Toggle
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _isOnline
+                              ? Icons.cloud_done_rounded
+                              : Icons.cloud_off_rounded,
+                          size: 16,
+                          color: _isOnline
+                              ? Colors.greenAccent
+                              : Colors.white70,
+                        ),
+                        const SizedBox(width: 4),
+                        SizedBox(
+                          height: 24,
+                          width: 40,
+                          child: FittedBox(
+                            fit: BoxFit.fill,
+                            child: Switch(
+                              value: _isOnline,
+                              onChanged: _toggleOnlineStatus,
+                              activeColor: Colors.greenAccent,
+                              activeTrackColor: Colors.white24,
+                              inactiveThumbColor: Colors.white70,
+                              inactiveTrackColor: Colors.white12,
                             ),
                           ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
-                    Text(
-                      LocationService.instance.isTracking
-                          ? 'ONLINE'
-                          : 'OFFLINE',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Switch(
-                      value: LocationService.instance.isTracking,
-                      onChanged: (value) async {
-                        if (value) {
-                          bool success = await LocationService.instance
-                              .startTracking(widget.userName);
-                          if (!success && mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Please enable location permissions to go online',
-                                ),
-                              ),
-                            );
-                          }
-                        } else {
-                          await LocationService.instance.stopTracking(
-                            widget.userName,
-                          );
-                        }
-                        setState(() {});
-                      },
-                      activeThumbColor: ProfessionalTheme.success,
-                      activeTrackColor: ProfessionalTheme.success.withOpacity(
-                        0.5,
-                      ),
-                      inactiveThumbColor: Colors.grey[400],
-                      inactiveTrackColor: Colors.white.withOpacity(0.2),
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(width: 8),
                 Container(
-                  margin: const EdgeInsets.only(right: 8),
+                  margin: const EdgeInsets.only(right: 8, left: 4),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.15),
                     shape: BoxShape.circle,
@@ -1641,28 +1682,25 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
   List<Map<String, dynamic>> _payments = [];
   double? _capturedLat;
   double? _capturedLng;
+  DateTime? _capturedTimestamp;
+  bool _isLoadingLocation = false;
 
-  Future<void> _startLocationTracking({bool isOrderTaken = false}) async {
-    bool success = await LocationService.instance.startTracking(
-      widget.userName,
-      bookingId: widget.booking.bookingId,
-    );
-    if (success && mounted) {
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Live location tracking started'),
-          backgroundColor: ProfessionalTheme.success,
-          behavior: SnackBarBehavior.floating,
-        ),
+  Future<void> _logManualLocation() async {
+    setState(() => _isLoadingLocation = true);
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
       );
-    }
-  }
-
-  Future<void> _stopLocationTracking() async {
-    await LocationService.instance.stopTracking(widget.userName);
-    if (mounted) {
-      setState(() {});
+      setState(() {
+        _capturedLat = position.latitude;
+        _capturedLng = position.longitude;
+        _capturedTimestamp = DateTime.now();
+      });
+      _showSnackBar('Location captured!', ProfessionalTheme.success);
+    } catch (e) {
+      _showSnackBar('Error capturing location: $e', ProfessionalTheme.error);
+    } finally {
+      setState(() => _isLoadingLocation = false);
     }
   }
 
@@ -1982,8 +2020,6 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
             'lastUpdated': FieldValue.serverTimestamp(),
             'PaymentType': paymentTypeToSave,
             'lastUpdatedBy': widget.userName,
-            'lat': _capturedLat,
-            'lng': _capturedLng,
           };
 
           // Payments: Use Timestamp.now() for nested timestamps
@@ -2629,17 +2665,6 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
                       setState(() {
                         _currentStatus = newValue;
                       });
-
-                      // Trigger location tracking based on status
-                      final statusLower = newValue.toLowerCase();
-                      if (statusLower == 'order taken') {
-                        _startLocationTracking(isOrderTaken: true);
-                      } else if (statusLower == 'order received') {
-                        _startLocationTracking(isOrderTaken: false);
-                      } else if (statusLower == 'completed' ||
-                          statusLower == 'cancelled') {
-                        _stopLocationTracking();
-                      }
                     }
                   },
           ),
@@ -2801,123 +2826,6 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
       ],
     );
   }
-
-  Future<void> _logManualLocation() async {
-    setState(() {
-      _isLoadingLocation = true;
-    });
-
-    try {
-      // 1. Check if location services are enabled
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        _showSnackBar(
-          'Location services are disabled. Please enable GPS.',
-          ProfessionalTheme.error,
-        );
-        setState(() => _isLoadingLocation = false);
-        return;
-      }
-
-      // 2. Check permissions
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          _showSnackBar('Location permission denied', ProfessionalTheme.error);
-          setState(() => _isLoadingLocation = false);
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        _showSnackBar(
-          'Location permissions are permanently denied',
-          ProfessionalTheme.error,
-        );
-        setState(() => _isLoadingLocation = false);
-        return;
-      }
-
-      // 3. Get Position
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      // 4. Parse booking ID safely with trim()
-      dynamic orderId = widget.booking.bookingId.trim();
-      if (int.tryParse(orderId) != null) {
-        orderId = int.parse(orderId);
-      }
-
-      // 5. Send to Firebase (Firestore)
-      // Switch to Firestore to avoid RTDB strict schema/permission issues
-      // await FirestoreService.instance.collection('manual_location_logs').add({
-      //   "orderId": orderId,
-      //   "lat": position.latitude,
-      //   "lng": position.longitude,
-      //   "timestamp": DateTime.now().toIso8601String(),
-      //   "engineerName": widget.userName,
-      //   "createdAt": FieldValue.serverTimestamp(),
-      // });
-
-      // 7. Sync to Firestore (Admin_details) immediately
-      try {
-        await FirestoreService.instance
-            .collection('Admin_details')
-            .doc(widget.booking.bookingId)
-            .update({
-              'lat': position.latitude,
-              'lng': position.longitude,
-              'lastUpdated': FieldValue.serverTimestamp(),
-              "orderId": orderId,
-              "timestamp": DateTime.now().toIso8601String(),
-              "engineerName": widget.userName,
-              "createdAt": FieldValue.serverTimestamp(),
-            });
-      } catch (e) {
-        debugPrint('Error syncing to Firestore Admin_details: $e');
-      }
-
-      _showSnackBar(
-        'Location logged to Firebase successfully!',
-        ProfessionalTheme.success,
-      );
-
-      // 6. Update local state
-      if (mounted) {
-        setState(() {
-          _capturedLat = position.latitude;
-          _capturedLng = position.longitude;
-        });
-      }
-
-      // 8. Sync to RTDB for live tracking
-      try {
-        await LocationService.instance.updateDatabase(
-          widget.userName,
-          position,
-          bookingId: widget.booking.bookingId,
-        );
-      } catch (e) {
-        debugPrint('Error syncing to RTDB: $e');
-      }
-    } on FirebaseException catch (e) {
-      debugPrint('Firebase Error: ${e.code} - ${e.message}');
-      _showSnackBar('Database Error: ${e.message}', ProfessionalTheme.error);
-    } catch (e) {
-      debugPrint('Error logging location: $e');
-      _showSnackBar('Failed: $e', ProfessionalTheme.error);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingLocation = false;
-        });
-      }
-    }
-  }
-
-  bool _isLoadingLocation = false;
 
   Widget _buildDescriptionSection() {
     return Column(
@@ -3611,17 +3519,12 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
     showDialog(
       context: context,
       builder: (context) {
-        // Get the screen size
         final size = MediaQuery.of(context).size;
-        final maxWidth = size.width * 0.85; // 85% of screen width
-        final maxHeight = size.height * 0.85; // 85% of screen height
-
-        // Calculate QR code size (maximum 300px, minimum 200px)
+        final maxWidth = size.width * 0.85;
+        final maxHeight = size.height * 0.85;
         final qrSize = maxWidth < 400
             ? (maxWidth * 0.6).clamp(200.0, 300.0)
             : 300.0;
-
-        // Calculate padding based on screen size
         final padding = size.width < 400 ? 16.0 : 24.0;
 
         return Dialog(
@@ -3639,7 +3542,7 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Icon container with responsive size
+                    // Icon header
                     Container(
                       width: qrSize * 0.2,
                       height: qrSize * 0.2,
@@ -3647,7 +3550,6 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
                         color: ProfessionalTheme.primary(
                           context,
                         ).withValues(alpha: 0.1),
-
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -3675,21 +3577,145 @@ class _ProfessionalBookingCardState extends State<ProfessionalBookingCard> {
                       ),
                     ),
                     SizedBox(height: padding),
-                    // QR Code container with responsive size
-                    Container(
-                      width: qrSize,
-                      height: qrSize,
-                      decoration: BoxDecoration(
-                        color: ProfessionalTheme.surfaceElevated(context),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: ProfessionalTheme.borderLight(context),
-                        ),
-                        image: const DecorationImage(
-                          image: AssetImage('assets/QR_Code.jpg'),
-                          fit: BoxFit.contain,
-                        ),
-                      ),
+                    // Dynamic QR from Firebase Storage
+                    FutureBuilder<String?>(
+                      future: StorageService.instance.getQRCodeUrl(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Container(
+                            width: qrSize,
+                            height: qrSize,
+                            decoration: BoxDecoration(
+                              color: ProfessionalTheme.surfaceElevated(context),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: ProfessionalTheme.borderLight(context),
+                              ),
+                            ),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: ProfessionalTheme.primary(context),
+                              ),
+                            ),
+                          );
+                        }
+
+                        if (snapshot.hasData && snapshot.data != null) {
+                          return Container(
+                            width: qrSize,
+                            height: qrSize,
+                            decoration: BoxDecoration(
+                              color: ProfessionalTheme.surfaceElevated(context),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: ProfessionalTheme.borderLight(context),
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                snapshot.data!,
+                                fit: BoxFit.contain,
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          color: ProfessionalTheme.primary(
+                                            context,
+                                          ),
+                                          value:
+                                              loadingProgress
+                                                      .expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                        .cumulativeBytesLoaded /
+                                                    loadingProgress
+                                                        .expectedTotalBytes!
+                                              : null,
+                                        ),
+                                      );
+                                    },
+                                errorBuilder: (_, __, ___) => Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.broken_image_outlined,
+                                        size: 48,
+                                        color: ProfessionalTheme.textTertiary(
+                                          context,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Failed to load QR code',
+                                        style: TextStyle(
+                                          color:
+                                              ProfessionalTheme.textSecondary(
+                                                context,
+                                              ),
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        // No QR uploaded yet
+                        return Container(
+                          width: qrSize,
+                          height: qrSize,
+                          decoration: BoxDecoration(
+                            color: ProfessionalTheme.surfaceElevated(context),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: ProfessionalTheme.borderLight(context),
+                            ),
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.qr_code_2_outlined,
+                                  size: 56,
+                                  color: ProfessionalTheme.textTertiary(
+                                    context,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No QR code available.',
+                                  style: TextStyle(
+                                    color: ProfessionalTheme.textSecondary(
+                                      context,
+                                    ),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Please ask admin to upload one.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: ProfessionalTheme.textTertiary(
+                                      context,
+                                    ),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     SizedBox(height: padding),
                     SizedBox(

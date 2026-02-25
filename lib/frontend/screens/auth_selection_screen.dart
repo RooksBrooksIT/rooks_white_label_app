@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
-import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:subscription_rooks_app/subscription/welcome_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/unified_login_screen.dart';
 
@@ -178,15 +177,16 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen>
                       Column(
                         children: [
                           _buildButton(
-                            label: 'Register',
-                            color: Colors.white,
+                            label: 'Log In',
+                            color: Colors.black,
                             textColor: Colors.black,
                             isOutlined: true,
                             onPressed: () =>
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const WelcomeScreen(),
+                                    builder: (_) => const UnifiedLoginScreen(),
+                                    // const WelcomeScreen(),
                                   ),
                                 ).then(
                                   (_) => setState(() {}),
@@ -196,38 +196,38 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen>
                       ),
                       const SizedBox(height: 18),
                       // Conditional Log In Button
-                      Opacity(
-                        opacity: AuthStateService.instance.isRegistered
-                            ? 1.0
-                            : 0.5,
-                        child: _buildButton(
-                          label: 'Log In',
-                          color: Theme.of(context).primaryColor,
-                          textColor: Colors.white,
-                          onPressed: AuthStateService.instance.isRegistered
-                              ? () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const UnifiedLoginScreen(),
-                                  ),
-                                )
-                              : () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Please register first to enable login.',
-                                      ),
-                                    ),
-                                  );
-                                },
-                        ),
-                      ),
+                      // Opacity(
+                      //   opacity: AuthStateService.instance.isRegistered
+                      //       ? 1.0
+                      //       : 0.5,
+                      //   child: _buildButton(
+                      //     label: 'Log In',
+                      //     color: Theme.of(context).primaryColor,
+                      //     textColor: Colors.white,
+                      //     onPressed: AuthStateService.instance.isRegistered
+                      //         ? () => Navigator.push(
+                      //             context,
+                      //             MaterialPageRoute(
+                      //               builder: (_) => const UnifiedLoginScreen(),
+                      //             ),
+                      //           )
+                      //         : () {
+                      //             ScaffoldMessenger.of(context).showSnackBar(
+                      //               const SnackBar(
+                      //                 content: Text(
+                      //                   'Please register first to enable login.',
+                      //                 ),
+                      //               ),
+                      //             );
+                      //           },
+                      //   ),
+                      // ),
                       const SizedBox(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            "Already have an account? ",
+                            "Don't have an account? ",
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontSize: 15,
@@ -237,11 +237,11 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen>
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const UnifiedLoginScreen(),
+                                builder: (_) => const WelcomeScreen(),
                               ),
                             ),
                             child: Text(
-                              "Log In",
+                              "Register",
                               style: TextStyle(
                                 color: Theme.of(context).primaryColor,
                                 fontWeight: FontWeight.bold,

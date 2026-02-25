@@ -1,8 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:subscription_rooks_app/services/notification_service.dart';
 
 class CustomerDashboardBackend {
   static Future<Map<String, String?>> getStoredUserInfo(
@@ -16,15 +14,13 @@ class CustomerDashboardBackend {
     };
   }
 
-  static Future<void> saveFcmToken(String phoneNumber) async {
+  static Future<void> saveFcmToken(String id, String email) async {
     try {
-      String? token = await FirebaseMessaging.instance.getToken();
-      if (token != null && phoneNumber.isNotEmpty) {
-        await FirestoreService.instance
-            .collection('UserTokens')
-            .doc(phoneNumber)
-            .set({'token': token, 'updatedAt': FieldValue.serverTimestamp()});
-      }
+      await NotificationService.instance.registerToken(
+        role: 'customer',
+        userId: id,
+        email: email,
+      );
     } catch (e) {
       print('Error saving FCM token: $e');
     }

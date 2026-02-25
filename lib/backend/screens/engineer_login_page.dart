@@ -1,9 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:subscription_rooks_app/services/notification_service.dart';
 
 class EngineerLoginBackend {
   static Future<String?> checkLoginStatus() async {
@@ -21,25 +20,13 @@ class EngineerLoginBackend {
 
   static Future<void> registerFcmToken(String engineerName) async {
     try {
-      FirebaseMessaging messaging = FirebaseMessaging.instance;
-      await messaging.requestPermission(alert: true, badge: true, sound: true);
-      String? token = await messaging.getToken();
-
-      if (token != null && engineerName.isNotEmpty) {
-        await FirestoreService.instance
-            .collection('EngineerTokens')
-            .doc(engineerName)
-            .set({'token': token}, SetOptions(merge: true));
-      }
-
-      messaging.onTokenRefresh.listen((newToken) {
-        FirestoreService.instance
-            .collection('EngineerTokens')
-            .doc(engineerName)
-            .set({'token': newToken}, SetOptions(merge: true));
-      });
+      // Use the unified NotificationService for consistency
+      await NotificationService.instance.registerToken(
+        userId: engineerName,
+        role: 'engineer',
+      );
     } catch (e) {
-      debugPrint('Error registering FCM token: $e');
+      debugPrint('Error registering engineer FCM token: $e');
     }
   }
 
@@ -50,11 +37,13 @@ class EngineerLoginBackend {
   ) async {
     try {
       // 1. Identify Tenant via Referral Code
-      final tenantId = await FirestoreService.instance
+      final referralData = await FirestoreService.instance
           .validateGlobalReferralCode(referralCode);
-      if (tenantId == null) {
+      if (referralData == null) {
         return {'success': false, 'message': 'Invalid Referral Code.'};
       }
+      final tenantId = referralData['tenantId']!;
+      final referralAppId = referralData['appId'] ?? 'data';
 
       // 2. Query Engineer within the specific Organization
       final querySnapshot = await FirestoreService.instance
@@ -64,6 +53,19 @@ class EngineerLoginBackend {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
+        // 3. Check Organization Subscription
+        final isSubscribed = await FirestoreService.instance.isTenantActive(
+          tenantId: tenantId,
+          appId: referralAppId,
+        );
+        if (!isSubscribed) {
+          return {
+            'success': false,
+            'message':
+                'Your organization\'s subscription has expired. Please contact your admin.',
+          };
+        }
+
         try {
           await FirebaseAuth.instance.signInAnonymously();
         } catch (e) {
@@ -77,6 +79,13 @@ class EngineerLoginBackend {
 
         // Sync branding configuration immediately
         await FirestoreService.instance.syncBranding(tenantId);
+
+        // Mark engineer as online
+        await FirestoreService.instance.updateEngineerStatus(
+          tenantId: tenantId,
+          username: username,
+          isOnline: true,
+        );
 
         return {'success': true, 'username': username};
       } else {
@@ -101,11 +110,12 @@ class EngineerLoginBackend {
   ) async {
     try {
       // 1. Identify Tenant via Referral Code
-      final tenantId = await FirestoreService.instance
+      final referralData = await FirestoreService.instance
           .validateGlobalReferralCode(referralCode);
-      if (tenantId == null) {
+      if (referralData == null) {
         return {'success': false, 'message': 'Invalid Referral Code.'};
       }
+      final tenantId = referralData['tenantId']!;
 
       final query = await FirestoreService.instance
           .collection('EngineerLogin', tenantId: tenantId)

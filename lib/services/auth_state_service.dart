@@ -7,12 +7,14 @@ import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_dashboard.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_dashboard_page.dart';
+import 'package:subscription_rooks_app/subscription/subscription_plans_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/amc_main_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/role_selection_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_login_page.dart';
 import 'package:subscription_rooks_app/backend/screens/admin_login_page.dart';
 import 'package:subscription_rooks_app/backend/screens/engineer_login_page.dart';
 import 'package:subscription_rooks_app/backend/screens/amc_customerlogin_page.dart';
+import 'package:subscription_rooks_app/subscription/access_restricted_screen.dart';
 
 class AuthStateService extends ChangeNotifier {
   AuthStateService._();
@@ -101,6 +103,7 @@ class AuthStateService extends ChangeNotifier {
         'role': role,
         'registeredAt': FieldValue.serverTimestamp(),
         'isApproved': role == 'admin' ? true : false,
+        'active': false, // User starts inactive until subscription is completed
         'tenantId': targetScope, // Store the tenant ID or scope
         ...?additionalData,
       };
@@ -116,7 +119,7 @@ class AuthStateService extends ChangeNotifier {
       await FirestoreService.instance.saveUserDirectory(
         uid: uid,
         tenantId: targetScope,
-        appName: role == 'admin' ? name : null,
+        appName: 'data', // Stable ID for primary app
         role: role,
       );
 
@@ -187,23 +190,24 @@ class AuthStateService extends ChangeNotifier {
       if (metadata != null) {
         scope = metadata['tenantId'] ?? scope;
         // Fetch actual branding from 'branding/config' under the tenant
-        // Use the appName found in metadata as the appId path
-        final appNameFromMetadata = metadata['appName'];
-
+        // Always prefer the stable 'data' bucket for branding
         final brandingDoc = await FirestoreService.instance
-            .brandingDoc(tenantId: scope, appId: appNameFromMetadata)
+            .brandingDoc(tenantId: scope, appId: 'data')
             .get();
 
         Map<String, dynamic>? brandingData;
         if (brandingDoc.exists) {
           brandingData = brandingDoc.data();
-        } else if (appNameFromMetadata != null) {
-          // Fallback to 'data' bucket if app-specific branding not found
-          final fallbackDoc = await FirestoreService.instance
-              .brandingDoc(tenantId: scope, appId: 'data')
-              .get();
-          if (fallbackDoc.exists) {
-            brandingData = fallbackDoc.data();
+        } else {
+          // Fallback check if for some reason 'data' isn't there but a named one is
+          final appNameFromMetadata = metadata['appName'];
+          if (appNameFromMetadata != null && appNameFromMetadata != 'data') {
+            final namedDoc = await FirestoreService.instance
+                .brandingDoc(tenantId: scope, appId: appNameFromMetadata)
+                .get();
+            if (namedDoc.exists) {
+              brandingData = namedDoc.data();
+            }
           }
         }
 
@@ -243,6 +247,32 @@ class AuthStateService extends ChangeNotifier {
 
       final userData = doc.data() as Map<String, dynamic>;
       final role = userData['role'] ?? 'user';
+
+      // 1. Unified Subscription Check for all roles
+      // Always look for subscription in the stable 'data' bucket
+      final isSubscribed = await FirestoreService.instance.isTenantActive(
+        tenantId: scope,
+        appId: 'data',
+      );
+
+      if (!isSubscribed) {
+        if (role == 'admin' || role == 'Owner') {
+          // Admins are sent to SubscriptionPlansScreen
+          return {
+            'success': true,
+            'userData': userData,
+            'needsSubscription': true,
+          };
+        } else {
+          // Engineers and Customers are blocked from logging in
+          return {
+            'success': false,
+            'message':
+                'Your administrator hasn\'t subscribed to a plan. Please contact your admin for access.',
+          };
+        }
+      }
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_kIsRegistered, true); // Ensure this is set
       await prefs.setString(_kUserRole, role);
@@ -257,8 +287,35 @@ class AuthStateService extends ChangeNotifier {
 
       return {'success': true, 'userData': userData};
     } on FirebaseAuthException catch (e) {
-      return {'success': false, 'message': e.message ?? 'Login failed'};
+      debugPrint('Login Error (FirebaseAuth): ${e.code} - ${e.message}');
+
+      String diagnosticMessage = e.message ?? 'Login failed';
+
+      // FALLBACK CHECK: If auth fails, check if user exists only in legacy 'admin' collection
+      if (e.code == 'user-not-found' ||
+          e.code == 'invalid-credential' ||
+          e.code == 'wrong-password') {
+        try {
+          final legacyCheck = await FirestoreService.instance
+              .collectionGroup('admin')
+              .where('email', isEqualTo: email)
+              .get();
+
+          if (legacyCheck.docs.isNotEmpty) {
+            diagnosticMessage =
+                'This account exists in our legacy system but hasn\'t been migrated to the new secure login. Please use the "Forgot Password" flow or contact support to migrate.';
+            debugPrint(
+              'Diagnostic: User found in legacy admin collection but Auth failed.',
+            );
+          }
+        } catch (err) {
+          debugPrint('Legacy fallback check failed: $err');
+        }
+      }
+
+      return {'success': false, 'message': diagnosticMessage};
     } catch (e) {
+      debugPrint('Login Error (System): $e');
       return {'success': false, 'message': e.toString()};
     }
   }
@@ -323,7 +380,7 @@ class AuthStateService extends ChangeNotifier {
             // Initialize branding for the recovered tenant
             await FirestoreService.instance.syncBranding(
               tenantId,
-              appId: appName,
+              appId: 'data',
             );
           }
 
@@ -339,14 +396,38 @@ class AuthStateService extends ChangeNotifier {
               await prefs.setString('appName', metadata['name'] ?? '');
             }
 
+            // Check subscription before allowing dashboard access
+            final effectiveTenant =
+                tenantId ?? ThemeService.instance.databaseName;
+            final isSubscribed = await FirestoreService.instance.isTenantActive(
+              tenantId: effectiveTenant,
+              appId: 'data',
+            );
+            if (!isSubscribed) {
+              return const SubscriptionPlansScreen();
+            }
             return const admindashboard();
-          } else if (role == 'engineer') {
-            final name = metadata['name'] ?? metadata['Username'] ?? '';
-            await prefs.setString('engineerName', name);
-            return EngineerPage(userEmail: user.email ?? '', userName: name);
-          } else if (role == 'customer') {
-            await prefs.setString('email', user.email ?? '');
-            return const AMCCustomerMainPage();
+          } else {
+            // Engineer or Customer
+            final effectiveTenant =
+                tenantId ?? ThemeService.instance.databaseName;
+            final isSubscribed = await FirestoreService.instance.isTenantActive(
+              tenantId: effectiveTenant,
+              appId: 'data',
+            );
+
+            if (!isSubscribed) {
+              return AccessRestrictedScreen(role: role ?? 'user');
+            }
+
+            if (role == 'engineer') {
+              final name = metadata['name'] ?? metadata['Username'] ?? '';
+              await prefs.setString('engineerName', name);
+              return EngineerPage(userEmail: user.email ?? '', userName: name);
+            } else if (role == 'customer') {
+              await prefs.setString('email', user.email ?? '');
+              return const AMCCustomerMainPage();
+            }
           }
         }
       }
@@ -354,12 +435,19 @@ class AuthStateService extends ChangeNotifier {
       // 2. Fallback to existing logic if no Firebase user or metadata not found
       // Check Admin
       final bool isAdminLoggedIn = await AdminLoginBackend.checkLoginStatus();
-      debugPrint('AuthStateService: Admin logged in: $isAdminLoggedIn');
       if (isAdminLoggedIn) {
         final adminTenantId = prefs.getString('admin_org_collection');
         if (adminTenantId != null) {
           // Sync branding for the found session
           await FirestoreService.instance.syncBranding(adminTenantId);
+
+          final isSubscribed = await FirestoreService.instance.isTenantActive(
+            tenantId: adminTenantId,
+            appId: 'data',
+          );
+          if (!isSubscribed) {
+            return const SubscriptionPlansScreen();
+          }
         }
         return const admindashboard();
       }
@@ -367,15 +455,33 @@ class AuthStateService extends ChangeNotifier {
       // Check Engineer
       final String? engineerName =
           await EngineerLoginBackend.checkLoginStatus();
-      debugPrint('AuthStateService: Engineer logged in: $engineerName');
       if (engineerName != null) {
+        final tenantId = prefs.getString('tenantId');
+        if (tenantId != null) {
+          final isSubscribed = await FirestoreService.instance.isTenantActive(
+            tenantId: tenantId,
+            appId: 'data',
+          );
+          if (!isSubscribed) {
+            return const AccessRestrictedScreen(role: 'engineer');
+          }
+        }
         return EngineerPage(userEmail: '', userName: engineerName);
       }
 
       // Check Customer
       final String? customerEmail = await AMCLoginBackend.checkLoginStatus();
-      debugPrint('AuthStateService: Customer logged in: $customerEmail');
       if (customerEmail != null) {
+        final tenantId = prefs.getString('tenantId');
+        if (tenantId != null) {
+          final isSubscribed = await FirestoreService.instance.isTenantActive(
+            tenantId: tenantId,
+            appId: 'data',
+          );
+          if (!isSubscribed) {
+            return const AccessRestrictedScreen(role: 'customer');
+          }
+        }
         return const AMCCustomerMainPage();
       }
 
