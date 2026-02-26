@@ -587,7 +587,7 @@ exports.processPaymentSuccess = onDocumentWritten(
                 doc.text("1", col.qty, y + 15, { width: 40, align: "center" });
                 doc.text(baseAmount.toFixed(2), col.price, y + 15, { width: 80, align: "right" });
                 doc.text("18", col.gst, y + 15, { width: 50, align: "center" });
-                doc.text(`₹${totalAmount.toFixed(2)}`, col.total, y + 15, { width: 85, align: "right" });
+                doc.text(`${totalAmount.toFixed(2)}`, col.total, y + 15, { width: 85, align: "right" });
 
                 // ── Summary Section ─────────────────────────────────────────
                 y += 60;
@@ -596,7 +596,7 @@ exports.processPaymentSuccess = onDocumentWritten(
                 doc.rect(R - summaryW, y, summaryW, summaryH).fill(ACCENT_BLUE);
                 doc.font("Helvetica-Bold").fontSize(11).fillColor("#FFFFFF");
                 doc.text("Invoice Total", R - summaryW + 15, y + 15);
-                doc.text(`₹${totalAmount.toFixed(2)}`, R - summaryW, y + 15, { width: summaryW - 15, align: "right" });
+                doc.text(`${totalAmount.toFixed(2)}`, R - summaryW, y + 15, { width: summaryW - 15, align: "right" });
 
                 // ── Footer Section ──────────────────────────────────────────
                 // Border line before footer
