@@ -673,6 +673,14 @@ class _EngineerPageState extends State<EngineerPage> {
     );
     if (tenantId != null) {
       setState(() => _isOnline = value);
+
+      // Start/Stop location tracking based on online status
+      if (value) {
+        await LocationService.instance.startTracking(widget.userName);
+      } else {
+        await LocationService.instance.stopTracking(widget.userName);
+      }
+
       await FirestoreService.instance.updateEngineerStatus(
         tenantId: tenantId,
         username: widget.userName,

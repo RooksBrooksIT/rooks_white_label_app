@@ -9,6 +9,32 @@ const BRAND_BLUE_LIGHT = "#EBF5FF";
 admin.initializeApp();
 
 /**
+ * Converts a number into words (Indian Numbering System)
+ */
+function numberToWords(num) {
+    const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+    const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+    const inWords = (n) => {
+        if (n < 20) return a[n];
+        if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + a[n % 10] : '');
+        if (n < 1000) return a[Math.floor(n / 100)] + 'Hundred ' + (n % 100 !== 0 ? 'and ' + inWords(n % 100) : '');
+        if (n < 100000) return inWords(Math.floor(n / 1000)) + 'Thousand ' + (n % 1000 !== 0 ? inWords(n % 1000) : '');
+        if (n < 10000000) return inWords(Math.floor(n / 100000)) + 'Lakh ' + (n % 100000 !== 0 ? inWords(n % 100000) : '');
+        return inWords(Math.floor(n / 10000000)) + 'Crore ' + (n % 10000000 !== 0 ? inWords(n % 10000000) : '');
+    };
+
+    const whole = Math.floor(num);
+    const fraction = Math.round((num - whole) * 100);
+
+    let result = inWords(whole) + 'Only';
+    if (fraction > 0) {
+        result = inWords(whole) + 'and ' + inWords(fraction) + 'Paise Only';
+    }
+    return result.trim();
+}
+
+/**
  * Sends a notification to a specific user based on their role and ID.
  **/
 
@@ -102,69 +128,7 @@ exports.testNotify = onRequest(async (req, res) => {
     res.send(`Attempted to send notification to ${userId}. Check functions logs for results.`);
 });
 
-// 2. Main Trigger for Assignment
-async function handleAssignment(event) {
-    const newData = event.data.after ? event.data.after.data() : event.data.data();
-    const oldData = event.data.before ? event.data.before.data() : null;
-    const { tenantId, appId, bookingId } = event.params;
 
-    if (!newData) return;
-
-    // Trigger if newly assigned or assignment changed
-    const isNewAssignment = newData.assignedEmployee && (!oldData || newData.assignedEmployee !== oldData.assignedEmployee);
-
-    if (isNewAssignment) {
-        console.log(`[DEBUG] Assignment triggered in ${tenantId}/${appId} for ${bookingId}. Engineer: ${newData.assignedEmployee}`);
-
-        // 1. Notify Engineer
-        const engineerPayload = {
-            notification: {
-                title: "New Assignment",
-                body: `You have been assigned a new task: ${bookingId}`,
-            },
-            data: {
-                type: "new_assignment",
-                bookingId: bookingId,
-            },
-        };
-        const engineerId = newData.assignedEmployee.trim();
-        await sendNotification(tenantId, appId, "engineer", engineerId, engineerPayload);
-
-        // 2. Notify Customer
-        if (newData.id) {
-            const customerPayload = {
-                notification: {
-                    title: "Ticket Assigned",
-                    body: `Your ticket (${bookingId}) has been assigned to ${newData.assignedEmployee}`,
-                },
-                data: {
-                    type: "ticket_assigned",
-                    bookingId: bookingId,
-                    engineerName: newData.assignedEmployee,
-                },
-            };
-            await sendNotification(tenantId, appId, "customer", newData.id, customerPayload);
-
-            // Also create an in-app notification document for the banner
-            await admin.firestore()
-                .collection(tenantId)
-                .doc(appId)
-                .collection("notifications")
-                .add({
-                    customerId: newData.id,
-                    customerName: newData.customerName || "",
-                    bookingId: bookingId,
-                    title: "Ticket Assigned",
-                    body: `Your ticket (${bookingId}) has been assigned to ${newData.assignedEmployee}`,
-                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
-                    seen: false,
-                    type: "ticket_assigned"
-                });
-        }
-    }
-}
-
-// exports.handleAssignmentCreation = onDocumentWritten("{tenantId}/{appId}/Admin_details/{bookingId}", handleAssignment);
 // 3. Notify Admin when a new ticket is raised
 exports.handleTicketCreation = onDocumentCreated("{tenantId}/{appId}/Admin_details/{bookingId}", async (event) => {
     const ticketData = event.data.data();
@@ -240,6 +204,61 @@ exports.handleTicketStatusUpdate = onDocumentUpdated("{tenantId}/{appId}/Admin_d
     const oldData = event.data.before.data();
     const { tenantId, appId, bookingId } = event.params;
 
+    // ── Engineer Assignment Notification ────────────────────────────────
+    const isNewAssignment = newData.assignedEmployee &&
+        newData.assignedEmployee !== oldData.assignedEmployee;
+
+    if (isNewAssignment) {
+        console.log(`[DEBUG] Assignment detected in ${tenantId}/${appId} for ${bookingId}. Engineer: ${newData.assignedEmployee}`);
+
+        // 1. Notify Engineer via FCM push
+        const engineerPayload = {
+            notification: {
+                title: "New Assignment",
+                body: `You have been assigned a new task: ${bookingId}`,
+            },
+            data: {
+                type: "new_assignment",
+                bookingId: bookingId,
+            },
+        };
+        const engineerId = newData.assignedEmployee.trim();
+        await sendNotification(tenantId, appId, "engineer", engineerId, engineerPayload);
+
+        // 2. Notify Customer
+        if (newData.id) {
+            const customerPayload = {
+                notification: {
+                    title: "Ticket Assigned",
+                    body: `Your ticket (${bookingId}) has been assigned to ${newData.assignedEmployee}`,
+                },
+                data: {
+                    type: "ticket_assigned",
+                    bookingId: bookingId,
+                    engineerName: newData.assignedEmployee,
+                },
+            };
+            await sendNotification(tenantId, appId, "customer", newData.id, customerPayload);
+
+            // Also create an in-app notification document for the customer banner
+            await admin.firestore()
+                .collection(tenantId)
+                .doc(appId)
+                .collection("notifications")
+                .add({
+                    customerId: newData.id,
+                    customerName: newData.customerName || "",
+                    bookingId: bookingId,
+                    title: "Ticket Assigned",
+                    body: `Your ticket (${bookingId}) has been assigned to ${newData.assignedEmployee}`,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    seen: false,
+                    type: "ticket_assigned"
+                });
+        }
+    }
+
+    // ── Status Change Notification ──────────────────────────────────────
     const statusChanged = (newData.engineerStatus !== oldData.engineerStatus) ||
         (newData.adminStatus !== oldData.adminStatus);
 
@@ -258,6 +277,8 @@ exports.handleTicketStatusUpdate = onDocumentUpdated("{tenantId}/{appId}/Admin_d
                 status: currentStatus,
             },
         };
+
+        // 1. Notify Customer
         if (newData.id) {
             await sendNotification(tenantId, appId, "customer", newData.id, payload);
 
@@ -276,6 +297,41 @@ exports.handleTicketStatusUpdate = onDocumentUpdated("{tenantId}/{appId}/Admin_d
                     seen: false,
                     type: "status_update"
                 });
+        }
+
+        // 2. Notify Admins if engineerStatus changed
+        if (newData.engineerStatus !== oldData.engineerStatus) {
+            console.log(`[DEBUG] Engineer status update detected for ${bookingId}. Notifying admins.`);
+            const adminPayload = {
+                notification: {
+                    title: "Engineer Job Update",
+                    body: `Engineer ${newData.assignedEmployee || "An engineer"} updated ticket ${bookingId} to: ${newData.engineerStatus}`,
+                },
+                data: {
+                    type: "engineer_status_update",
+                    bookingId: bookingId,
+                    status: newData.engineerStatus,
+                    engineerName: newData.assignedEmployee || "",
+                },
+            };
+
+            const adminsSnapshot = await admin.firestore()
+                .collection(tenantId)
+                .doc(appId)
+                .collection("notifications_tokens")
+                .doc("admin")
+                .collection("tokens")
+                .get();
+
+            if (!adminsSnapshot.empty) {
+                const adminPromises = adminsSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    if (!data || !data.token) return null;
+                    return sendNotification(tenantId, appId, "admin", doc.id, adminPayload);
+                });
+                await Promise.all(adminPromises);
+                console.log(`[SUCCESS] Notified ${adminsSnapshot.size} admins about engineer status update.`);
+            }
         }
     }
 });
@@ -450,121 +506,123 @@ exports.processPaymentSuccess = onDocumentWritten(
                 doc.on("error", reject);
 
                 const W = doc.page.width;
-                const L = 40;
-                const R = W - 40;
-                const mid = W / 2;
+                const L = 50;
+                const R = W - 50;
                 const contentW = R - L;
+                const ACCENT_BLUE = "#163A70";
+                const DIVIDER_GREY = "#E5E7EB";
+                const LABEL_COLOR = "#6B7280";
+                const VALUE_COLOR = "#111827";
 
                 // ── Header Section ──────────────────────────────────────────
-                // Draw a sleek header bar (Now White as per request)
-                doc.save();
-                doc.rect(0, 0, W, 130).fill("#FFFFFF");
-                doc.restore();
-
-                // Logo positioning
+                // Logo & Company Name
                 try {
-                    doc.image("assets/logo.png", L, 30, { height: 60 });
+                    doc.image("assets/logo.png", L, 30, { height: 40 });
                 } catch (e) {
                     console.warn("[PDF] Image missing:", e.message);
                 }
+                doc.font("Helvetica-Bold").fontSize(18).fillColor(ACCENT_BLUE).text("ROOKS & BROOKS", L + 55, 42);
 
-                // Company Details (Left-ish, below logo)
-                doc.font("Helvetica-Bold").fontSize(20).fillColor(BRAND_COLOR)
-                    .text(COMPANY_NAME, L + 85, 45);
-                doc.font("Helvetica").fontSize(10).fillColor("#4B5563")
-                    .text(COMPANY_EMAIL, L + 85, 70)
-                    .text(COMPANY_GSTIN, L + 85, 84);
+                // Centered "INVOICE" Title
+                doc.font("Helvetica-Bold").fontSize(14).fillColor(ACCENT_BLUE).text("INVOICE", 0, 85, { width: W, align: "center" });
 
-                // Invoice Meta (Right side)
-                doc.font("Helvetica-Bold").fontSize(28).fillColor(BRAND_COLOR)
-                    .text("INVOICE", L, 35, { width: contentW, align: "right" });
-                doc.font("Helvetica").fontSize(10).fillColor("#4B5563")
-                    .text(`No: ${invoiceNo}`, L, 70, { width: contentW, align: "right" })
-                    .text(`Date: ${formattedDate}`, L, 84, { width: contentW, align: "right" });
+                // Top Border Detail Line
+                doc.moveTo(L, 110).lineTo(R, 110).lineWidth(1).strokeColor(ACCENT_BLUE).stroke();
 
-                // ── Info Columns (Bill To | Subscription Period) ────────────
-                let y = 150;
+                // ── Customer & Invoice Details ──────────────────────────────
+                let y = 140;
+                const colW = contentW / 2;
+                const labelOffset = 110; // Increased offset for labels
 
-                // Column 1: Bill To
-                doc.font("Helvetica-Bold").fontSize(9).fillColor(TEXT_MID).text("BILL TO", L, y);
-                doc.font("Helvetica-Bold").fontSize(12).fillColor(TEXT_DARK).text(userName, L, y + 15);
-                doc.font("Helvetica").fontSize(10).fillColor(TEXT_MID).text(recipientEmail, L, y + 32);
-
-                // Column 2: Subscription Info (Starts at mid)
-                doc.font("Helvetica-Bold").fontSize(9).fillColor(TEXT_MID).text("SUBSCRIPTION PERIOD", mid, y);
-                doc.font("Helvetica-Bold").fontSize(11).fillColor(TEXT_DARK)
-                    .text(`${fmtStart} — ${fmtEnd}`, mid, y + 15);
-                doc.font("Helvetica").fontSize(9).fillColor(TEXT_MID)
-                    .text(`Plan: ${planName} (${billingCycle})`, mid, y + 32);
-
-                // ── Table Structure ─────────────────────────────────────────
-                y = 230;
-                const col = { desc: L, qty: L + 240, unit: L + 310, total: L + 410 };
-                const tableH = 30;
-
-                // Header row
-                doc.save();
-                doc.rect(L, y, contentW, tableH).fill(BRAND_COLOR);
-                doc.restore();
-                doc.font("Helvetica-Bold").fontSize(10).fillColor("#FFFFFF");
-                doc.text("Description", col.desc + 10, y + 10);
-                doc.text("Qty", col.qty, y + 10);
-                doc.text("Unit Price", col.unit, y + 10, { width: 90, align: "right" });
-                doc.text("Total", col.total, y + 10, { width: 100, align: "right" });
-
-                // Data row
-                y += tableH;
-                doc.save();
-                doc.rect(L, y, contentW, tableH + 10).fill(LIGHT_BG);
-                doc.restore();
-                doc.font("Helvetica").fontSize(10).fillColor(TEXT_DARK);
-                doc.text(planName, col.desc + 10, y + 12, { width: 220 });
-                doc.text("1", col.qty, y + 12);
-                doc.text(`INR ${baseAmount.toFixed(2)}`, col.unit, y + 12, { width: 90, align: "right" });
-                doc.text(`INR ${baseAmount.toFixed(2)}`, col.total, y + 12, { width: 100, align: "right" });
-
-                // ── Breakdown & Total ───────────────────────────────────────
-                y += tableH + 40;
-                const lineW = 180;
-                const lineX = R - lineW;
-
-                const addLine = (label, val, isBold = false) => {
-                    doc.font(isBold ? "Helvetica-Bold" : "Helvetica").fontSize(10).fillColor(TEXT_DARK);
-                    doc.text(label, lineX, y);
-                    doc.text(val, lineX, y, { width: lineW, align: "right" });
-                    y += 20;
+                const drawField = (label, value, x, currentY, isBold = true) => {
+                    doc.font("Helvetica").fontSize(10).fillColor(LABEL_COLOR).text(label, x, currentY);
+                    doc.font(isBold ? "Helvetica-Bold" : "Helvetica").fontSize(10).fillColor(VALUE_COLOR).text(value, x + labelOffset, currentY, { width: colW - labelOffset });
+                    return currentY + 30;
                 };
 
-                addLine("Subtotal:", `INR ${baseAmount.toFixed(2)}`);
-                addLine("GST (18%):", `INR ${gstAmount.toFixed(2)}`);
+                // Left Column
+                let leftY = y;
+                leftY = drawField("Invoice to", userName, L, leftY);
+                // Secondary Email line for Invoice to
+                doc.font("Helvetica").fontSize(9).fillColor(LABEL_COLOR).text(recipientEmail, L + labelOffset, leftY - 18);
+                leftY += 15;
+                leftY = drawField("Document", "INV", L, leftY);
+                leftY = drawField("Invoice No", invoiceNo, L, leftY);
+                leftY = drawField("Date of Invoice", formattedDate, L, leftY);
 
-                // Draw total box
-                doc.save();
-                doc.rect(lineX - 10, y - 5, lineW + 10, 30).fill(BRAND_COLOR);
-                doc.restore();
-                doc.font("Helvetica-Bold").fontSize(12).fillColor("#FFFFFF");
-                doc.text("TOTAL PAID", lineX, y + 5);
-                doc.text(`INR ${totalAmount.toFixed(2)}`, lineX, y + 5, { width: lineW, align: "right" });
+                // Right Column
+                let rightY = y;
+                const rightX = L + colW + 10;
+                rightY = drawField("GSTIN", "33AAMCR8640J1ZZ", rightX, rightY);
+                rightY = drawField("Subscription", `${planName} (${billingCycle})`, rightX, rightY);
+                rightY = drawField("Subscription Period", `${fmtStart} – ${fmtEnd}`, rightX, rightY);
+                rightY = drawField("Payment Method", paymentMethod, rightX, rightY);
+                rightY = drawField("Transaction ID", transactionId, rightX, rightY);
 
-                // ── Final Details ───────────────────────────────────────────
+                // ── Table Section ───────────────────────────────────────────
+                y = Math.max(leftY, rightY) + 20;
+                const tableHeaderH = 30;
+                const col = {
+                    desc: L,
+                    qty: L + 190,
+                    price: L + 245,
+                    gst: L + 340,
+                    total: L + 410
+                };
+
+                // Table Header
+                doc.rect(L, y, contentW, tableHeaderH).fill(ACCENT_BLUE);
+                doc.font("Helvetica-Bold").fontSize(10).fillColor("#FFFFFF");
+                doc.text("Description", col.desc + 10, y + 10);
+                doc.text("Qty", col.qty, y + 10, { width: 40, align: "center" });
+                doc.text("Unit Price", col.price, y + 10, { width: 80, align: "right" });
+                doc.text("GST %", col.gst, y + 10, { width: 50, align: "center" });
+                doc.text("Total", col.total, y + 10, { width: 85, align: "right" });
+
+                // Data row
+                y += tableHeaderH;
+                doc.rect(L, y, contentW, 40).fill("#F3F4F6");
+                doc.font("Helvetica").fontSize(10).fillColor(VALUE_COLOR);
+                doc.text(planName, col.desc + 10, y + 15, { width: 170 });
+                doc.text("1", col.qty, y + 15, { width: 40, align: "center" });
+                doc.text(baseAmount.toFixed(2), col.price, y + 15, { width: 80, align: "right" });
+                doc.text("18", col.gst, y + 15, { width: 50, align: "center" });
+                doc.text(`${totalAmount.toFixed(2)}`, col.total, y + 15, { width: 85, align: "right" });
+
+                // ── Summary Section ─────────────────────────────────────────
                 y += 60;
-                doc.font("Helvetica-Bold").fontSize(9).fillColor(TEXT_DARK).text("PAYMENT INFO", L, y);
-                doc.font("Helvetica").fontSize(9).fillColor(TEXT_MID)
-                    .text(`Transaction ID: ${transactionId}`, L, y + 15)
-                    .text(`Payment Method: ${paymentMethod}`, L, y + 27);
+                const summaryW = 220;
+                const summaryH = 40;
+                doc.rect(R - summaryW, y, summaryW, summaryH).fill(ACCENT_BLUE);
+                doc.font("Helvetica-Bold").fontSize(11).fillColor("#FFFFFF");
+                doc.text("Invoice Total", R - summaryW + 15, y + 15);
+                doc.text(`${totalAmount.toFixed(2)}`, R - summaryW, y + 15, { width: summaryW - 15, align: "right" });
 
-                // Success Badge
-                doc.save();
-                doc.roundedRect(mid + 50, y + 5, 120, 25, 5).fill(BRAND_BLUE_LIGHT);
-                doc.font("Helvetica-Bold").fontSize(9).fillColor(BRAND_BLUE)
-                    .text("✔ PAID SUCCESS", mid + 65, y + 12);
-                doc.restore();
+                // ── Footer Section ──────────────────────────────────────────
+                // Border line before footer
+                y += 100;
+                doc.moveTo(L, y).lineTo(R, y).lineWidth(0.5).strokeColor("#D1D5DB").stroke();
+                y += 15;
 
-                // ── Footer ──────────────────────────────────────────────────
-                const footerY = doc.page.height - 70;
-                doc.fontSize(8).fillColor("#9CA3AF")
-                    .text("Thank you for choosing Rooks And Brooks.", L, footerY, { width: contentW, align: "center" })
-                    .text("This is a digitally generated invoice and requires no signature.", L, footerY + 12, { width: contentW, align: "center" });
+                // Total in words
+                doc.font("Helvetica").fontSize(10).fillColor(LABEL_COLOR).text("Invoice total in words", L, y);
+                doc.font("Helvetica-Bold").fontSize(10).fillColor(VALUE_COLOR).text(`${numberToWords(totalAmount)} Only`, L + 280, y, { width: contentW - 280, align: "right" });
+
+                // Signature section
+                y += 50;
+                doc.font("Helvetica").fontSize(10).fillColor(LABEL_COLOR).text("Authorized Signature", L, y);
+                doc.font("Helvetica").fontSize(8).fillColor(LABEL_COLOR).text("Digitally signed by Rooks & Brooks Technologies", R - 250, y, { width: 250, align: "right" });
+                doc.font("Helvetica").fontSize(8).fillColor("#9CA3AF").text(formattedDate, R - 250, y + 12, { width: 250, align: "right" });
+
+                // Divider line
+                y += 40;
+                doc.moveTo(L, y).lineTo(R, y).lineWidth(0.5).strokeColor("#D1D5DB").stroke();
+
+                // Bottom contact details
+                const footerY = doc.page.height - 80;
+                doc.font("Helvetica").fontSize(9).fillColor(LABEL_COLOR);
+                doc.text("No: 17, Jawahar Street, Ramavarmapuram, Nagercoil, 629001.", 0, footerY, { width: W, align: "center" });
+                doc.text(`${COMPANY_EMAIL}    |    +91 7598707071`, 0, footerY + 15, { width: W, align: "center" });
 
                 doc.end();
             });

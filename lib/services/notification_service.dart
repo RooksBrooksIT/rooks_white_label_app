@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:subscription_rooks_app/utils/logger_util.dart';
 import 'dart:io';
 
 // Top-level background message handler
@@ -10,7 +11,7 @@ import 'dart:io';
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Ensure Firebase is initialized for background work
   await Firebase.initializeApp();
-  print("Handling a background message: ${message.messageId}");
+  LoggerUtil.i("Handling a background message: ${message.messageId}");
 
   // If you want to show a notification manually for data-only messages (optional, since Cloud Functions sends notification payload)
   // define the plugin instance here if needed, but for now we rely on the system handling the notification payload.
@@ -27,7 +28,7 @@ class NotificationService {
   NotificationService._internal();
 
   Future<void> initialize() async {
-    print("Initializing NotificationService...");
+    LoggerUtil.i("Initializing NotificationService...");
     // 1. Request permissions (Skip on Windows)
     if (!Platform.isWindows) {
       NotificationSettings settings = await _fcm.requestPermission(
@@ -40,15 +41,15 @@ class NotificationService {
         sound: true,
       );
 
-      print('User granted permission: ${settings.authorizationStatus}');
+      LoggerUtil.i('User granted permission: ${settings.authorizationStatus}');
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        print('User granted permission');
+        LoggerUtil.i('User granted permission');
       } else if (settings.authorizationStatus ==
           AuthorizationStatus.provisional) {
-        print('User granted provisional permission');
+        LoggerUtil.i('User granted provisional permission');
       } else {
-        print('User declined or has not accepted permission');
+        LoggerUtil.w('User declined or has not accepted permission');
       }
     }
 
@@ -94,20 +95,20 @@ class NotificationService {
           requestAlertPermission: true,
         );
 
-    print("Platform: ${Platform.operatingSystem}");
+    LoggerUtil.d("Platform: ${Platform.operatingSystem}");
 
     final LinuxInitializationSettings linuxInitSettings =
         LinuxInitializationSettings(defaultActionName: 'Open notification');
 
     // Debug print for Windows settings
-    print("Creating Windows Init Settings...");
+    LoggerUtil.d("Creating Windows Init Settings...");
     final WindowsInitializationSettings windowsInitSettings =
         WindowsInitializationSettings(
           appName: 'Subscription Rooks App',
           appUserModelId: 'com.rooks.customer_app',
           guid: '81941d4c-474c-4a37-88C4-954388837000',
         );
-    print("Windows Init Settings created.");
+    LoggerUtil.d("Windows Init Settings created.");
 
     final InitializationSettings initSettings = InitializationSettings(
       android: androidInitSettings,
@@ -117,17 +118,17 @@ class NotificationService {
     );
 
     try {
-      print("Initializing Local Notifications Plugin...");
+      LoggerUtil.i("Initializing Local Notifications Plugin...");
       await _localNotifications.initialize(
-        initSettings,
+        settings: initSettings,
         onDidReceiveNotificationResponse: (details) {
           // Handle notification tap
-          print("Notification tapped: ${details.payload}");
+          LoggerUtil.i("Notification tapped: ${details.payload}");
         },
       );
-      print("Local Notifications initialized successfully.");
+      LoggerUtil.i("Local Notifications initialized successfully.");
     } catch (e) {
-      print("Error initializing local notifications: $e");
+      LoggerUtil.e("Error initializing local notifications: $e");
     }
 
     // 4. Set up iOS Foreground Presentation Options, 5. Foreground handling, 6. App opened, 7. Get token
@@ -142,24 +143,28 @@ class NotificationService {
 
       // 5. Set up Foreground handling
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        print("Foreground message received: ${message.notification?.title}");
+        LoggerUtil.i(
+          "Foreground message received: ${message.notification?.title}",
+        );
         _showLocalNotification(message);
       });
 
       // 6. Handle app opened from notification
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        print("App opened from notification: ${message.notification?.title}");
+        LoggerUtil.i(
+          "App opened from notification: ${message.notification?.title}",
+        );
       });
 
       // 7. Get initial token
       try {
         String? token = await _fcm.getToken();
-        print("FCM Token on init: $token");
+        LoggerUtil.d("FCM Token on init: $token");
       } catch (e) {
-        print("Error getting FCM token on init: $e");
+        LoggerUtil.e("Error getting FCM token on init: $e");
       }
     } else {
-      print("Skipping FCM initialization on Windows (not supported).");
+      LoggerUtil.i("Skipping FCM initialization on Windows (not supported).");
     }
   }
 
@@ -184,18 +189,18 @@ class NotificationService {
       iOS: DarwinNotificationDetails(),
     );
 
-    print('Showing local notification: $title / $body');
+    LoggerUtil.i('Showing local notification: $title / $body');
     try {
       await _localNotifications.show(
-        DateTime.now().millisecond,
-        title,
-        body,
-        platformDetails,
+        id: DateTime.now().millisecond,
+        title: title,
+        body: body,
+        notificationDetails: platformDetails,
         payload: data?.toString(),
       );
-      print('Local notification displayed successfully');
+      LoggerUtil.i('Local notification displayed successfully');
     } catch (e) {
-      print('Error displaying local notification: $e');
+      LoggerUtil.e('Error displaying local notification: $e');
     }
   }
 
@@ -222,10 +227,10 @@ class NotificationService {
     String body = message.notification?.body ?? message.data['body'] ?? '';
 
     await _localNotifications.show(
-      message.hashCode,
-      title,
-      body,
-      platformDetails,
+      id: message.hashCode,
+      title: title,
+      body: body,
+      notificationDetails: platformDetails,
       payload: message.data.toString(),
     );
   }
@@ -237,25 +242,33 @@ class NotificationService {
   }) async {
     try {
       if (Platform.isWindows) {
-        print("Skipping FCM token registration on Windows (not supported).");
+        LoggerUtil.i(
+          "Skipping FCM token registration on Windows (not supported).",
+        );
         return;
       }
 
       if (userId.isEmpty) {
-        print("Skipping token registration: UserId is empty for role $role");
+        LoggerUtil.w(
+          "Skipping token registration: UserId is empty for role $role",
+        );
         return;
       }
 
       String? token = await _fcm.getToken();
       if (token == null) {
-        print("FCM Token is null, cannot register.");
+        LoggerUtil.w("FCM Token is null, cannot register.");
         return;
       }
 
-      print("Registering FCM token for $role ($userId): $token");
-      final docPath =
-          FirestoreService.instance.collection('notifications_tokens').doc(role).collection('tokens').doc(userId).path;
-      print("Full Firestore Path: $docPath");
+      LoggerUtil.i("Registering FCM token for $role ($userId): $token");
+      final docPath = FirestoreService.instance
+          .collection('notifications_tokens')
+          .doc(role)
+          .collection('tokens')
+          .doc(userId)
+          .path;
+      LoggerUtil.d("Full Firestore Path: $docPath");
 
       await FirestoreService.instance
           .collection('notifications_tokens')
@@ -268,16 +281,18 @@ class NotificationService {
             'lastUpdated': FieldValue.serverTimestamp(),
             'platform': Platform.operatingSystem,
           }, SetOptions(merge: true))
-          .then((_) => print("Token registered SUCCESSFULLY at $docPath"))
+          .then(
+            (_) => LoggerUtil.i("Token registered SUCCESSFULLY at $docPath"),
+          )
           .catchError((e) {
-            print("Token registration FAILED: $e");
+            LoggerUtil.e("Token registration FAILED: $e");
             return null;
           });
 
-      print("Token registration initiated for $userId");
+      LoggerUtil.i("Token registration initiated for $userId");
 
       _fcm.onTokenRefresh.listen((newToken) {
-        print("FCM Token refreshed: $newToken");
+        LoggerUtil.i("FCM Token refreshed: $newToken");
         FirestoreService.instance
             .collection('notifications_tokens')
             .doc(role)
@@ -289,7 +304,7 @@ class NotificationService {
             });
       });
     } catch (e) {
-      print("Error registering FCM token: $e");
+      LoggerUtil.e("Error registering FCM token: $e");
     }
   }
 }

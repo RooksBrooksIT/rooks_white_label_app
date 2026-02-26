@@ -43,8 +43,11 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
   StreamSubscription<rtdb.DatabaseEvent>? _engineerSubscription;
   StreamSubscription<firestore.QuerySnapshot<Map<String, dynamic>>>?
   _adminSubscription;
+  StreamSubscription<firestore.QuerySnapshot<Map<String, dynamic>>>?
+  _updatesSubscription;
   final MapController _mapController = MapController();
   final List<latlong.LatLng> _pathHistory = [];
+  final List<Map<String, dynamic>> _jobUpdatePoints = [];
   String? _currentTrackingId;
   String? _currentTrackingName;
 
@@ -163,6 +166,7 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
       _listenToEngineerLocation();
     }
     _listenToAdminDetails();
+    _listenToBookingUpdates();
   }
 
   void _switchEngineer(String id, String name) {
@@ -172,6 +176,7 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
         _currentTrackingName = name;
         _lastLocation = null;
         _pathHistory.clear();
+        _jobUpdatePoints.clear();
         _updateCount = 0;
         _currentSpeed = 0.0;
         _currentHeading = 0.0;
@@ -367,6 +372,99 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
     );
   }
 
+  void _listenToBookingUpdates() {
+    _updatesSubscription?.cancel();
+    if (_currentTrackingId == null || _currentTrackingId!.isEmpty) return;
+
+    // Build the query:
+    // If we have a booking ID, we might want updates specifically for that booking.
+    // However, the user wants to "track my engineer", so we'll look for all updates by this engineer
+    // to build a better path history.
+    firestore.Query<Map<String, dynamic>> query = FirestoreService.instance
+        .collection('Engineer_updates')
+        .where('updatedBy', isEqualTo: _currentTrackingId)
+        .orderBy('updatedAt', descending: true)
+        .limit(20); // Get last 20 captured points for history
+
+    _updatesSubscription = query.snapshots().listen(
+      (snapshot) {
+        if (snapshot.docs.isEmpty) return;
+
+        // Collect all valid points from the history
+        final List<latlong.LatLng> historicalCoords = [];
+        final List<Map<String, dynamic>> updateDetails = [];
+        firestore.Timestamp? latestTimestamp;
+        latlong.LatLng? latestPos;
+
+        for (final doc in snapshot.docs.reversed) {
+          final data = doc.data();
+          final dynamic latVal = data['lat'];
+          final dynamic lngVal = data['lng'];
+          final dynamic timestamp = data['updatedAt'];
+          final String? status = data['engineerStatus']?.toString();
+
+          if (latVal != null && lngVal != null) {
+            final double lat = (latVal as num).toDouble();
+            final double lng = (lngVal as num).toDouble();
+            final pos = latlong.LatLng(lat, lng);
+            historicalCoords.add(pos);
+            updateDetails.add({
+              'pos': pos,
+              'status': status ?? 'Update',
+              'time': timestamp is firestore.Timestamp
+                  ? timestamp.toDate()
+                  : null,
+            });
+
+            if (timestamp is firestore.Timestamp) {
+              if (latestTimestamp == null ||
+                  timestamp.toDate().isAfter(latestTimestamp.toDate())) {
+                latestTimestamp = timestamp;
+                latestPos = pos;
+              }
+            }
+          }
+        }
+
+        if (mounted && historicalCoords.isNotEmpty) {
+          setState(() {
+            // Merge historical Firestore points into path history
+            for (final point in historicalCoords) {
+              if (!_pathHistory.contains(point)) {
+                _pathHistory.add(point);
+              }
+            }
+            if (_pathHistory.length > 300)
+              _pathHistory.removeRange(0, _pathHistory.length - 300);
+
+            // Update specific job update points
+            _jobUpdatePoints.clear();
+            _jobUpdatePoints.addAll(updateDetails);
+
+            // If the latest Firestore update is newer than what we Have from RTDB, update position
+            final bool isNewer =
+                _lastRTDBUpdateTime == null ||
+                (latestTimestamp != null &&
+                    latestTimestamp.toDate().isAfter(_lastRTDBUpdateTime!));
+
+            if (isNewer && latestPos != null) {
+              _lastLocation = latestPos;
+              _updateCount++;
+
+              if (_autoFollow) {
+                _mapController.move(latestPos!, _mapController.camera.zoom);
+              }
+              _lastUpdateTime = latestTimestamp?.toDate() ?? DateTime.now();
+            }
+          });
+        }
+      },
+      onError: (error) {
+        debugPrint('Error listening to Engineer_updates: $error');
+      },
+    );
+  }
+
   void _centerOnEngineer() {
     if (_lastLocation != null) {
       _mapController.move(_lastLocation!, 16.5);
@@ -387,6 +485,7 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
   void dispose() {
     _engineerSubscription?.cancel();
     _adminSubscription?.cancel();
+    _updatesSubscription?.cancel();
     _mapController.dispose();
     super.dispose();
   }
@@ -417,20 +516,26 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF1E3A8A), // Deep Blue
-        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+            ),
+          ),
+        ),
+        elevation: 4,
         actions: [
-          // Add a refresh button to reload engineers list
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _loadEngineersList,
             tooltip: 'Refresh engineers list',
           ),
-          // Add engineers list button
           IconButton(
             icon: Stack(
               children: [
-                const Icon(Icons.people),
+                const Icon(Icons.group_add_rounded, color: Colors.white),
                 if (_engineersList.isNotEmpty)
                   Positioned(
                     right: 0,
@@ -438,18 +543,18 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
-                        color: Colors.red,
+                        color: Colors.redAccent,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
+                        minWidth: 14,
+                        minHeight: 14,
                       ),
                       child: Text(
                         _engineersList.length.toString(),
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight: FontWeight.bold,
                         ),
                         textAlign: TextAlign.center,
@@ -498,48 +603,114 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
               Polyline(
                 points: _pathHistory,
                 strokeWidth: 4,
-                color: Colors.blue.withOpacity(0.6),
+                color: Colors.blue.withValues(alpha: 0.6),
               ),
             ],
+          ),
+        if (_jobUpdatePoints.isNotEmpty)
+          MarkerLayer(
+            markers: _jobUpdatePoints.map((item) {
+              final pos = item['pos'] as latlong.LatLng;
+              final status = item['status'] as String;
+              return Marker(
+                point: pos,
+                width: 30,
+                height: 30,
+                child: Tooltip(
+                  message: 'Job Update: $status',
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.8),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.assignment_turned_in_rounded,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         if (_lastLocation != null)
           MarkerLayer(
             markers: [
               Marker(
                 point: _lastLocation!,
-                width: 80,
-                height: 80,
+                width: 100,
+                height: 100,
                 child: Column(
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: 10,
+                        vertical: 5,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                         boxShadow: [
-                          BoxShadow(color: Colors.black26, blurRadius: 4),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
                         ],
+                        border: Border.all(color: Colors.blue.shade100),
                       ),
                       child: Text(
                         _assignedEmployeeName ??
                             _currentTrackingName ??
-                            "Unknown",
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                            "Engineer",
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1E3A8A),
                         ),
                       ),
                     ),
-                    Transform.rotate(
-                      angle: _currentHeading * (3.14159 / 180),
-                      child: const Icon(
-                        Icons.location_on,
-                        color: Colors.red,
-                        size: 40,
-                      ),
+                    const SizedBox(height: 4),
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.blue.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        Transform.rotate(
+                          angle: _currentHeading * (3.14159 / 180),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.all(2),
+                            child: const Icon(
+                              Icons.navigation_rounded,
+                              color: Colors.blueAccent,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -553,8 +724,8 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
                 point: _lastLocation!,
                 radius: _currentAccuracy,
                 useRadiusInMeter: true,
-                color: Colors.blue.withOpacity(0.1),
-                borderColor: Colors.blue.withOpacity(0.3),
+                color: Colors.blue.withValues(alpha: 0.1),
+                borderColor: Colors.blue.withValues(alpha: 0.3),
                 borderStrokeWidth: 1,
               ),
             ],
@@ -668,65 +839,103 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
                       final username = engineer['username'] as String;
                       final parentDocId = engineer['parentDocId'] as String;
 
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          vertical: 4,
-                          horizontal: 0,
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: _currentTrackingId == username
+                              ? Colors.blue.shade50
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _currentTrackingId == username
+                                ? Colors.blue.shade200
+                                : Colors.grey.shade200,
+                          ),
+                          boxShadow: [
+                            if (_currentTrackingId == username)
+                              BoxShadow(
+                                color: Colors.blue.withValues(alpha: 0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                          ],
                         ),
                         child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           leading: Container(
-                            width: 40,
-                            height: 40,
+                            width: 48,
+                            height: 48,
                             decoration: BoxDecoration(
-                              color: Colors.blue.shade100,
-                              borderRadius: BorderRadius.circular(20),
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.blue.shade400,
+                                  Colors.blue.shade700,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(14),
                             ),
                             child: Center(
                               child: Text(
                                 username.substring(0, 1).toUpperCase(),
                                 style: const TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.blue,
+                                  color: Colors.white,
                                 ),
                               ),
                             ),
                           ),
                           title: Text(
                             username,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: const Color(0xFF1E3A8A),
+                            ),
                           ),
                           subtitle: Text(
                             "ID: $parentDocId",
-                            style: TextStyle(
+                            style: GoogleFonts.inter(
                               fontSize: 12,
-                              color: Colors.grey.shade600,
+                              color: Colors.grey.shade500,
                             ),
                           ),
-                          trailing: _currentTrackingId == username
-                              ? Container(
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              if (_currentTrackingId == username)
+                                Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
+                                    horizontal: 10,
+                                    vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.green.shade100,
-                                    borderRadius: BorderRadius.circular(20),
+                                    color: Colors.blue.shade600,
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
-                                  child: Text(
-                                    "Tracking",
+                                  child: const Text(
+                                    "ACTIVE",
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.green.shade800,
-                                      fontWeight: FontWeight.bold,
+                                      fontSize: 10,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                 )
-                              : Icon(
-                                  Icons.arrow_forward_ios,
-                                  size: 16,
+                              else
+                                Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 14,
                                   color: Colors.grey.shade400,
                                 ),
+                            ],
+                          ),
                           onTap: () {
                             _switchEngineer(username, username);
                             Navigator.pop(context);
@@ -779,73 +988,213 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
       left: 16,
       right: 16,
       child: Container(
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
             ),
           ],
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Colors.blue.shade100,
-                  child: const Icon(Icons.engineering, color: Colors.blue),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 4,
+                width: 40,
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _assignedEmployeeName ??
-                            _currentTrackingName ??
-                            "Select Engineer",
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            Icons.engineering_rounded,
+                            color: Colors.blue.shade700,
+                            size: 24,
+                          ),
                         ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _assignedEmployeeName ??
+                                    _currentTrackingName ??
+                                    "Select Engineer",
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18,
+                                  color: const Color(0xFF1E3A8A),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time_rounded,
+                                    size: 12,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _lastUpdateTime != null
+                                        ? "Updated: ${DateFormat('HH:mm:ss').format(_lastUpdateTime!)}"
+                                        : 'Waiting for updates...',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        _buildStatusIndicator(),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      Text(
-                        "Last updated: ${_lastUpdateTime != null ? DateFormat('HH:mm:ss').format(_lastUpdateTime!) : 'Never'}",
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 12,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildInfoStat(
+                            Icons.speed_rounded,
+                            "Speed",
+                            "${(_currentSpeed * 3.6).toStringAsFixed(1)}",
+                            "km/h",
+                            Colors.orange,
+                          ),
+                          _buildVerticalDivider(),
+                          _buildInfoStat(
+                            Icons.sync_rounded,
+                            "Updates",
+                            "$_updateCount",
+                            "pts",
+                            Colors.blue,
+                          ),
+                          _buildVerticalDivider(),
+                          _buildInfoStat(
+                            Icons.timeline_rounded,
+                            "Distance",
+                            "${(_pathHistory.length * 0.01).toStringAsFixed(2)}",
+                            "km",
+                            Colors.green,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    if (_jobUpdatePoints.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Text(
+                            "Recent Actions",
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            "${_jobUpdatePoints.length} updates found",
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 80,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _jobUpdatePoints.length,
+                          itemBuilder: (context, index) {
+                            final update = _jobUpdatePoints[index];
+                            final DateTime? time = update['time'];
+                            final String status = update['status'];
+                            final pos = update['pos'] as latlong.LatLng;
+
+                            return GestureDetector(
+                              onTap: () => _mapController.move(pos, 15),
+                              child: Container(
+                                width: 140,
+                                margin: const EdgeInsets.only(right: 12),
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      status,
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12,
+                                        color: Colors.green.shade700,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      time != null
+                                          ? DateFormat('HH:mm').format(time)
+                                          : 'Unknown time',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 10,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
-                _buildStatusIndicator(),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Divider(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildInfoStat(
-                  Icons.speed,
-                  "Speed",
-                  "${(_currentSpeed * 3.6).toStringAsFixed(1)} km/h",
-                ),
-                _buildInfoStat(Icons.sync, "Updates", "$_updateCount"),
-                _buildInfoStat(
-                  Icons.route,
-                  "Distance",
-                  "~${(_pathHistory.length * 0.01).toStringAsFixed(2)} km",
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -872,18 +1221,51 @@ class _AdminGeoLocationScreenState extends State<AdminGeoLocationScreen> {
     );
   }
 
-  Widget _buildInfoStat(IconData icon, String label, String value) {
+  Widget _buildVerticalDivider() {
+    return Container(height: 30, width: 1, color: Colors.grey.shade300);
+  }
+
+  Widget _buildInfoStat(
+    IconData icon,
+    String label,
+    String value,
+    String unit,
+    Color color,
+  ) {
     return Column(
       children: [
-        Icon(icon, size: 20, color: Colors.blueGrey),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        Icon(icon, size: 22, color: color),
+        const SizedBox(height: 6),
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: value,
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: const Color(0xFF1E3A8A),
+                ),
+              ),
+              TextSpan(
+                text: " $unit",
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 10,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ],
+          ),
         ),
         Text(
           label,
-          style: TextStyle(color: Colors.grey.shade500, fontSize: 10),
+          style: GoogleFonts.inter(
+            color: Colors.grey.shade500,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
         ),
       ],
     );

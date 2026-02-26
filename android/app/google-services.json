@@ -15,11 +15,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "416851266920-20re9st5o5rkq338mt5nf28livutd5a6.apps.googleusercontent.com",
+          "client_id": "416851266920-se05p3tb7ahnuhdhsouuvvb08ep9r0el.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.subscription_rooks_app",
-            "certificate_hash": "559bc7146fb3882d96d59ad187ee73e52c87d447"
+            "certificate_hash": "58f80b357a41d232a9afa2e3e8d919f7e902297f"
           }
         },
         {
