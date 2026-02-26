@@ -2130,7 +2130,7 @@ class _EngineerUpdateCardState extends State<EngineerUpdateCard> {
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButtonFormField<String>(
-                          value: selectedStatus,
+                          initialValue: selectedStatus,
                           isExpanded: true,
                           decoration: const InputDecoration(
                             border: InputBorder.none,

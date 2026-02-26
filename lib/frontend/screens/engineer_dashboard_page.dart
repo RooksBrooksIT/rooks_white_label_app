@@ -1194,7 +1194,7 @@ class _EngineerPageState extends State<EngineerPage> {
                             child: Switch(
                               value: _isOnline,
                               onChanged: _toggleOnlineStatus,
-                              activeColor: Colors.greenAccent,
+                              activeThumbColor: Colors.greenAccent,
                               activeTrackColor: Colors.white24,
                               inactiveThumbColor: Colors.white70,
                               inactiveTrackColor: Colors.white12,
