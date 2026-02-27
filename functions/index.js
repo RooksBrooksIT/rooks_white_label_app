@@ -813,7 +813,147 @@ exports.processPaymentSuccess = onDocumentWritten(
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
- * Subscription Expiry Reminder (Daily Schedule)
+ * OTP & Password Reset Logic
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+// 7. Send OTP for Forgot Password
+exports.sendOTP = onRequest(async (req, res) => {
+    // Handle CORS
+    res.set('Access-Control-Allow-Origin', '*');
+    if (req.method === 'OPTIONS') {
+        res.set('Access-Control-Allow-Methods', 'POST');
+        res.set('Access-Control-Allow-Headers', 'Content-Type');
+        res.set('Access-Control-Max-Age', '3600');
+        return res.status(204).send('');
+    }
+
+    const data = req.body.data;
+    if (!data || !data.email) {
+        return res.status(400).send({ data: { success: false, message: "Missing email parameter" } });
+    }
+
+    const email = data.email.trim().toLowerCase();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+    try {
+        // Store OTP in Firestore
+        await admin.firestore().collection("otps").doc(email).set({
+            otp,
+            expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Send Email
+        const nodemailer = require("nodemailer");
+        const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST || "smtp.hostinger.com",
+            port: parseInt(process.env.SMTP_PORT || "465"),
+            secure: true,
+            auth: {
+                user: process.env.SMTP_USER || "support@rookstechnologies.com",
+                pass: process.env.SMTP_PASS || "Rooks!123",
+            },
+        });
+
+        const mailOptions = {
+            from: `"${process.env.COMPANY_NAME || "Rooks And Brooks"}" <${process.env.SMTP_USER || "support@rookstechnologies.com"}>`,
+            to: email,
+            subject: "Your Password Reset OTP",
+            html: `
+                <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                    <h2>Password Reset Request</h2>
+                    <p>You requested to reset your password. Use the following OTP to proceed:</p>
+                    <div style="font-size: 24px; font-weight: bold; padding: 10px; background: #f4f4f4; display: inline-block; letter-spacing: 5px;">
+                        ${otp}
+                    </div>
+                    <p>This code will expire in 10 minutes.</p>
+                    <p>If you didn't request this, please ignore this email.</p>
+                    <br>
+                    <p>Regards,<br>${process.env.COMPANY_NAME || "Rooks And Brooks"}</p>
+                </div>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`[OTP] Sent to ${email}`);
+        res.send({ data: { success: true, message: "OTP sent successfully" } });
+
+    } catch (error) {
+        console.error(`[OTP ERROR] Failed to send for ${email}:`, error);
+        res.status(500).send({ data: { success: false, message: error.message } });
+    }
+});
+
+// 8. Verify OTP and Reset Password
+exports.verifyOTPAndResetPassword = onRequest(async (req, res) => {
+    // Handle CORS
+    res.set('Access-Control-Allow-Origin', '*');
+    if (req.method === 'OPTIONS') {
+        res.set('Access-Control-Allow-Methods', 'POST');
+        res.set('Access-Control-Allow-Headers', 'Content-Type');
+        res.set('Access-Control-Max-Age', '3600');
+        return res.status(204).send('');
+    }
+
+    const data = req.body.data;
+    if (!data || !data.email || !data.otp || !data.newPassword) {
+        return res.status(400).send({ data: { success: false, message: "Missing required parameters" } });
+    }
+
+    const email = data.email.trim().toLowerCase();
+    const otp = data.otp;
+    const newPassword = data.newPassword;
+
+    try {
+        // 1. Verify OTP
+        const otpDoc = await admin.firestore().collection("otps").doc(email).get();
+        if (!otpDoc.exists) {
+            return res.status(400).send({ data: { success: false, message: "No OTP found for this email" } });
+        }
+
+        const otpData = otpDoc.data();
+        if (otpData.otp !== otp) {
+            return res.status(400).send({ data: { success: false, message: "Invalid OTP" } });
+        }
+
+        if (otpData.expiresAt.toDate() < new Date()) {
+            return res.status(400).send({ data: { success: false, message: "OTP has expired" } });
+        }
+
+        // 2. Find User in Firebase Auth
+        const userRecord = await admin.auth().getUserByEmail(email);
+        const uid = userRecord.uid;
+
+        // 3. Update Password in Firebase Auth
+        await admin.auth().updateUser(uid, {
+            password: newPassword
+        });
+
+        // 4. Update Password in legacy 'admin' collection (Backward Compatibility)
+        // Find tenantId for this admin
+        const legacySnapshot = await admin.firestore().collectionGroup("admin").where("email", "==", email).get();
+        if (!legacySnapshot.empty) {
+            const updatePromises = legacySnapshot.docs.map(doc => doc.ref.update({ password: newPassword }));
+            await Promise.all(updatePromises);
+        }
+
+        // 5. Cleanup OTP
+        await admin.firestore().collection("otps").doc(email).delete();
+
+        console.log(`[PASSWORD RESET] Successfully updated for ${email}`);
+        res.send({ data: { success: true, message: "Password reset successfully" } });
+
+    } catch (error) {
+        console.error(`[RESET ERROR] Failed for ${email}:`, error);
+        res.status(500).send({ data: { success: false, message: error.message } });
+    }
+});
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 6. Subscription Expiry Reminder (Daily Schedule)
  * ─────────────────────────────────────────────────────────────────────────────
  * Checks for active subscriptions expiring in 3 days and sends a reminder.
  */

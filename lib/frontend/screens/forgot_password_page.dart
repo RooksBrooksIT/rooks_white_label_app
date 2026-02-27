@@ -21,22 +21,35 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     setState(() => _isLoading = true);
 
     try {
-      // Replace with your actual Cloud Function URL
-      // Note: You might need to update the region if it's not us-central1
-      final response = await http.post(
-        Uri.parse(
-          'https://us-central1-white-label-app-33300.cloudfunctions.net/sendOTP',
-        ),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'data': {'email': _emailController.text.trim()},
-        }),
-      );
+      final response = await http
+          .post(
+            Uri.parse(
+              'https://us-central1-white-label-app-33300.cloudfunctions.net/sendOTP',
+            ),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'data': {'email': _emailController.text.trim()},
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 404) {
+        throw Exception('Server error: Password reset service not found.');
+      }
 
       final result = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && result['data']['success']) {
+      if (response.statusCode == 200 &&
+          result != null &&
+          result['data'] != null &&
+          result['data']['success'] == true) {
         if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Verification code sent to your email'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -45,13 +58,27 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
         );
       } else {
-        throw Exception(result['data']['message'] ?? 'Failed to send OTP');
+        String msg = 'Failed to send OTP';
+        if (result != null &&
+            result['data'] != null &&
+            result['data']['message'] != null) {
+          msg = result['data']['message'];
+        }
+        throw Exception(msg);
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      String errorMsg = e.toString().contains('Exception:')
+          ? e.toString().split('Exception:')[1].trim()
+          : e.toString();
+
+      if (e is http.ClientException) {
+        errorMsg = 'Network error. Please check your connection.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMsg), backgroundColor: Colors.redAccent),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

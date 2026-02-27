@@ -68,13 +68,13 @@ class Device {
       'phone': Icons.phone_iphone_rounded,
       'scanner': Icons.scanner_rounded,
       'mouse': Icons.mouse_rounded,
-      'cable': Icons.usb_rounded, // better cable look
+      'cable': Icons.usb_rounded,
       'ram': Icons.sd_storage_rounded,
       'hard drive': Icons.storage_rounded,
       'ssd': Icons.sd_card_rounded,
       'others': Icons.devices_rounded,
 
-      // ✨ Newly Added Hardware
+      // ✨ Hardware
       'webcam': Icons.videocam_rounded,
       'speaker': Icons.speaker_rounded,
       'headset': Icons.headset_rounded,
@@ -92,7 +92,30 @@ class Device {
       'biometrics': Icons.fingerprint_rounded,
       'intercom': Icons.speaker_phone_rounded,
       'access control': Icons.sensor_door_rounded,
-      'accesscontrol': Icons.sensor_door_rounded, // if stored without space
+      'accesscontrol': Icons.sensor_door_rounded,
+
+      // 🏠 Home Appliances (NEW)
+      'fan': Icons.mode_fan_off_rounded,
+      'ceiling fan': Icons.mode_fan_off_rounded,
+      'ac': Icons.ac_unit_rounded,
+      'air conditioner': Icons.ac_unit_rounded,
+      'refrigerator': Icons.kitchen_rounded,
+      'fridge': Icons.kitchen_rounded,
+      'washing machine': Icons.local_laundry_service_rounded,
+      'microwave': Icons.microwave_rounded,
+      'oven': Icons.microwave_rounded,
+      'iron box': Icons.iron_rounded,
+      'iron': Icons.iron_rounded,
+      'vacuum cleaner': Icons.cleaning_services_rounded,
+      'water heater': Icons.hot_tub_rounded,
+      'geyser': Icons.hot_tub_rounded,
+      'light': Icons.lightbulb_rounded,
+      'bulb': Icons.lightbulb_rounded,
+      'lamp': Icons.light_rounded,
+      'door bell': Icons.doorbell_rounded,
+      'doorbell': Icons.doorbell_rounded,
+      'gas stove': Icons.local_fire_department_rounded,
+      'stove': Icons.local_fire_department_rounded,
     };
 
     return iconMap[name.toLowerCase()] ?? Icons.devices_rounded;

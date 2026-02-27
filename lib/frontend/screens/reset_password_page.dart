@@ -24,39 +24,63 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await http.post(
-        Uri.parse(
-          'https://us-central1-white-label-app-33300.cloudfunctions.net/verifyOTPAndResetPassword',
-        ),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'data': {
-            'email': widget.email,
-            'otp': widget.otp,
-            'newPassword': _passwordController.text,
-          },
-        }),
-      );
+      final response = await http
+          .post(
+            Uri.parse(
+              'https://us-central1-white-label-app-33300.cloudfunctions.net/verifyOTPAndResetPassword',
+            ),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'data': {
+                'email': widget.email,
+                'otp': widget.otp,
+                'newPassword': _passwordController.text,
+              },
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 404) {
+        throw Exception('Server error: Reset service not found.');
+      }
 
       final result = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && result['data']['success']) {
+      if (response.statusCode == 200 &&
+          result != null &&
+          result['data'] != null &&
+          result['data']['success'] == true) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password reset successfully!')),
+          const SnackBar(
+            content: Text('Password reset successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
         // Pop all way back to login
         Navigator.of(context).popUntil((route) => route.isFirst);
       } else {
-        throw Exception(
-          result['data']['message'] ?? 'Failed to reset password',
-        );
+        String msg = 'Failed to reset password';
+        if (result != null &&
+            result['data'] != null &&
+            result['data']['message'] != null) {
+          msg = result['data']['message'];
+        }
+        throw Exception(msg);
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      String errorMsg = e.toString().contains('Exception:')
+          ? e.toString().split('Exception:')[1].trim()
+          : e.toString();
+
+      if (e is http.ClientException) {
+        errorMsg = 'Network error. Please check your connection.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMsg), backgroundColor: Colors.redAccent),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

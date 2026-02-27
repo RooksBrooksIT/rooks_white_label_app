@@ -28,23 +28,102 @@ class _AdminDeviceConfigurationPageState
   }
 
   IconData _getIconData(String type) {
-    String lowerType = type.toLowerCase();
+    final String lowerType = type.toLowerCase().trim();
+
+    // ✅ Exact match map (FAST lookup)
+    const Map<String, IconData> iconMap = {
+      // 💻 IT Devices
+      'desktop': Icons.computer_rounded,
+      'pc': Icons.computer_rounded,
+      'computer': Icons.computer_rounded,
+      'laptop': Icons.laptop_mac_rounded,
+      'notebook': Icons.laptop_mac_rounded,
+      'tablet': Icons.tablet_mac_rounded,
+      'ipad': Icons.tablet_mac_rounded,
+      'phone': Icons.phone_iphone_rounded,
+      'mobile': Icons.phone_iphone_rounded,
+      'printer': Icons.print_rounded,
+      'scanner': Icons.scanner_rounded,
+      'keyboard': Icons.keyboard_rounded,
+      'mouse': Icons.mouse_rounded,
+      'monitor': Icons.desktop_windows_rounded,
+      'cpu': Icons.memory_rounded,
+      'ram': Icons.sd_storage_rounded,
+      'ssd': Icons.sd_card_rounded,
+      'hard drive': Icons.storage_rounded,
+
+      // 📡 Networking / Security
+      'router': Icons.router_rounded,
+      'access point': Icons.wifi_rounded,
+      'network switch': Icons.swap_horiz_rounded,
+      'firewall': Icons.security_rounded,
+      'server': Icons.dns_rounded,
+      'cctv': Icons.nest_cam_wired_stand_outlined,
+      'webcam': Icons.videocam_rounded,
+      'biometrics': Icons.fingerprint_rounded,
+
+      // 🔊 Accessories
+      'speaker': Icons.speaker_rounded,
+      'headset': Icons.headset_rounded,
+      'microphone': Icons.mic_rounded,
+      'bluetooth device': Icons.bluetooth_rounded,
+      'game controller': Icons.sports_esports_rounded,
+
+      // 🏠 Home Appliances
+      'tv': Icons.tv_rounded,
+      'television': Icons.tv_rounded,
+      'fan': Icons.mode_fan_off_rounded,
+      'ac': Icons.ac_unit_rounded,
+      'air conditioner': Icons.ac_unit_rounded,
+      'fridge': Icons.kitchen_rounded,
+      'refrigerator': Icons.kitchen_rounded,
+      'washing machine': Icons.local_laundry_service_rounded,
+      'microwave': Icons.microwave_rounded,
+      'iron': Icons.iron_rounded,
+      'geyser': Icons.hot_tub_rounded,
+      'water heater': Icons.hot_tub_rounded,
+      'light': Icons.lightbulb_rounded,
+      'bulb': Icons.lightbulb_rounded,
+      'doorbell': Icons.doorbell_rounded,
+      'ups': Icons.electrical_services_rounded,
+    };
+
+    // 🔥 1️⃣ Exact match first
+    if (iconMap.containsKey(lowerType)) {
+      return iconMap[lowerType]!;
+    }
+
+    // 🔥 2️⃣ Smart keyword detection
     if (lowerType.contains('desktop') ||
         lowerType.contains('pc') ||
         lowerType.contains('computer')) {
-      return Icons.desktop_windows;
+      return Icons.desktop_windows_rounded;
     } else if (lowerType.contains('tv') || lowerType.contains('television')) {
-      return Icons.tv;
+      return Icons.tv_rounded;
     } else if (lowerType.contains('laptop') || lowerType.contains('notebook')) {
-      return Icons.laptop;
+      return Icons.laptop_mac_rounded;
     } else if (lowerType.contains('mobile') || lowerType.contains('phone')) {
-      return Icons.phone_android;
+      return Icons.phone_iphone_rounded;
     } else if (lowerType.contains('tablet') || lowerType.contains('ipad')) {
-      return Icons.tablet_mac;
+      return Icons.tablet_mac_rounded;
     } else if (lowerType.contains('printer')) {
-      return Icons.print;
+      return Icons.print_rounded;
+    } else if (lowerType.contains('router') || lowerType.contains('wifi')) {
+      return Icons.router_rounded;
+    } else if (lowerType.contains('cctv') || lowerType.contains('camera')) {
+      return Icons.videocam_rounded;
+    } else if (lowerType.contains('fan')) {
+      return Icons.mode_fan_off_rounded;
+    } else if (lowerType.contains('ac')) {
+      return Icons.ac_unit_rounded;
+    } else if (lowerType.contains('wash')) {
+      return Icons.local_laundry_service_rounded;
+    } else if (lowerType.contains('fridge')) {
+      return Icons.kitchen_rounded;
     }
-    return Icons.devices_other;
+
+    // ✅ Default fallback
+    return Icons.devices_rounded;
   }
 
   Future<void> _deleteDevice(String deviceType) async {
