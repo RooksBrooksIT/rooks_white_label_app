@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:subscription_rooks_app/frontend/screens/admin_dashboard.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:subscription_rooks_app/services/receipt_service.dart';
@@ -168,38 +167,26 @@ class TransactionCompletedScreen extends StatelessWidget {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      if (isFirstTimeRegistration) {
-                        // First-time user → go to Branding Customization
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BrandingCustomizationScreen(
-                              planName: planName,
-                              isYearly: isYearly,
-                              isSixMonths: isSixMonths,
-                              price: amountPaid,
-                              originalPrice: originalPrice,
-                              paymentMethod: paymentMethod,
-                              transactionId: transactionId,
-                              limits: limits,
-                              geoLocation: geoLocation,
-                              attendance: attendance,
-                              barcode: barcode,
-                              reportExport: reportExport,
-                            ),
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => BrandingCustomizationScreen(
+                            planName: planName,
+                            isYearly: isYearly,
+                            isSixMonths: isSixMonths,
+                            price: amountPaid,
+                            originalPrice: originalPrice,
+                            paymentMethod: paymentMethod,
+                            transactionId: transactionId,
+                            limits: limits,
+                            geoLocation: geoLocation,
+                            attendance: attendance,
+                            barcode: barcode,
+                            reportExport: reportExport,
                           ),
-                          (route) => false,
-                        );
-                      } else {
-                        // Existing user → go to Dashboard
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const admindashboard(),
-                          ),
-                          (route) => false,
-                        );
-                      }
+                        ),
+                        (route) => false,
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black87,
@@ -208,11 +195,9 @@ class TransactionCompletedScreen extends StatelessWidget {
                       ),
                       elevation: 0,
                     ),
-                    child: Text(
-                      isFirstTimeRegistration
-                          ? 'CUSTOMIZE YOUR APP'
-                          : 'GO BACK TO DASHBOARD',
-                      style: const TextStyle(
+                    child: const Text(
+                      'GO TO DASHBOARD',
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,

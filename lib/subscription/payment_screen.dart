@@ -3,12 +3,15 @@ import 'package:subscription_rooks_app/services/storage_service.dart';
 import 'package:subscription_rooks_app/services/auth_state_service.dart';
 import 'package:subscription_rooks_app/services/icici_service.dart';
 import 'package:subscription_rooks_app/services/upi_payment_service.dart';
+
 import 'package:subscription_rooks_app/services/firestore_service.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 
 import 'dart:io';
+import 'dart:async';
 
 import 'transaction_completed_screen.dart';
+import 'payment_failed_screen.dart';
 import 'icici_payment_webview_screen.dart';
 import 'card_details_screen.dart';
 
@@ -609,9 +612,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     if (_isUpiMethod(selectedPaymentMethod)) {
       // ──────────────────────────────────────────────
-      // UPI → Launch system UPI app chooser
+      // UPI → ICICI hosted payment page (no VPA required)
+      // ICICI's page shows all UPI options: GPay, PhonePe, Paytm, QR, etc.
       // ──────────────────────────────────────────────
-      await _processUpiPayment(uid: uid, txnRefId: txnRefId);
+      await _processIciciPayment(uid: uid);
     } else if (selectedPaymentMethod == 'Card') {
       // ──────────────────────────────────────────────
       // Card → Navigate to Card Details Screen
@@ -639,8 +643,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
       // ──────────────────────────────────────────────
       await _processIciciPayment(uid: uid);
     } else {
-      // Fallback: generic UPI
-      await _processUpiPayment(uid: uid, txnRefId: txnRefId);
+      // Fallback
+      await _processIciciPayment(uid: uid);
     }
   }
 
@@ -652,7 +656,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     try {
       // Launch the system UPI app chooser (shows all installed UPI apps)
       final launched = await UpiPaymentService.instance.launchGenericUpi(
-        amount: '${widget.price}.00',
+        amount: widget.price.toString(),
         transactionNote: '${widget.planName} Plan Subscription',
         transactionRefId: txnRefId,
       );
@@ -681,7 +685,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         await IciciService.instance.saveTransaction(
           uid: uid,
           merchantTxnNo: txnRefId,
-          amount: '${widget.price}.00',
+          amount: widget.price.toString(),
           status: 'SUCCESS',
           paymentMethod: selectedPaymentMethod,
           planName: widget.planName,
@@ -696,7 +700,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         await IciciService.instance.saveTransaction(
           uid: uid,
           merchantTxnNo: txnRefId,
-          amount: '${widget.price}.00',
+          amount: widget.price.toString(),
           status: 'CANCELLED',
           paymentMethod: selectedPaymentMethod,
           planName: widget.planName,
@@ -706,19 +710,29 @@ class _PaymentScreenState extends State<PaymentScreen> {
         );
 
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Payment was not completed.'),
-            backgroundColor: Colors.orange,
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentFailedScreen(
+              errorMessage: 'Payment was not completed.',
+              paymentMethod: selectedPaymentMethod,
+              amount: widget.price,
+              transactionId: txnRefId,
+            ),
           ),
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Payment error: $e'),
-          backgroundColor: Colors.red,
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PaymentFailedScreen(
+            errorMessage: 'Payment error: $e',
+            paymentMethod: selectedPaymentMethod,
+            amount: widget.price,
+            transactionId: txnRefId,
+          ),
         ),
       );
     }
@@ -777,8 +791,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+
   /// Process payment via ICICI Payment Gateway WebView (Net Banking, Cards, etc.).
   Future<void> _processIciciPayment({required String uid}) async {
+    String? merchantTxnNo;
+
     // Show initiating dialog
     showDialog(
       context: context,
@@ -802,12 +819,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
         payType = '2'; // Cards
       } else if (selectedPaymentMethod == 'Net Banking') {
         payType = '1'; // Net Banking
+      } else if (selectedPaymentMethod == 'UPI') {
+        payType = '3'; // UPI
       } else {
         payType = '0'; // All options
       }
 
       // Fetch real customer name and phone from user profile
       final tenantId = ThemeService.instance.databaseName;
+      final appId = ThemeService.instance.appName;
       final customerData = await IciciService.instance.fetchCustomerData(
         uid,
         tenantId,
@@ -815,9 +835,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final customerName = customerData['name'] ?? 'Customer';
       final customerPhone = customerData['phone'] ?? '919999999999';
 
-      // Call InitiateSale API
+      // Call initiateSale — proxied through Firebase Cloud Function
       final result = await IciciService.instance.initiateSale(
-        amount: '${widget.price}.00',
+        amount: widget.price.toString(),
         customerName: customerName,
         customerEmail:
             AuthStateService.instance.currentUser?.email ??
@@ -826,6 +846,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
         payType: payType,
         uid: uid,
         tenantId: tenantId,
+        appId: appId,
+        planName: widget.planName,
       );
 
       if (!mounted) return;
@@ -842,7 +864,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         await IciciService.instance.saveTransaction(
           uid: uid,
           merchantTxnNo: merchantTxnNo,
-          amount: '${widget.price}.00',
+          amount: widget.price.toString(),
           status: 'INITIATED',
           paymentMethod: selectedPaymentMethod,
           planName: widget.planName,
@@ -868,7 +890,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           await IciciService.instance.saveTransaction(
             uid: uid,
             merchantTxnNo: merchantTxnNo,
-            amount: '${widget.price}.00',
+            amount: widget.price.toString(),
             status: 'SUCCESS', // Trigger receipt even in UAT simulation
             paymentMethod: selectedPaymentMethod,
             planName: widget.planName,
@@ -913,7 +935,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           await IciciService.instance.saveTransaction(
             uid: uid,
             merchantTxnNo: merchantTxnNo,
-            amount: '${widget.price}.00',
+            amount: widget.price.toString(),
             status: 'CANCELLED',
             paymentMethod: selectedPaymentMethod,
             planName: widget.planName,
@@ -924,8 +946,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
         }
 
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), backgroundColor: Colors.orange),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentFailedScreen(
+              errorMessage: message,
+              paymentMethod: selectedPaymentMethod,
+              amount: widget.price,
+              transactionId: merchantTxnNo,
+            ),
+          ),
         );
         return;
       }
@@ -949,29 +979,46 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
 
       bool paymentVerified = false;
+      Map<String, dynamic>? statusResult;
 
       if (merchantTxnNo != null && merchantTxnNo.isNotEmpty) {
-        // Give the gateway a moment to process
-        await Future.delayed(const Duration(seconds: 2));
+        // Wait for Firestore status to change to SUCCESS or FAILED
+        debugPrint('[PAYMENT] Waiting for real-time status update for: $merchantTxnNo');
+        
+        final Completer<bool> completer = Completer<bool>();
+        StreamSubscription? subscription;
 
-        final statusResult = await IciciService.instance.checkTransactionStatus(
-          merchantTxnNo: merchantTxnNo,
+        subscription = IciciService.instance
+            .streamTransactionStatus(merchantTxnNo: merchantTxnNo)
+            .listen((snapshot) {
+          if (snapshot.exists) {
+            final data = snapshot.data() as Map<String, dynamic>?;
+            final status = data?['status']?.toString().toUpperCase();
+            debugPrint('[PAYMENT] Real-time status update: $status');
+
+            if (status == 'SUCCESS') {
+              statusResult = data;
+              paymentVerified = true;
+              if (!completer.isCompleted) completer.complete(true);
+              subscription?.cancel();
+            } else if (status == 'FAILED' || status == 'CANCELLED') {
+              statusResult = data;
+              paymentVerified = false;
+              if (!completer.isCompleted) completer.complete(false);
+              subscription?.cancel();
+            }
+          }
+        });
+
+        // Add a timeout of 60 seconds
+        paymentVerified = await completer.future.timeout(
+          const Duration(seconds: 60),
+          onTimeout: () {
+            debugPrint('[PAYMENT] Verification timed out');
+            subscription?.cancel();
+            return false;
+          },
         );
-        debugPrint('ICICI Transaction Status: $statusResult');
-
-        paymentVerified =
-            statusResult != null &&
-            (statusResult['status'] == 'SUCCESS' ||
-                statusResult['txnStatus'] == 'SUCCESS' ||
-                statusResult['Status'] == 'SUCCESS');
-      }
-
-      // If status API also didn't confirm, trust WebView callback (UAT mode)
-      if (!paymentVerified && webViewResult.success) {
-        debugPrint(
-          'Status API unconfirmed, but WebView returned success (UAT mode).',
-        );
-        paymentVerified = true;
       }
 
       if (!mounted) return;
@@ -983,7 +1030,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           await IciciService.instance.saveTransaction(
             uid: uid,
             merchantTxnNo: merchantTxnNo,
-            amount: '${widget.price}.00',
+            amount: widget.price.toString(),
             status: 'FAILED',
             paymentMethod: selectedPaymentMethod,
             planName: widget.planName,
@@ -993,15 +1040,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
           );
         }
 
-        throw Exception('Payment verification failed. Please contact support.');
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentFailedScreen(
+              errorMessage: statusResult?['errorMsg'] ?? 'Payment verification failed or timed out.',
+              paymentMethod: selectedPaymentMethod,
+              amount: widget.price,
+              transactionId: merchantTxnNo,
+            ),
+          ),
+        );
+        return;
       }
+
 
       // Payment confirmed — save and navigate to success
       if (merchantTxnNo != null) {
         await IciciService.instance.saveTransaction(
           uid: uid,
           merchantTxnNo: merchantTxnNo,
-          amount: '${widget.price}.00',
+          amount: widget.price.toString(),
           status: 'SUCCESS',
           paymentMethod: selectedPaymentMethod,
           planName: widget.planName,
@@ -1024,10 +1084,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Payment failed: $e'),
-          backgroundColor: Colors.red,
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PaymentFailedScreen(
+            errorMessage: 'Payment failed: $e',
+            paymentMethod: selectedPaymentMethod,
+            amount: widget.price,
+            transactionId: merchantTxnNo,
+          ),
         ),
       );
     }

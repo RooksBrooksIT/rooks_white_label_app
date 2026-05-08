@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'transaction_completed_screen.dart';
+import 'payment_failed_screen.dart';
 import 'icici_payment_webview_screen.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
@@ -567,12 +568,14 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
 
     setState(() => _isProcessing = true);
 
+    String? merchantTxnNo;
     try {
       final uid = AuthStateService.instance.currentUser?.uid;
       if (uid == null) throw Exception('User not logged in');
 
       // Fetch real customer name and phone from user profile
       final tenantId = ThemeService.instance.databaseName;
+      final appId = ThemeService.instance.appName;
       final customerData = await IciciService.instance.fetchCustomerData(
         uid,
         tenantId,
@@ -580,9 +583,9 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
       final customerName = customerData['name'] ?? 'Customer';
       final customerPhone = customerData['phone'] ?? '919999999999';
 
-      // 1. Call InitiateSale API with payType '2' for Cards
+      // Call initiateSale — proxied through Firebase Cloud Function
       final result = await IciciService.instance.initiateSale(
-        amount: '${widget.paymentAmount}.00',
+        amount: widget.paymentAmount.toString(),
         customerName: customerName,
         customerEmail:
             AuthStateService.instance.currentUser?.email ??
@@ -591,6 +594,8 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
         payType: '2', // Card
         uid: uid,
         tenantId: tenantId,
+        appId: appId,
+        planName: widget.planName,
       );
 
       if (!mounted) return;
@@ -606,7 +611,7 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
         await IciciService.instance.saveTransaction(
           uid: uid,
           merchantTxnNo: merchantTxnNo,
-          amount: '${widget.paymentAmount}.00',
+          amount: widget.paymentAmount.toString(),
           status: 'INITIATED',
           paymentMethod: 'Card',
           planName: widget.planName,
@@ -709,10 +714,15 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Payment failed: $e'),
-          backgroundColor: Colors.red,
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PaymentFailedScreen(
+            errorMessage: 'Payment failed: $e',
+            paymentMethod: 'Card',
+            amount: widget.paymentAmount,
+            transactionId: merchantTxnNo,
+          ),
         ),
       );
     } finally {

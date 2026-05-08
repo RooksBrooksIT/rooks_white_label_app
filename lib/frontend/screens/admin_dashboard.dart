@@ -30,7 +30,9 @@ import 'package:subscription_rooks_app/services/notification_service.dart';
 import 'package:subscription_rooks_app/subscription/branding_customization_screen.dart';
 import 'package:subscription_rooks_app/subscription/subscription_plans_screen.dart';
 import 'package:subscription_rooks_app/frontend/screens/admin_transactions_screen.dart';
+import 'package:subscription_rooks_app/frontend/screens/about_us_screen.dart';
 import 'package:subscription_rooks_app/services/firestore_service.dart';
+import 'package:subscription_rooks_app/frontend/screens/contact_us_screen.dart';
 
 class admindashboard extends StatefulWidget {
   const admindashboard({super.key});
@@ -967,6 +969,37 @@ class _admindashboardState extends State<admindashboard> {
                   onTap: () {
                     Navigator.pop(context);
                     _navigateToChangePlan();
+                  },
+                ),
+                const Divider(indent: 20, endIndent: 20),
+
+                _buildDrawerItem(
+                  icon: Icons.contact_mail_rounded,
+                  title: 'Contact Us',
+                  subtitle: 'View company contact details',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ContactUsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(indent: 20, endIndent: 20),
+                _buildDrawerItem(
+                  icon: Icons.info_rounded,
+                  title: 'About Us',
+                  subtitle: 'Learn more about ServNex',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AboutUsScreen(),
+                      ),
+                    );
                   },
                 ),
                 const Divider(indent: 20, endIndent: 20),

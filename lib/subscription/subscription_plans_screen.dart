@@ -30,8 +30,8 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   // Plan data for Paid tiers
   final List<Map<String, dynamic>> plans = [
     {
-      'name': 'Silver Plan',
-      'monthlyPrice': 199,
+      'name': 'Silver',
+      'monthlyPrice': 1,
       'monthlyOriginalPrice': 299,
       'sixMonthPrice': 999,
       'sixMonthOriginalPrice': 1794,
@@ -60,7 +60,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       'color': const Color(0xFFE0E0E0),
     },
     {
-      'name': 'Gold Plan',
+      'name': 'Gold',
       'monthlyPrice': 399,
       'monthlyOriginalPrice': 499,
       'sixMonthPrice': 1990,
@@ -90,7 +90,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       'color': const Color(0xFFFFD700),
     },
     {
-      'name': 'Platinum Plan',
+      'name': 'Platinum',
       'monthlyPrice': 999,
       'monthlyOriginalPrice': 1499,
       'sixMonthPrice': 4990,
@@ -429,84 +429,87 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            if (isCurrentPlan)
-              Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade600,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  '✓  Your Current Plan',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isCurrentPlan)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 5,
                   ),
-                ),
-              ),
-            Text(
-              plan['name'],
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade700,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  '₹$price',
-                  style: const TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade600,
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                ),
-                if (originalPrice != null && originalPrice > 0) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    '₹$originalPrice',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      decoration: TextDecoration.lineThrough,
-                      color: Colors.grey,
+                  child: const Text(
+                    '✓  Your Current Plan',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
                     ),
                   ),
+                ),
+              Text(
+                plan['name'],
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    '₹$price',
+                    style: const TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  if (originalPrice != null && originalPrice > 0) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      '₹$originalPrice',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        decoration: TextDecoration.lineThrough,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-            Text(
-              durationLabel,
-              style: const TextStyle(fontSize: 14, color: Colors.black54),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              isTrial
-                  ? 'No credit card required'
-                  : 'Applicable for ${isYearly ? 'annual' : (isSixMonths ? '6-month' : 'monthly')} billing',
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
-            ),
-            const SizedBox(height: 30),
-            Text(
-              plan['subtitle'],
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
+              ),
+              Text(
+                durationLabel,
+                style: const TextStyle(fontSize: 14, color: Colors.black54),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                isTrial
+                    ? 'No credit card required'
+                    : 'Applicable for ${isYearly ? 'annual' : (isSixMonths ? '6-month' : 'monthly')} billing',
+                style: const TextStyle(fontSize: 10, color: Colors.grey),
+              ),
+              const SizedBox(height: 30),
+              Text(
+                plan['subtitle'],
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
                 itemCount: plan['features'].length,
                 itemBuilder: (context, index) {
                   return Padding(
@@ -534,8 +537,8 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                   );
                 },
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -642,20 +645,27 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     bool isSixMonths = false,
     bool isTrial = false,
   }) {
-    final price = isTrial
-        ? selectedPlan['price']
-        : (isYearly
-              ? selectedPlan['yearlyPrice']
-              : (isSixMonths
-                    ? selectedPlan['sixMonthPrice']
-                    : selectedPlan['monthlyPrice']));
-    final originalPrice = isTrial
-        ? selectedPlan['originalPrice']
-        : (isYearly
-              ? selectedPlan['yearlyOriginalPrice']
-              : (isSixMonths
-                    ? selectedPlan['sixMonthOriginalPrice']
-                    : selectedPlan['monthlyOriginalPrice']));
+    final price =
+        ((isTrial
+                    ? selectedPlan['price']
+                    : (isYearly
+                          ? selectedPlan['yearlyPrice']
+                          : (isSixMonths
+                                ? selectedPlan['sixMonthPrice']
+                                : selectedPlan['monthlyPrice'])))
+                as num?)
+            ?.toInt() ??
+        0;
+    final originalPrice =
+        ((isTrial
+                    ? selectedPlan['originalPrice']
+                    : (isYearly
+                          ? selectedPlan['yearlyOriginalPrice']
+                          : (isSixMonths
+                                ? selectedPlan['sixMonthOriginalPrice']
+                                : selectedPlan['monthlyOriginalPrice'])))
+                as num?)
+            ?.toInt();
 
     if (isTrial) {
       // Bypass Payment and Go directly to Customization

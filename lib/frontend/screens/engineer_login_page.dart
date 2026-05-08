@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:subscription_rooks_app/services/theme_service.dart';
 import 'package:subscription_rooks_app/backend/screens/engineer_login_page.dart';
 import 'package:subscription_rooks_app/frontend/screens/engineer_dashboard_page.dart';
+import 'package:subscription_rooks_app/subscription/access_restricted_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class Engineerlogin extends StatefulWidget {
   const Engineerlogin({super.key});
@@ -51,6 +53,16 @@ class _EngineerloginState extends State<Engineerlogin> {
 
       if (result['success']) {
         if (!mounted) return;
+        if (result['restricted'] == true) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  const AccessRestrictedScreen(role: 'engineer'),
+            ),
+          );
+          return;
+        }
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -139,21 +151,13 @@ class _EngineerloginState extends State<Engineerlogin> {
                       ? Image.network(
                           ThemeService.instance.logoUrl!,
                           height: 100,
+                          width:
+                              250, // Added width constraint to prevent horizontal overflow
                           fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildDefaultLogo(), // Added error handling
                         )
-                      : Container(
-                          height: 100,
-                          width: 100,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.engineering_rounded,
-                            size: 50,
-                            color: Colors.black54,
-                          ),
-                        ),
+                      : _buildDefaultLogo(),
                 ),
                 const SizedBox(height: 48),
                 Text(
@@ -248,11 +252,48 @@ class _EngineerloginState extends State<Engineerlogin> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 24),
+                Center(
+                  child: TextButton(
+                    onPressed: () async {
+                      final Uri url = Uri.parse(
+                        'https://sites.google.com/view/rooks-white-label-app/home',
+                      );
+                      if (!await launchUrl(url)) {
+                        debugPrint('Could not launch $url');
+                      }
+                    },
+                    child: Text(
+                      'Show Privacy Policy',
+                      style: GoogleFonts.inter(
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 40),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultLogo() {
+    return Container(
+      height: 100,
+      width: 100,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(
+        Icons.engineering_rounded,
+        size: 50,
+        color: Colors.black54,
       ),
     );
   }

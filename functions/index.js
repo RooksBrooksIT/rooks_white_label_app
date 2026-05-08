@@ -957,7 +957,13 @@ exports.verifyOTPAndResetPassword = onRequest(async (req, res) => {
  * ─────────────────────────────────────────────────────────────────────────────
  * Checks for active subscriptions expiring in 3 days and sends a reminder.
  */
-exports.checkSubscriptionExpiryReminders = onSchedule("0 9 * * *", async (event) => {
+exports.checkSubscriptionExpiryReminders = onSchedule({
+    schedule:   "0 9 * * *",
+    timeZone:   "Asia/Kolkata",
+    retryCount: 0,
+    memory:     "256MiB",
+}, async (event) => {
+
     console.log("[SCHEDULER] Running daily subscription reminders check at 09:00 AM IST...");
 
     const now = new Date();
@@ -1161,3 +1167,16 @@ exports.testExpiryReminder = onRequest(async (req, res) => {
         res.status(500).send("Error: " + error.message);
     }
 });
+
+// ===== ICICI PAYMENT GATEWAY FUNCTIONS =====
+const iciciFunctions = require("./src/iciciPaymentFunctions");
+
+// processRefund  → called by Flutter admin panel for refunds
+// paymentCallback → webhook called by ICICI after payment
+exports.processRefund    = iciciFunctions.processRefund;
+exports.paymentCallback  = iciciFunctions.paymentCallback;
+
+// ===== CARD, NET BANKING & UPI PAYMENT SESSION =====
+// Primary payment initiation endpoint — handles CARD, NETBANKING, UPI
+const { createPaymentSession } = require("./src/createPaymentSession");
+exports.createPaymentSession = createPaymentSession;

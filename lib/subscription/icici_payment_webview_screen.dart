@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Result returned by the WebView after the payment flow completes.
 class IciciPaymentResult {
@@ -51,13 +52,39 @@ class _IciciPaymentWebViewScreenState extends State<IciciPaymentWebViewScreen> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
-          onNavigationRequest: (NavigationRequest request) {
+          onNavigationRequest: (NavigationRequest request) async {
             debugPrint('WebView navigating to: ${request.url}');
 
-            // Intercept navigation to the return URL
+            // 1. Intercept navigation to the return URL
             if (_isReturnUrl(request.url)) {
               debugPrint('Return URL detected: ${request.url}');
               _handleReturnUrl(request.url);
+              return NavigationDecision.prevent;
+            }
+
+            // 2. Handle UPI / GPay / External Intent Schemes
+            final url = request.url.toLowerCase();
+            if (url.startsWith('upi://') ||
+                url.startsWith('phonepe://') ||
+                url.startsWith('paytmmp://') ||
+                url.startsWith('gpay://') ||
+                url.startsWith('tez://') || // Google Pay
+                url.startsWith('intent://') ||
+                url.startsWith('whatsapp://')) {
+              debugPrint('External intent scheme detected: $url');
+              try {
+                final uri = Uri.parse(request.url);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  debugPrint('Successfully launched external application');
+                } else {
+                  debugPrint('Could not launch external application for: $url');
+                  // For intent:// schemes on Android, they need special handling
+                  // but url_launcher usually handles basic upi:// fine.
+                }
+              } catch (e) {
+                debugPrint('Error launching external URL: $e');
+              }
               return NavigationDecision.prevent;
             }
 
@@ -124,12 +151,16 @@ class _IciciPaymentWebViewScreenState extends State<IciciPaymentWebViewScreen> {
         queryParams['status'] ??
         queryParams['txnStatus'] ??
         queryParams['Status'] ??
+        queryParams['RESPONSE_CODE'] ??
         '';
 
     final isSuccess =
         status.toUpperCase() == 'SUCCESS' ||
         status.toUpperCase() == 'APPROVED' ||
-        status.toUpperCase() == 'TXN_SUCCESS';
+        status.toUpperCase() == 'TXN_SUCCESS' ||
+        status == '0' ||
+        status == '00' ||
+        status == 'P1000';
 
     if (mounted) {
       Navigator.pop(

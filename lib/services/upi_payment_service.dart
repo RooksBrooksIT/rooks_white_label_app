@@ -83,6 +83,11 @@ class UpiPaymentService {
       final config = _appConfigs[appName];
       final scheme = config?.scheme ?? 'upi';
 
+      if (amount.isEmpty || transactionRefId.isEmpty) {
+        debugPrint('[UPI ERROR] Missing amount or transactionRefId for $appName');
+        return false;
+      }
+
       final uri = _buildUpiUri(
         scheme: scheme,
         amount: amount,
@@ -90,7 +95,8 @@ class UpiPaymentService {
         transactionRefId: transactionRefId,
       );
 
-      debugPrint('Launching UPI payment: $uri');
+      // LOG: UPI URL before launch
+      debugPrint('[UPI] Launching payment for $appName: $uri');
 
       // Try app-specific scheme first
       if (await canLaunchUrl(uri)) {
@@ -98,7 +104,10 @@ class UpiPaymentService {
           uri,
           mode: LaunchMode.externalApplication,
         );
-        if (launched) return true;
+        if (launched) {
+          debugPrint('[UPI] Successfully launched $appName');
+          return true;
+        }
       }
 
       // Fallback to generic UPI scheme
@@ -135,6 +144,11 @@ class UpiPaymentService {
     required String transactionRefId,
   }) async {
     try {
+      if (amount.isEmpty || transactionRefId.isEmpty) {
+        debugPrint('[UPI ERROR] Missing amount or transactionRefId for generic UPI');
+        return false;
+      }
+
       final uri = _buildUpiUri(
         scheme: 'upi',
         amount: amount,
@@ -142,10 +156,15 @@ class UpiPaymentService {
         transactionRefId: transactionRefId,
       );
 
-      debugPrint('Launching generic UPI: $uri');
+      // LOG: Generic UPI URL before launch
+      debugPrint('[UPI] Launching generic UPI: $uri');
 
       if (await canLaunchUrl(uri)) {
-        return await launchUrl(uri, mode: LaunchMode.externalApplication);
+        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (launched) {
+          debugPrint('[UPI] Successfully launched generic UPI chooser');
+          return true;
+        }
       }
 
       return false;

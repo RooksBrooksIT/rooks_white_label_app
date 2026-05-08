@@ -418,4 +418,77 @@ class FirestoreService {
     }
     return null;
   }
+
+  /// Save Terms & Conditions acceptance for a user
+  Future<void> saveTermsAndConditionsAcceptance({
+    required String uid,
+    required String tenantId,
+    required DateTime timestamp,
+    String? appId,
+  }) async {
+    try {
+      await collection(
+        'users',
+        tenantId: tenantId,
+        appId: appId,
+      ).doc(uid).update({
+        'termsAndConditionsAccepted': true,
+        'termsAcceptedAt': timestamp.toIso8601String(),
+        'termsAcceptedTimestamp': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error saving T&C acceptance: $e');
+      rethrow;
+    }
+  }
+
+  /// Check if a user has accepted Terms & Conditions
+  Future<bool> hasAcceptedTermsAndConditions({
+    required String uid,
+    required String tenantId,
+    String? appId,
+  }) async {
+    try {
+      final doc = await collection(
+        'users',
+        tenantId: tenantId,
+        appId: appId,
+      ).doc(uid).get();
+
+      if (doc.exists && doc.data() != null) {
+        return doc.data()?['termsAndConditionsAccepted'] == true;
+      }
+    } catch (e) {
+      debugPrint('Error checking T&C acceptance: $e');
+    }
+    return false;
+  }
+
+  /// Get Terms & Conditions acceptance details for a user
+  Future<Map<String, dynamic>?> getTermsAndConditionsDetails({
+    required String uid,
+    required String tenantId,
+    String? appId,
+  }) async {
+    try {
+      final doc = await collection(
+        'users',
+        tenantId: tenantId,
+        appId: appId,
+      ).doc(uid).get();
+
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        return {
+          'accepted': data['termsAndConditionsAccepted'] ?? false,
+          'acceptedAt': data['termsAcceptedAt'],
+          'acceptedTimestamp': data['termsAcceptedTimestamp'],
+        };
+      }
+    } catch (e) {
+      debugPrint('Error fetching T&C details: $e');
+    }
+    return null;
+  }
 }
