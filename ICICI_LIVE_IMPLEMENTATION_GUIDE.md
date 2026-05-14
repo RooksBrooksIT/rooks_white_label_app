@@ -9,7 +9,7 @@ This guide covers the complete setup for ICICI Orange Payment Gateway LIVE integ
 - Aggregator ID: 100000000429483
 - Production URLs:
   - Base: https://pgpay.icicibank.com
-  - InitiateSale: https://pgpay.icicibank.com/pg/api/v2/initiateSale
+  - generateQR: https://pgpay.icicibank.com/tsp/pg/api/generateQR
   - Command: https://pgpay.icicibank.com/pg/api/command
   - Dashboard: https://pgportal.icicibank.com/v2/pgmp/login
 
@@ -58,7 +58,7 @@ ICICI_MERCHANT_MID=100000000429484
 ICICI_MERCHANT_KEY=your_actual_merchant_key_from_icici_dashboard
 ICICI_AGGREGATOR_ID=100000000429483
 ICICI_BASE_URL=https://pgpay.icicibank.com
-ICICI_INITIATE_SALE_URL=https://pgpay.icicibank.com/pg/api/v2/initiateSale
+ICICI_GENERATE_QR_URL=https://pgpay.icicibank.com/tsp/pg/api/generateQR
 ICICI_COMMAND_URL=https://pgpay.icicibank.com/pg/api/command
 NODE_ENV=production
 ```

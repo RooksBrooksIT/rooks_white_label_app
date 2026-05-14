@@ -4,35 +4,38 @@
 
 ---
 
-## 1. InitiateSale API
+## 1. generateQR API
 
 ### 1.1 Request from Firebase Function → ICICI
 
-**Endpoint:** `https://pgpay.icicibank.com/pg/api/v2/initiateSale`
+**Endpoint:** `https://pgpay.icicibank.com/tsp/pg/api/generateQR`
 
 **Method:** POST
 
 **Headers:**
 ```
-Content-Type: application/json
+Content-Type: application/x-www-form-urlencoded
 ```
 
-**Request Body:**
+**Request Body (Form Encoded):**
+```
+amount=499&currency=356&emailID=customer@example.com&merchantId=100000000429484&aggregatorID=100000000429483&merchantRefNo=RB123456&requestType=UPIQR&secureHash=...
+```
+
+**Response Body (JSON):**
 ```json
 {
-  "MID": "100000000429484",
-  "AGGREGATOR_ID": "100000000429483",
-  "ORDER_ID": "ORDER_1714821234567_A1B2C3D4",
-  "TXN_AMOUNT": "499.00",
-  "CUST_ID": "user_firebase_uid",
-  "MOBILE_NO": "9900433466",
-  "EMAIL_ID": "dominicsaviod@gmail.com",
-  "TXN_DATE": "04-05-2026 15:30:45",
-  "RETURN_URL": "https://yourdomain.com/payment-callback",
-  "NOTIFICATION_URL": "https://us-central1-your-project.cloudfunctions.net/paymentCallback",
-  "MERCHANT_NAME": "M/S.ROOKS AND BROOKS TECHNOLOGIES PRIVATE LIMITED",
-  "PRODUCT_DESC": "3-Month Premium Subscription",
-  "PROMO_CODE": "",
+  "respHeader": {
+    "returnCode": "200",
+    "desc": "Success"
+  },
+  "respBody": {
+    "upiQR": "upi://pay?pa=...",
+    "expiry": "2026-05-08 16:30:45",
+    "merchantRefNo": "RB123456"
+  }
+}
+```
   "TXNTYPE": "SALE",
   "REQUEST_HASH": "sha512_hash_generated_from_merchant_key"
 }
@@ -328,7 +331,7 @@ Else → Reject it (potential tampered data)
          ▼
 ┌─────────────────────────────────────┐
 │  ICICI Orange Payment Gateway       │
-│  /pg/api/v2/initiateSale            │
+│  /tsp/pg/api/generateQR             │
 │  ├─ Verify hash                     │
 │  ├─ Create transaction               │
 │  └─ Return redirect URL              │

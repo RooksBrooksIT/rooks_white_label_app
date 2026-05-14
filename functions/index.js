@@ -106,7 +106,7 @@ async function sendNotification(tenantId, appId, role, userId, payload) {
 
 // 1. HTTP Test Function: Send notification to any user
 // Usage: https://<region>-<project>.cloudfunctions.net/testNotify?tenantId=white-label-app-33300&appId=data&role=engineer&userId=JohnDoe
-exports.testNotify = onRequest(async (req, res) => {
+exports.testNotify = onRequest({ invoker: "public" }, async (req, res) => {
     const { tenantId, appId, role, userId } = req.query;
     if (!tenantId || !appId || !role || !userId) {
         return res.status(400).send("Missing query params: tenantId, appId, role, userId");
@@ -802,6 +802,11 @@ exports.processPaymentSuccess = onDocumentWritten(
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 reminderSent: false, // Reset for new period
                 corporateEmail: recipientEmail,
+                limits: newData.limits || null,
+                geoLocation: newData.geoLocation || false,
+                attendance: newData.attendance || false,
+                barcode: newData.barcode || false,
+                reportExport: newData.reportExport || false,
             }, { merge: true });
 
             console.log(`[LIFECYCLE] Updated subscription for ${uid} | expires=${expiryDate.toISOString()}`);
@@ -818,7 +823,7 @@ exports.processPaymentSuccess = onDocumentWritten(
  */
 
 // 7. Send OTP for Forgot Password
-exports.sendOTP = onRequest(async (req, res) => {
+exports.sendOTP = onRequest({ invoker: "public" }, async (req, res) => {
     // Handle CORS
     res.set('Access-Control-Allow-Origin', '*');
     if (req.method === 'OPTIONS') {
@@ -887,7 +892,7 @@ exports.sendOTP = onRequest(async (req, res) => {
 });
 
 // 8. Verify OTP and Reset Password
-exports.verifyOTPAndResetPassword = onRequest(async (req, res) => {
+exports.verifyOTPAndResetPassword = onRequest({ invoker: "public" }, async (req, res) => {
     // Handle CORS
     res.set('Access-Control-Allow-Origin', '*');
     if (req.method === 'OPTIONS') {
@@ -1107,7 +1112,7 @@ exports.checkSubscriptionExpiryReminders = onSchedule({
 // ─────────────────────────────────────────────────────────────────────────────
 // 6. Temporary HTTP Trigger for Testing Subscription Expiry (Manual)
 // ─────────────────────────────────────────────────────────────────────────────
-exports.testExpiryReminder = onRequest(async (req, res) => {
+exports.testExpiryReminder = onRequest({ invoker: "public" }, async (req, res) => {
     console.log("[TEST] Manually triggering subscription reminders check...");
 
     const now = new Date();
@@ -1168,15 +1173,92 @@ exports.testExpiryReminder = onRequest(async (req, res) => {
     }
 });
 
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 7. Payment Reconciliation Scheduler (Hourly)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Automatically recovers PENDING payments that were never completed by 
+ * verifying their status with ICICI Bank after 30 minutes.
+ */
+exports.reconcileStuckPayments = onSchedule({
+    schedule:   "0 * * * *", // Every hour
+    timeZone:   "Asia/Kolkata",
+    retryCount: 1,
+    memory:     "256MiB",
+}, async (event) => {
+    console.log("[RECONCILE] Running hourly payment reconciliation...");
+
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    const iciciService = require("./src/icici_service");
+
+    try {
+        const pendingSnap = await admin.firestore()
+            .collection("payments")
+            .where("status", "==", "PENDING")
+            .where("createdAt", "<=", admin.firestore.Timestamp.fromDate(thirtyMinutesAgo))
+            .limit(50)
+            .get();
+
+        if (pendingSnap.empty) {
+            console.log("[RECONCILE] No stuck PENDING payments found.");
+            return;
+        }
+
+        console.log(`[RECONCILE] Found ${pendingSnap.size} stuck payments. Starting verification...`);
+
+        const reconcilePromises = pendingSnap.docs.map(async (doc) => {
+            const txnId = doc.id;
+            const data = doc.data();
+
+            try {
+                const verifyResult = await iciciService.statusCheck(txnId);
+                if (!verifyResult.success) return;
+
+                const statusData = verifyResult.data;
+                const respCode = statusData?.RESPONSE_CODE || statusData?.responseCode;
+
+                let finalStatus = "PENDING";
+                if (respCode === "0" || respCode === "00") {
+                    finalStatus = "SUCCESS";
+                } else if (respCode === "1" || respCode === "99") {
+                    finalStatus = "FAILED";
+                }
+
+                if (finalStatus !== "PENDING") {
+                    console.log(`[RECONCILE] Updating ${txnId} to ${finalStatus}`);
+                    await doc.ref.update({
+                        status: finalStatus,
+                        reconciledAt: admin.firestore.FieldValue.serverTimestamp(),
+                        iciciResponse: { reconciliation: statusData }
+                    });
+
+                    // Trigger successful payment logic if needed (Receipts, etc.)
+                    // This will be handled by the 'onDocumentWritten' trigger for processPaymentSuccess
+                }
+            } catch (err) {
+                console.error(`[RECONCILE ERROR] Failed for ${txnId}:`, err.message);
+            }
+        });
+
+        await Promise.all(reconcilePromises);
+        console.log("[RECONCILE] ✅ Hourly reconciliation completed.");
+    } catch (error) {
+        console.error("[RECONCILE FATAL]", error);
+    }
+});
+
 // ===== ICICI PAYMENT GATEWAY FUNCTIONS =====
 const iciciFunctions = require("./src/iciciPaymentFunctions");
 
 // processRefund  → called by Flutter admin panel for refunds
 // paymentCallback → webhook called by ICICI after payment
+// verifyPayment   → called by Flutter app to poll status
 exports.processRefund    = iciciFunctions.processRefund;
 exports.paymentCallback  = iciciFunctions.paymentCallback;
+exports.verifyPayment    = iciciFunctions.verifyPayment;
 
 // ===== CARD, NET BANKING & UPI PAYMENT SESSION =====
 // Primary payment initiation endpoint — handles CARD, NETBANKING, UPI
 const { createPaymentSession } = require("./src/createPaymentSession");
 exports.createPaymentSession = createPaymentSession;
+

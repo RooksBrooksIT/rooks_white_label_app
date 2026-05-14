@@ -691,7 +691,178 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       return;
     }
 
-    // Navigate to Payment Screen for Paid Plans
+    // Show Payment Method Selection Bottom Sheet
+    _showPaymentMethodSheet(
+      context,
+      selectedPlan,
+      price,
+      originalPrice,
+      isYearly,
+      isSixMonths,
+    );
+  }
+
+  void _showPaymentMethodSheet(
+    BuildContext context,
+    Map<String, dynamic> selectedPlan,
+    int price,
+    int? originalPrice,
+    bool isYearly,
+    bool isSixMonths,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Select Payment Method',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Choose how you want to pay for ${selectedPlan['name']} plan',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            _buildPaymentMethodOption(
+              context,
+              title: 'UPI',
+              subtitle: 'Pay using GPay, PhonePe, etc.',
+              icon: Icons.qr_code,
+              onTap: () => _navigateToPayment(
+                context,
+                'UPI',
+                selectedPlan,
+                price,
+                originalPrice,
+                isYearly,
+                isSixMonths,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildPaymentMethodOption(
+              context,
+              title: 'Card',
+              subtitle: 'Credit or Debit Card',
+              icon: Icons.credit_card,
+              onTap: () => _navigateToPayment(
+                context,
+                'Card',
+                selectedPlan,
+                price,
+                originalPrice,
+                isYearly,
+                isSixMonths,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildPaymentMethodOption(
+              context,
+              title: 'Net Banking',
+              subtitle: 'Pay via your bank account',
+              icon: Icons.account_balance,
+              onTap: () => _navigateToPayment(
+                context,
+                'Net Banking',
+                selectedPlan,
+                price,
+                originalPrice,
+                isYearly,
+                isSixMonths,
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethodOption(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.blue.shade700),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey.shade400,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToPayment(
+    BuildContext context,
+    String method,
+    Map<String, dynamic> selectedPlan,
+    int price,
+    int? originalPrice,
+    bool isYearly,
+    bool isSixMonths,
+  ) {
+    Navigator.pop(context); // Close bottom sheet
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -707,6 +878,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           attendance: selectedPlan['attendance'],
           barcode: selectedPlan['barcode'],
           reportExport: selectedPlan['reportExport'],
+          initialPaymentMethod: method, // Pass the selected method
         ),
       ),
     );

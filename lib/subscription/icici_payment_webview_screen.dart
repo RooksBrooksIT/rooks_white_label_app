@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:subscription_rooks_app/services/icici_service.dart';
 
 /// Result returned by the WebView after the payment flow completes.
 class IciciPaymentResult {
@@ -40,11 +43,78 @@ class _IciciPaymentWebViewScreenState extends State<IciciPaymentWebViewScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
   double _loadingProgress = 0;
+  StreamSubscription<DocumentSnapshot>? _txnSubscription;
+
+  bool get _isUpiIntent => widget.paymentUrl.toLowerCase().startsWith('upi://') ||
+                           widget.paymentUrl.toLowerCase().startsWith('gpay://') ||
+                           widget.paymentUrl.toLowerCase().startsWith('phonepe://') ||
+                           widget.paymentUrl.toLowerCase().startsWith('paytmmp://');
 
   @override
   void initState() {
     super.initState();
-    _initWebView();
+    if (!_isUpiIntent) {
+      _initWebView();
+    } else {
+      _launchUpiIntent();
+    }
+    _listenToTransactionStatus();
+  }
+
+  void _listenToTransactionStatus() {
+    _txnSubscription = IciciService.instance
+        .streamTransactionStatus(widget.merchantTxnNo)
+        .listen((doc) {
+      if (!mounted || !doc.exists) return;
+      final data = doc.data() as Map<String, dynamic>?;
+      if (data == null) return;
+      
+      final status = data['status'];
+      if (status == 'SUCCESS') {
+        _txnSubscription?.cancel();
+        Navigator.pop(
+          context,
+          const IciciPaymentResult(
+            success: true,
+            message: 'Payment completed successfully',
+          ),
+        );
+      } else if (status == 'FAILED') {
+        _txnSubscription?.cancel();
+        Navigator.pop(
+          context,
+          IciciPaymentResult(
+            success: false,
+            message: data['errorMsg'] ?? 'Payment failed',
+          ),
+        );
+      }
+    });
+  }
+
+  void _launchUpiIntent() async {
+    final uri = Uri.parse(widget.paymentUrl);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback or error handling
+        debugPrint('Cannot launch UPI URL');
+      }
+    } catch (e) {
+      debugPrint('Error launching UPI Intent: $e');
+    }
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _txnSubscription?.cancel();
+    super.dispose();
   }
 
   void _initWebView() {
@@ -180,8 +250,8 @@ class _IciciPaymentWebViewScreenState extends State<IciciPaymentWebViewScreen> {
   }
 
   Future<bool> _onWillPop() async {
-    // Check if WebView can go back
-    if (await _controller.canGoBack()) {
+    // Check if WebView can go back (only if not UPI intent)
+    if (!_isUpiIntent && await _controller.canGoBack()) {
       _controller.goBack();
       return false;
     }
@@ -267,29 +337,64 @@ class _IciciPaymentWebViewScreenState extends State<IciciPaymentWebViewScreen> {
                 )
               : null,
         ),
-        body: Stack(
-          children: [
-            WebViewWidget(controller: _controller),
-            if (_isLoading && _loadingProgress < 0.3)
-              const Center(
+        body: _isUpiIntent
+            ? Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(color: Color(0xFF1A237E)),
-                    SizedBox(height: 16),
-                    Text(
-                      'Loading payment page...',
+                    const CircularProgressIndicator(color: Color(0xFF1A237E)),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Waiting for payment...',
                       style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Please complete the payment in your UPI app.',
+                      style: TextStyle(color: Colors.black54, fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 40),
+                    OutlinedButton(
+                      onPressed: () => _launchUpiIntent(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        side: const BorderSide(color: Color(0xFF1A237E)),
+                      ),
+                      child: const Text(
+                        'Re-open UPI App',
+                        style: TextStyle(color: Color(0xFF1A237E), fontWeight: FontWeight.bold),
+                      ),
+                    )
                   ],
                 ),
+              )
+            : Stack(
+                children: [
+                  WebViewWidget(controller: _controller),
+                  if (_isLoading && _loadingProgress < 0.3)
+                    const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: Color(0xFF1A237E)),
+                          SizedBox(height: 16),
+                          Text(
+                            'Loading payment page...',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.black54,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
-          ],
-        ),
       ),
     );
   }

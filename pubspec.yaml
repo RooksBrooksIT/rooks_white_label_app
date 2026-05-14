@@ -68,6 +68,8 @@ dependencies:
   flutter_dotenv: ^6.0.0
   logger: ^2.4.0
   uuid: ^4.3.3
+  dio: ^5.9.2
+  qr_flutter: ^4.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
